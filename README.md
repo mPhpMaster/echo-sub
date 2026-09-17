@@ -73,23 +73,50 @@ Everything runs locally: speech recognition and translation happen on your own m
 |---|---|---|
 | <img src="docs/screenshots/history.png" alt="Caption history window" width="300"> | <img src="docs/screenshots/download.png" alt="Model download progress window with Cancel" width="300"> | <img src="docs/screenshots/about.png" alt="About window" width="220"> |
 
-## Requirements
+## System requirements
 
-| | Minimum | Recommended |
+|  | Minimum | Recommended |
 |---|---|---|
-| OS | Windows 10 (64-bit) | Windows 11 |
-| GPU | — (CPU works, but is slow) | NVIDIA GPU with 4 GB+ VRAM, recent driver |
-| RAM | 8 GB | 16 GB |
-| Disk | 5 GB free | 10 GB free |
-| Internet | Needed once, to download the AI models (~2.5 GB) | |
+| **Operating system** | Windows 10, 64-bit | Windows 11, 64-bit |
+| **Processor** | 64-bit, 4 cores (e.g. Intel Core i3-8100 / AMD Ryzen 3 2200G) | 6+ cores (e.g. Intel Core i5-9400F / AMD Ryzen 5 3600) |
+| **Memory (RAM)** | 8 GB | 16 GB |
+| **Graphics** | None required — runs on the CPU with the *Small* or *Base* speech model (captions lag several seconds) | NVIDIA GeForce GTX 1060 6 GB or better (GTX 10-series and newer); RTX cards are faster |
+| **Graphics memory** | 4 GB for the default models on an NVIDIA GPU | 6 GB or more (needed for *NLLB 1.3B* or *Large v3*) |
+| **NVIDIA driver** | 527.41 or newer (CUDA 12) | Latest Game Ready or Studio driver |
+| **Free disk space** | 6 GB (app 2.3 GB + default models 2.3 GB) | 10 GB on an SSD (room for all models) |
+| **Internet** | Once, to download the models (~2.3 GB) | Also needed if you use the Google Translate engine |
+| **Audio** | Any Windows playback device (speakers, headphones, virtual devices) | — |
+| **Display** | 1280 × 720 | 1920 × 1080 or higher |
 
-EchoSub picks the fastest settings for your GPU automatically (for example int8 on GTX 10-series cards, which have no fast float16).
+EchoSub picks the fastest precision for your GPU automatically (for example int8 on GTX 10-series cards, which have no fast float16).
+
+### Models
+
+Choose the models in *Settings → Language & Engine*. Download sizes are exact; graphics memory is an estimate for the loaded model; speeds were measured on an Intel Core i5-9400F with a GTX 1060 6 GB **while a game was using the GPU at 99%** — an idle GPU is faster.
+
+| Model | Download | Graphics memory (est.) | Time to caption a 9-second sentence |
+|---|---|---|---|
+| Speech — *Base* | 141 MB | ~0.3 GB | 1.3 s (GPU) |
+| Speech — *Small* | 464 MB | ~0.5 GB | 2.5 s (GPU) · 10.7 s (CPU) |
+| Speech — *Medium* | 1.5 GB | ~1.0 GB | 2.9 s (GPU) |
+| Speech — *Large v3 Turbo* (default) | 1.5 GB | ~1.2 GB | 2.2 s (GPU) · 64 s (CPU — not usable live) |
+| Speech — *Large v3* | 3.1 GB | ~2.0 GB | slower than Turbo |
+
+| Translation model | Download | Graphics memory (est.) | Time to translate a sentence |
+|---|---|---|---|
+| *NLLB 600M* (default) | 617 MB | ~0.8 GB | 0.22 s (GPU) · 1.4 s (CPU) |
+| *NLLB 1.3B* | 1.3 GB | ~1.6 GB | 0.47 s (GPU) |
+| *Google Translate* | — | — | depends on your connection |
+
+Also downloaded: the speaker detection model (27 MB, runs on the CPU) and, only if you turn on Arabic diacritics, the diacritics model (69 MB, CPU).
+
+**Default setup** (Large v3 Turbo + NLLB 600M + speaker detection): about 2.3 GB to download and about 2 GB of graphics memory.
 
 ## Install
 
 1. Download `EchoSub-Setup-<version>.exe` from the [Releases](https://github.com/mPhpMaster/echo-sub/releases) page.
 2. Run it and follow the steps (you can install for all users or just for you).
-3. Start EchoSub. The first start downloads the AI models (~2.5 GB) in a progress window that you can cancel at any time — the download resumes where it stopped next time. After that EchoSub works offline (unless you choose Google Translate).
+3. Start EchoSub. The first start downloads the AI models (~2.3 GB) in a progress window that you can cancel at any time — the download resumes where it stopped next time. After that EchoSub works offline (unless you choose Google Translate).
 
 Settings, models, logs and transcripts are kept in `%LOCALAPPDATA%\EchoSub`. The uninstaller asks whether to remove them.
 

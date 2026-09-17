@@ -3,6 +3,13 @@
 All notable changes to EchoSub are documented in this file.
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the project uses [Semantic Versioning](https://semver.org/).
 
+## [1.0.1] — 2026-09-17
+
+### Added
+- The author's photo in the About window.
+- System requirements (minimum and recommended) and per-model download size, graphics memory and speed in the README and user guide.
+- Screenshots in the README and user guide.
+
 ## [1.0.0] — 2026-09-17
 
 First public release.
@@ -35,4 +42,5 @@ First public release.
 - `--self-test [file.wav]` checks the GPU, models and pipeline without opening a window.
 - Windows installer (Inno Setup) and PowerShell build scripts.
 
+[1.0.1]: https://github.com/mPhpMaster/echo-sub/releases/tag/v1.0.1
 [1.0.0]: https://github.com/mPhpMaster/echo-sub/releases/tag/v1.0.0

@@ -64,8 +64,8 @@ english.StartWithWindows=Start {#AppName} when I sign in to Windows
 arabic.StartWithWindows=تشغيل {#AppName} عند تسجيل الدخول إلى ويندوز
 english.RemoveData=Also delete EchoSub's settings, downloaded AI models, logs and transcripts?%n%n(%1)
 arabic.RemoveData=هل تريد أيضاً حذف إعدادات EchoSub ونماذج الذكاء الاصطناعي التي تم تنزيلها والسجلات والنصوص؟%n%n(%1)
-english.FirstRunNote=On first start, EchoSub downloads its AI models (about 2.5 GB).
-arabic.FirstRunNote=عند التشغيل الأول، يقوم EchoSub بتنزيل نماذج الذكاء الاصطناعي (حوالي 2.5 جيجابايت).
+english.FirstRunNote=On first start, EchoSub downloads its AI models (about 2.3 GB).
+arabic.FirstRunNote=عند التشغيل الأول، يقوم EchoSub بتنزيل نماذج الذكاء الاصطناعي (حوالي 2.3 جيجابايت).
 
 [Tasks]
 Name: "desktopicon"; Description: "{cm:CreateDesktopIcon}"; GroupDescription: "{cm:AdditionalIcons}"; Flags: unchecked

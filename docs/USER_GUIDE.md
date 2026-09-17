@@ -2,10 +2,14 @@
 
 ![EchoSub caption box](screenshots/captions-en-ar.png)
 
+## Before you install
+
+Check the [system requirements](../README.md#system-requirements): Windows 10/11 64-bit, 8 GB RAM, and ideally an NVIDIA GPU with 4 GB+ of graphics memory. Without an NVIDIA GPU, choose the *Small* speech model.
+
 ## First start
 
 1. Start EchoSub from the Start menu. Its icon appears in the system tray (next to the clock).
-2. The first start downloads the AI models (~2.5 GB). A window shows the progress, speed and time left; **Cancel** stops it and **Retry** continues where it stopped (nothing already downloaded is lost). Later starts take a few seconds.
+2. The first start downloads the AI models (~2.3 GB). A window shows the progress, speed and time left; **Cancel** stops it and **Retry** continues where it stopped (nothing already downloaded is lost). Later starts take a few seconds.
 3. Play anything with speech. Captions appear at the bottom of the screen and disappear when nobody is talking.
 
 The small dot on the tray icon shows the status: **blue** listening · **amber** loading or reconnecting audio · **grey** paused · **red** error (hover for details).
