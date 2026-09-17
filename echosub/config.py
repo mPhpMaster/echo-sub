@@ -1,0 +1,175 @@
+# SPDX-License-Identifier: GPL-3.0-only
+# Copyright (C) 2026 Mohammad Al-Safadi
+import json
+import os
+import sys
+
+from . import APP_ID
+
+PACKAGE_DIR = os.path.dirname(os.path.abspath(__file__))
+ASSETS_DIR = os.path.join(PACKAGE_DIR, "assets")
+FROZEN = getattr(sys, "frozen", False)  # running from the PyInstaller build / installed app
+
+
+def _data_dir():
+    """Where settings, models, logs and transcripts live.
+
+    ECHOSUB_DATA_DIR overrides it. The installed app uses %LOCALAPPDATA%\\EchoSub (Program Files is
+    read-only); running from source keeps everything in the project folder.
+    """
+    override = os.environ.get("ECHOSUB_DATA_DIR")
+    if override:
+        return os.path.abspath(override)
+    if FROZEN:
+        base = os.environ.get("LOCALAPPDATA") or os.path.expanduser("~")
+        return os.path.join(base, APP_ID)
+    return os.path.dirname(PACKAGE_DIR)
+
+
+DATA_DIR = _data_dir()
+ROOT = DATA_DIR  # kept for older imports
+os.makedirs(DATA_DIR, exist_ok=True)
+CONFIG_PATH = os.path.join(DATA_DIR, "settings.json")
+MODELS_DIR = os.environ.get("ECHOSUB_MODELS_DIR") or os.path.join(DATA_DIR, "models")
+
+WHISPER_MODELS = {
+    "large-v3-turbo": "Large v3 Turbo — best balance (recommended for GTX 1060)",
+    "large-v3": "Large v3 — most accurate, slower",
+    "medium": "Medium — good accuracy",
+    "small": "Small — fast",
+    "base": "Base — very fast, less accurate",
+}
+
+TRANSLATORS = {
+    "nllb-600m": "NLLB 600M — offline (fast)",
+    "nllb-1.3b": "NLLB 1.3B — offline (more accurate)",
+    "google": "Google Translate — needs internet",
+    "none": "No translation (original text only)",
+}
+
+NLLB_REPOS = {
+    "nllb-600m": "JustFrederik/nllb-200-distilled-600M-ct2-int8",
+    "nllb-1.3b": "JustFrederik/nllb-200-distilled-1.3B-ct2-int8",
+}
+
+DEFAULTS = {
+    "target_lang": "ar",
+    "source_lang": "auto",
+    "whisper_model": "large-v3-turbo",
+    "device": "cuda",
+    "translator": "nllb-600m",
+    "translate_same_language": True,      # also translate when speech is already in the caption language
+    "arabic_diacritics": "off",           # off | translation | original | both — add harakat to Arabic text
+    "audio_device": "default",
+    "show_original": True,
+    "show_partial": True,
+    "font_family": "Segoe UI",
+    # translation text
+    "font_size": 28,
+    "text_color": "#FFFFFF",
+    "translation_bold": True,
+    "translation_label": "flag_code",     # same choices as original_label
+    "translation_label_position": "before",
+    # original-language text
+    "original_font_size": 17,
+    "original_color": "#FFD966",
+    "original_bold": False,
+    "original_label": "flag_code",        # none | code | name | flag | flag_code | flag_name
+    "original_label_position": "before",  # before | after | above | below (before/after follow reading direction)
+    # layout
+    "text_align": "center",               # center | left | right | reading
+    "box_position": "bottom-center",      # <top|middle|bottom>-<left|center|right>, or custom (dragged)
+    "box_screen": "",                     # screen name; empty = primary screen
+    "box_margin": 60,                     # px from the screen edge(s) the box is anchored to
+    "box_width_pct": 70,                  # box width as % of the screen width (the maximum when autosizing)
+    "box_autosize": False,                # shrink/grow the box to fit its text
+    "box_radius": 14,                     # px, rounded corners of the box background (0 = square)
+    "box_padding_x": 24,                  # px between the box edge and the text, left/right
+    "box_padding_y": 12,                  # px, top/bottom
+    "caption_animation": "slide",         # slide | fade | none
+    "caption_animation_ms": 250,
+    # spacing
+    "line_height": 115,        # % line height inside wrapped text
+    "entry_spacing": 10,       # px between caption lines
+    "original_gap": 2,         # px between original and its translation
+    # speakers
+    "speaker_detection": True,
+    "speaker_threshold": 0.55,
+    "speaker_color_target": "both",  # translation | original | both
+    "speaker_colors": ["#FFFFFF", "#7FDBFF", "#FFD966", "#9CFF9C", "#FF9EC4", "#C9A7FF", "#FFB066", "#A0E0D0"],
+    "bg_opacity": 150,
+    "max_lines": 2,
+    "clear_after_sec": 3,
+    "vad_threshold": 0.45,
+    "silence_sec": 0.6,
+    "max_segment_sec": 10.0,
+    "save_transcripts": False,
+    "global_hotkeys": True,
+    "click_through": False,
+    "overlay_enabled": True,
+    "geometry": None,
+}
+
+# Window placement and toggles that "Restore defaults" leaves alone
+KEEP_ON_RESET = ("geometry", "click_through", "overlay_enabled")
+
+ORIGINAL_LABELS = {
+    "none": "Nothing",
+    "code": "Language code (EN)",
+    "name": "Language name (English)",
+    "flag": "Flag",
+    "flag_code": "Flag + code",
+    "flag_name": "Flag + name",
+}
+LABEL_POSITIONS = {
+    "before": "Before the text",
+    "after": "After the text",
+    "above": "Above the text",
+    "below": "Below the text",
+}
+TEXT_ALIGNMENTS = {
+    "center": "Center",
+    "left": "Left",
+    "right": "Right",
+    "reading": "Follow reading direction (Arabic right, English left)",
+}
+ARABIC_DIACRITICS = {
+    "off": "Off",
+    "translation": "On the translation",
+    "original": "On the original text",
+    "both": "On the translation and the original text",
+}
+CAPTION_ANIMATIONS = {
+    "slide": "Slide: lines glide up, new text slides in and cross-fades",
+    "fade": "Fade: lines and changed text fade, without moving",
+    "none": "None: change text instantly",
+}
+BOX_ROWS = ("top", "middle", "bottom")
+BOX_COLUMNS = ("left", "center", "right")
+
+# Settings that require reloading models or reopening the audio stream
+ENGINE_KEYS = ("whisper_model", "device", "translator", "audio_device", "speaker_detection")
+
+SPEAKER_COLOR_TARGETS = {
+    "both": "Translation and original text",
+    "translation": "Translation only",
+    "original": "Original text only",
+}
+
+
+def load():
+    cfg = dict(DEFAULTS)
+    try:
+        with open(CONFIG_PATH, encoding="utf-8") as f:
+            saved = json.load(f)
+    except (OSError, ValueError):
+        return cfg
+    if "box_position" not in saved and saved.get("geometry"):
+        saved["box_position"] = "custom"  # settings from before screen presets existed: keep the dragged spot
+    cfg.update(saved)
+    return cfg
+
+
+def save(cfg):
+    with open(CONFIG_PATH, "w", encoding="utf-8") as f:
+        json.dump(cfg, f, ensure_ascii=False, indent=2)

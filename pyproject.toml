@@ -1,0 +1,44 @@
+[build-system]
+requires = ["setuptools>=69"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "echosub"
+dynamic = ["version", "dependencies"]
+description = "Live, translated captions for anything your PC plays."
+readme = "README.md"
+license = "GPL-3.0-only"
+license-files = ["LICENSE"]
+authors = [{ name = "Mohammad Al-Safadi", email = "mPhpMaster@gmail.com" }]
+maintainers = [{ name = "Mohammad Al-Safadi", email = "mPhpMaster@gmail.com" }]
+requires-python = ">=3.10,<3.11"
+keywords = ["captions", "subtitles", "translation", "speech-recognition", "whisper", "accessibility", "windows"]
+classifiers = [
+    "Development Status :: 5 - Production/Stable",
+    "Environment :: Win32 (MS Windows)",
+    "Environment :: GPU :: NVIDIA CUDA",
+    "Intended Audience :: End Users/Desktop",
+    "Operating System :: Microsoft :: Windows :: Windows 10",
+    "Operating System :: Microsoft :: Windows :: Windows 11",
+    "Programming Language :: Python :: 3.10",
+    "Topic :: Multimedia :: Sound/Audio :: Speech",
+    "Topic :: Text Processing :: Linguistic",
+]
+
+[project.urls]
+Homepage = "https://github.com/mPhpMaster/echo-sub"
+Issues = "https://github.com/mPhpMaster/echo-sub/issues"
+Changelog = "https://github.com/mPhpMaster/echo-sub/blob/main/CHANGELOG.md"
+
+[project.gui-scripts]
+echosub = "echosub.main:main"
+
+[tool.setuptools.dynamic]
+version = { attr = "echosub.__version__" }
+dependencies = { file = ["requirements.txt"] }
+
+[tool.setuptools.packages.find]
+include = ["echosub*"]
+
+[tool.setuptools.package-data]
+echosub = ["assets/*", "flags/*"]

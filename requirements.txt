@@ -1,0 +1,17 @@
+# EchoSub runtime dependencies (Python 3.10, Windows x64). Versions pinned to the tested set.
+faster-whisper==1.2.1
+ctranslate2==4.8.2
+PyAudioWPatch==0.2.12.8
+PySide6==6.11.2
+numpy==2.2.6
+soxr==1.1.0
+sentencepiece==0.2.2
+deep-translator==1.11.4
+huggingface_hub==1.31.0
+sherpa-onnx==1.13.8
+pycaw==20251023
+comtypes==1.4.16
+# NVIDIA CUDA runtime for the GPU (cuBLAS 12 + cuDNN 9)
+nvidia-cublas-cu12==12.9.2.10
+nvidia-cudnn-cu12==9.26.0.51
+nvidia-cuda-nvrtc-cu12==12.9.86

@@ -1,0 +1,3 @@
+# Tools needed only to build EchoSub.exe (scripts\build.ps1). The installer also needs Inno Setup 6.
+-r requirements.txt
+pyinstaller==6.22.3
