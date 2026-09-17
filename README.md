@@ -15,6 +15,10 @@
   <img alt="Python 3.10" src="https://img.shields.io/badge/python-3.10-3776AB.svg">
 </p>
 
+<p align="center">
+  <img src="docs/screenshots/captions-en-ar.png" alt="EchoSub caption box: an English conversation translated into Arabic, each speaker in their own color" width="900">
+</p>
+
 ---
 
 ## What is EchoSub?
@@ -50,6 +54,24 @@ Everything runs locally: speech recognition and translation happen on your own m
 - Caption history window (copy / save) and optional automatic transcripts.
 - Live preview while you change settings; searchable dropdowns; restore defaults.
 - Tray icon with status (loading, listening, paused, error), log file, single instance.
+
+## Screenshots
+
+| Any language in, your language out | Arabic diacritics (تشكيل) |
+|---|---|
+| <img src="docs/screenshots/captions-any-to-en.png" alt="Spanish, French and Japanese speech captioned in English" width="440"> | <img src="docs/screenshots/captions-arabic-tashkeel.png" alt="English speech translated into Arabic with diacritics" width="440"> |
+
+| Language & engine | Text & colors |
+|---|---|
+| <img src="docs/screenshots/settings-language.png" alt="Language and engine settings" width="400"> | <img src="docs/screenshots/settings-text.png" alt="Text and color settings" width="400"> |
+
+| Position, alignment & animation | Speakers |
+|---|---|
+| <img src="docs/screenshots/settings-position.png" alt="Position, alignment, box style and animation settings" width="400"> | <img src="docs/screenshots/settings-speakers.png" alt="Speaker detection settings" width="400"> |
+
+| Caption history | Model download | About |
+|---|---|---|
+| <img src="docs/screenshots/history.png" alt="Caption history window" width="300"> | <img src="docs/screenshots/download.png" alt="Model download progress window with Cancel" width="300"> | <img src="docs/screenshots/about.png" alt="About window" width="220"> |
 
 ## Requirements
 

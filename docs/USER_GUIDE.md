@@ -1,5 +1,7 @@
 # EchoSub — User Guide
 
+![EchoSub caption box](screenshots/captions-en-ar.png)
+
 ## First start
 
 1. Start EchoSub from the Start menu. Its icon appears in the system tray (next to the clock).
@@ -33,6 +35,9 @@ The hotkeys work while other apps (games, videos) have focus. If another program
 Every dropdown accepts typing to search (e.g. type `ital` for Italian; Arabic names work too, with or without hamza).
 
 ### Language & Engine
+
+![Language & Engine settings](screenshots/settings-language.png)
+
 - **Show captions in** — the language captions are translated into.
 - **Spoken language** — *Auto-detect* works for any language; choosing the language improves accuracy.
 - **Speech recognition model** — *Large v3 Turbo* is the best balance; *Small*/*Medium* are faster on weaker GPUs.
@@ -43,11 +48,17 @@ Every dropdown accepts typing to search (e.g. type `ital` for Italian; Arabic na
 - **Moroccan Arabic (Darija)** — choose it as *Show captions in* to get captions in Darija, or as *Spoken language* when the audio is Darija (auto-detect hears Darija as Arabic). *NLLB 1.3B* gives noticeably better Darija than *NLLB 600M*.
 
 ### Text & Colors
+
+![Text & Colors settings](screenshots/settings-text.png)
+
 - Font; show the original text above the translation; show live text while someone is still talking.
 - **Translation** and **Original text**: font size, bold, color, and a **language label** (code, name, flag, flag + code, flag + name, or nothing) placed before, after, above or below the text. "Before"/"after" follow the reading direction.
 - **Spacing & background**: line height (any value, including below 100%), space between caption lines, space between original and translation, number of lines, background opacity, and how long after silence the box hides (it never hides while the mouse is over it).
 
 ### Position & Alignment
+
+![Position & Alignment settings](screenshots/settings-position.png)
+
 - **Text alignment** — center, left, right, or follow the reading direction.
 - **Position** — 9 spots on the screen or *Custom* (drag the box anywhere; dragging switches to Custom automatically). **Screen**, **distance from the screen edge** and **box width**.
 - **Autosize** — the box shrinks and grows to fit its text, up to the box width.
@@ -55,6 +66,9 @@ Every dropdown accepts typing to search (e.g. type `ital` for Italian; Arabic na
 - **Animation** — *Slide* (lines glide, text cross-fades, the box resizes smoothly), *Fade*, or *None*, and the duration.
 
 ### Speakers
+
+![Speakers settings](screenshots/settings-speakers.png)
+
 - **Detect speakers** — a new line and color for each voice. **Apply speaker color to** the translation, the original, or both. **Speaker colors** for up to 8 voices.
 - **Matching strictness** — raise it if two people share a color; lower it if one person gets several colors.
 
