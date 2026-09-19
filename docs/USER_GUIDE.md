@@ -45,7 +45,7 @@ Every dropdown accepts typing to search (e.g. type `ital` for Italian; Arabic na
 - **Show captions in** — the language captions are translated into.
 - **Spoken language** — *Auto-detect* works for any language; choosing the language improves accuracy.
 - **Speech recognition model** — *Large v3 Turbo* is the best balance; *Small*/*Medium* are faster on weaker GPUs.
-- **Translation engine** — *NLLB 600M* (offline, fast), *NLLB 1.3B* (offline, more accurate), *Google Translate* (online), or *No translation*.
+- **Translation engine** — *NLLB 600M* (offline, fast), *NLLB 1.3B* (offline, more accurate), *Google Translate* (online), or *No translation*. If Google Translate starts refusing requests (it limits how much one computer can translate), EchoSub waits a little and tries again; meanwhile it translates offline with an NLLB model if you have downloaded one before.
 - **Run on** — GPU (CUDA) or CPU. **Audio source** — follow the default output device, or pick one.
 - **Translate even when speech is already in the caption language** — rewrites dialect or casual speech into the standard language (e.g. Egyptian or Gulf Arabic into Modern Standard Arabic).
 - **Arabic diacritics (تشكيل)** — adds harakat to Arabic captions: on the translation, the original text, or both. Turning it on downloads a 70 MB model once. Sentences mixing Arabic with other languages get less accurate harakat.
@@ -66,7 +66,7 @@ Every dropdown accepts typing to search (e.g. type `ital` for Italian; Arabic na
 - **Text alignment** — center, left, right, or follow the reading direction.
 - **Position** — 9 spots on the screen or *Custom* (drag the box anywhere; dragging switches to Custom automatically). **Screen**, **distance from the screen edge** and **box width**.
 - **Autosize** — the box shrinks and grows to fit its text, up to the box width.
-- **Box style** — corner radius (0 = square) and padding.
+- **Box style** — **size (zoom)**, corner radius (0 = square) and padding. Size scales the whole box: text, language labels, spacing, padding, corners and width. Shortcut: hold **Shift** and turn the mouse wheel over the box (10 % per notch, 50–300 %). This doesn't work while the box is locked (click-through).
 - **Animation** — *Slide* (lines glide, text cross-fades, the box resizes smoothly), *Fade*, or *None*, and the duration.
 
 ### Speakers

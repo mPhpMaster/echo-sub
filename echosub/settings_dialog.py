@@ -12,6 +12,7 @@ from PySide6.QtWidgets import (
 )
 
 from . import APP_NAME, audio, config, history, hotkeys, languages
+from .overlay import SCALE_MAX, SCALE_MIN, SCALE_STEP
 
 
 def _sorted_languages():
@@ -346,6 +347,11 @@ class SettingsDialog(QDialog):
 
         g = QGroupBox("Box style")
         f = QFormLayout(g)
+        self.box_scale = self._spin(SCALE_MIN, SCALE_MAX, cfg.get("box_scale", 100), " %")
+        self.box_scale.setSingleStep(SCALE_STEP)
+        self.box_scale.setToolTip("Makes the whole box bigger or smaller: text, labels, spacing, padding, "
+                                  "corners and width.\nShortcut: hold Shift and turn the mouse wheel over the box.")
+        f.addRow("Size (zoom):", self._row(self.box_scale, QLabel("or hold Shift + mouse wheel over the box")))
         self.box_radius = self._spin(0, 80, cfg["box_radius"], " px")
         self.box_radius.setSpecialValueText("Square corners")
         f.addRow("Corner radius:", self.box_radius)
@@ -383,6 +389,7 @@ class SettingsDialog(QDialog):
                 b.setChecked(True)
         self._select(self.box_screen, cfg["box_screen"])
         self.box_width.setValue(cfg["box_width_pct"])
+        self.box_scale.setValue(cfg.get("box_scale", 100))
 
     def _update_position_controls(self):
         preset = self._box_position() != "custom"
@@ -553,6 +560,7 @@ class SettingsDialog(QDialog):
             "box_radius": self.box_radius.value(),
             "box_padding_x": self.box_padding_x.value(),
             "box_padding_y": self.box_padding_y.value(),
+            "box_scale": self.box_scale.value(),
             "caption_animation": self.caption_animation.currentData(),
             "caption_animation_ms": self.caption_animation_ms.value(),
             "line_height": self.line_height.value(),

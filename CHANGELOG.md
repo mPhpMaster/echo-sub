@@ -3,6 +3,16 @@
 All notable changes to EchoSub are documented in this file.
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the project uses [Semantic Versioning](https://semver.org/).
 
+## [1.0.2] — 2026-09-19
+
+### Added
+- Box size (zoom): hold **Shift** and turn the mouse wheel over the caption box to make the box and its text bigger or smaller (50–300 %). The value is also under *Settings → Position & Alignment → Box style → Size (zoom)*.
+- While Google Translate refuses requests, EchoSub translates offline with an NLLB model you have already downloaded, and switches back to Google when it answers again.
+
+### Fixed
+- Google Translate "too many requests" errors: requests are spaced out, a refused request is retried, and after repeated refusals EchoSub pauses Google for a while (20 s, doubling up to 5 min) instead of asking again for every caption.
+- Translation errors are shown as a short message that disappears after a few seconds, instead of a long message that stayed in the caption box.
+
 ## [1.0.1] — 2026-09-17
 
 ### Added
@@ -42,5 +52,6 @@ First public release.
 - `--self-test [file.wav]` checks the GPU, models and pipeline without opening a window.
 - Windows installer (Inno Setup) and PowerShell build scripts.
 
+[1.0.2]: https://github.com/mPhpMaster/echo-sub/releases/tag/v1.0.2
 [1.0.1]: https://github.com/mPhpMaster/echo-sub/releases/tag/v1.0.1
 [1.0.0]: https://github.com/mPhpMaster/echo-sub/releases/tag/v1.0.0

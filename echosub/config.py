@@ -86,6 +86,7 @@ DEFAULTS = {
     "box_radius": 14,                     # px, rounded corners of the box background (0 = square)
     "box_padding_x": 24,                  # px between the box edge and the text, left/right
     "box_padding_y": 12,                  # px, top/bottom
+    "box_scale": 100,                     # %, size (zoom) of the box and its text; Shift + wheel over the box
     "caption_animation": "slide",         # slide | fade | none
     "caption_animation_ms": 250,
     # spacing

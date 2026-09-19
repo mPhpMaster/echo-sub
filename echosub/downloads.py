@@ -70,6 +70,15 @@ class ModelDownloader:
     def nllb(self, key):
         return self._repo(config.NLLB_REPOS[key], f"Translation model ({key.upper()})", exclude=NLLB_SKIP)
 
+    def nllb_local(self, key):
+        """Folder of an NLLB model that is already on disk, or None (never downloads)."""
+        repo = config.NLLB_REPOS[key]
+        cached = self._hf_cache(repo, None)
+        if cached:
+            return cached
+        folder = os.path.join(self.models_dir, "downloads", repo.replace("/", "--"))
+        return folder if os.path.exists(os.path.join(folder, ".complete")) else None
+
     def speaker(self):
         folder = os.path.join(self.models_dir, "speaker")
         path = os.path.join(folder, SPEAKER_MODEL)

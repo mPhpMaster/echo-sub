@@ -6,9 +6,9 @@ import time
 
 from PySide6.QtCore import QEasingCurve, QEvent, QPointF, QPropertyAnimation, QRect, QRectF, QSize, Qt, QTimer
 from PySide6.QtGui import (
-    QColor, QFont, QFontMetricsF, QGuiApplication, QPainter, QPen, QPixmap, QTextLayout, QTextOption,
+    QColor, QCursor, QFont, QFontMetricsF, QGuiApplication, QPainter, QPen, QPixmap, QTextLayout, QTextOption,
 )
-from PySide6.QtWidgets import QLabel, QSizeGrip, QSizePolicy, QVBoxLayout, QWidget
+from PySide6.QtWidgets import QLabel, QSizeGrip, QSizePolicy, QToolTip, QVBoxLayout, QWidget
 
 from . import APP_NAME, languages
 
@@ -18,6 +18,7 @@ FADE_MS = 160
 OUTLINE_OFFSETS = [(dx, dy) for dx in (-1, 0, 1) for dy in (-1, 0, 1) if dx or dy] + [(2, 2)]
 PENDING_PLACEHOLDER = "…"
 ENTER_SHIFT_PX = 12  # how far a new line rises while it fades in (slide mode)
+SCALE_MIN, SCALE_MAX, SCALE_STEP = 50, 300, 10  # box size (zoom) in %; Shift + wheel changes it by one step
 
 _flag_cache = {}
 _entry_keys = itertools.count(1)
@@ -31,6 +32,11 @@ def _flag_pixmap(lang):
         pm = QPixmap(path)
         _flag_cache[path] = None if pm.isNull() else pm
     return _flag_cache[path]
+
+
+def box_scale(cfg):
+    """Size (zoom) factor applied to the box's fonts, spacing, padding, corners and width."""
+    return max(SCALE_MIN, min(SCALE_MAX, cfg.get("box_scale", 100))) / 100
 
 
 def ease_out(t):
@@ -335,13 +341,14 @@ class CaptionLine(QWidget):
                 orig_color = spk_color
 
         lh, align = cfg["line_height"], cfg["text_align"]
-        self.lay.setSpacing(cfg["original_gap"])
+        scale = box_scale(cfg)
+        self.lay.setSpacing(round(cfg["original_gap"] * scale))
 
         of = QFont(cfg["font_family"])
-        of.setPointSize(cfg["original_font_size"])
+        of.setPointSizeF(max(1.0, cfg["original_font_size"] * scale))
         of.setBold(cfg["original_bold"])
         tf = QFont(cfg["font_family"])
-        tf.setPointSize(cfg["font_size"])
+        tf.setPointSizeF(max(1.0, cfg["font_size"] * scale))
 
         def badge(font, text_lang, which):
             kind = cfg[f"{which}_label"]
@@ -406,6 +413,7 @@ class CaptionOverlay(QWidget):
         self._dragged = False
         self._hovered = False  # the box never auto-hides while the mouse is over it
         self._grip_resizing = False
+        self._wheel_delta = 0  # Shift + wheel: angle collected until a full step
         self._fade = QPropertyAnimation(self, b"windowOpacity", self)
         self._fade.setDuration(FADE_MS)
         self._fade.setEasingCurve(QEasingCurve.InOutQuad)
@@ -562,9 +570,9 @@ class CaptionOverlay(QWidget):
                 lines.append(w)
         return lines
 
-    def refresh(self):
+    def refresh(self, instant=False):
         animation = self._animation()
-        animate = animation is not None and self.is_shown()
+        animate = animation is not None and self.is_shown() and not instant
         duration = self.cfg.get("caption_animation_ms", 250)
         # Where each line sits on screen right now (before the change)
         before = {key: self._line_screen_y(line) for key, line in self._line_by_key.items() if line.isVisible()}
@@ -596,8 +604,9 @@ class CaptionOverlay(QWidget):
             self.content_layout.insertWidget(index, self._line_by_key[key])
             self._line_by_key[key].show()
 
-        pad_x, pad_y = self.cfg.get("box_padding_x", 24), self.cfg.get("box_padding_y", 12)
-        self.content_layout.setSpacing(self.cfg["entry_spacing"])
+        scale = box_scale(self.cfg)
+        self.content_layout.setSpacing(round(self.cfg["entry_spacing"] * scale))
+        self.status_label.setStyleSheet(f"color: #BBBBBB; font-size: {12 * scale:.1f}pt;")
         status_align = {"left": Qt.AlignLeft, "right": Qt.AlignRight}.get(self.cfg["text_align"], Qt.AlignHCenter)
         self.status_label.setAlignment(status_align | Qt.AlignVCenter)
 
@@ -764,7 +773,8 @@ class CaptionOverlay(QWidget):
         return QGuiApplication.primaryScreen()
 
     def _padding(self):
-        return self.cfg.get("box_padding_x", 24), self.cfg.get("box_padding_y", 12)
+        scale = box_scale(self.cfg)
+        return round(self.cfg.get("box_padding_x", 24) * scale), round(self.cfg.get("box_padding_y", 12) * scale)
 
     def _needed_height(self, width):
         pad_x, pad_y = self._padding()
@@ -782,7 +792,7 @@ class CaptionOverlay(QWidget):
     def _preset_max_width(self, avail, col):
         margin = self.cfg["box_margin"]
         return max(200, min(avail.width() - 2 * (margin if col != "center" else 0),
-                            int(avail.width() * self.cfg["box_width_pct"] / 100)))
+                            int(avail.width() * self.cfg["box_width_pct"] / 100 * box_scale(self.cfg))))
 
     def _fit_geometry(self, animate=False):
         """Size the box to its text and place it (sliding to the new geometry when `animate`).
@@ -796,11 +806,13 @@ class CaptionOverlay(QWidget):
             avail = self.target_screen().availableGeometry()
             position = self.cfg.get("box_position", "custom")
             autosize = self.cfg.get("box_autosize", False)
+            scale = box_scale(self.cfg)
+            user_height = round(self.user_height * scale)  # the user's size is kept at 100 %
             if position == "custom":
-                max_width = self._custom_width
+                max_width = min(round(self._custom_width * scale), self.screen().availableGeometry().width())
                 width = self._content_width(max_width) if autosize else max_width
                 needed = self._needed_height(width)
-                height = needed if autosize else max(self.user_height, needed)
+                height = needed if autosize else max(user_height, needed)
                 center = self._custom_center if self._custom_center is not None else self.geometry().center().x()
                 g = QRect(round(center - width / 2), 0, width, height)
                 bottom = self._custom_bottom if self._custom_bottom is not None else self.geometry().bottom() + 1
@@ -814,7 +826,7 @@ class CaptionOverlay(QWidget):
                 max_width = self._preset_max_width(avail, col)
                 width = self._content_width(max_width) if autosize else max_width
                 needed = self._needed_height(width)
-                height = min(avail.height(), needed if autosize else max(self.user_height, needed))
+                height = min(avail.height(), needed if autosize else max(user_height, needed))
                 x = {"left": avail.left() + margin,
                      "center": avail.left() + (avail.width() - width) // 2,
                      "right": avail.right() + 1 - margin - width}[col]
@@ -867,7 +879,7 @@ class CaptionOverlay(QWidget):
     def paintEvent(self, event):
         p = QPainter(self)
         p.setRenderHint(QPainter.Antialiasing)
-        radius = self.cfg.get("box_radius", 14)
+        radius = self.cfg.get("box_radius", 14) * box_scale(self.cfg)
         rect = QRectF(self.rect()).adjusted(0.5, 0.5, -0.5, -0.5)
         p.setPen(Qt.NoPen)
         p.setBrush(QColor(0, 0, 0, self.cfg["bg_opacity"]))
@@ -890,14 +902,15 @@ class CaptionOverlay(QWidget):
                 self._grip_resizing = True
             elif event.type() == QEvent.MouseButtonRelease and self._grip_resizing:
                 self._grip_resizing = False
+                scale = box_scale(self.cfg)  # sizes are kept at 100 %
                 if not self.cfg.get("box_autosize"):
-                    self.user_height = self.height()  # autosized height always follows the text
+                    self.user_height = round(self.height() / scale)  # autosized height always follows the text
                 if self.cfg.get("box_position", "custom") != "custom":
                     avail = self.target_screen().availableGeometry()
-                    self.cfg["box_width_pct"] = max(20, min(100, round(self.width() * 100 / avail.width())))
+                    self.cfg["box_width_pct"] = max(20, min(100, round(self.width() * 100 / avail.width() / scale)))
                 else:
                     self._custom_bottom = self.geometry().bottom() + 1
-                    self._custom_width = self.width()
+                    self._custom_width = round(self.width() / scale)
                     self._custom_center = self.geometry().x() + self.width() / 2
                 self._save_geometry()
                 self.on_placement_changed()
@@ -916,6 +929,31 @@ class CaptionOverlay(QWidget):
         self.last_update = time.monotonic()  # the hide countdown starts again once the mouse leaves
         super().leaveEvent(e)
 
+    def wheelEvent(self, e):
+        """Shift + mouse wheel over the box makes the box and its text bigger or smaller."""
+        if not e.modifiers() & Qt.ShiftModifier:
+            return super().wheelEvent(e)
+        e.accept()
+        delta = e.angleDelta().y() or e.angleDelta().x()  # some systems turn Shift + wheel into a sideways scroll
+        if (delta > 0) != (self._wheel_delta > 0):
+            self._wheel_delta = 0
+        self._wheel_delta += delta
+        steps = int(self._wheel_delta / 120)  # one notch = 120; touchpads send smaller amounts
+        if steps:
+            self._wheel_delta -= steps * 120
+            self.set_scale(self.cfg.get("box_scale", 100) + steps * SCALE_STEP, show_tip=True)
+
+    def set_scale(self, percent, show_tip=False):
+        """Set the box size (zoom) in %, keeping the box anchored where it is."""
+        percent = max(SCALE_MIN, min(SCALE_MAX, int(percent)))
+        if show_tip:
+            QToolTip.showText(QCursor.pos(), f"Size {percent} %", self)
+        if percent == self.cfg.get("box_scale", 100):
+            return
+        self.cfg["box_scale"] = percent
+        self.refresh(instant=True)
+        self.on_placement_changed()
+
     def mousePressEvent(self, e):
         if e.button() == Qt.LeftButton:
             self._finish_geometry_animation()
@@ -929,7 +967,8 @@ class CaptionOverlay(QWidget):
             if not self._dragged and self.cfg.get("box_position") != "custom":
                 # Dragging by hand switches from a screen preset to a custom position
                 col = self.cfg["box_position"].split("-")[1]
-                self._custom_width = self._preset_max_width(self.target_screen().availableGeometry(), col)
+                self._custom_width = round(self._preset_max_width(self.target_screen().availableGeometry(), col)
+                                           / box_scale(self.cfg))
                 self.cfg["box_position"] = "custom"
             self._dragged = True
             self.move(e.globalPosition().toPoint() - self._drag)

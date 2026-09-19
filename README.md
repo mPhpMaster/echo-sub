@@ -45,7 +45,7 @@ Everything runs locally: speech recognition and translation happen on your own m
 **Caption box**
 - Language labels (code, name, flag) on the original text and on the translation — before, after, above or below.
 - Fonts, sizes, colors, bold, line height and spacing for original and translated text separately.
-- Text alignment, 9 screen positions (or drag it anywhere), multi-monitor, autosize, corner radius and padding.
+- Text alignment, 9 screen positions (or drag it anywhere), multi-monitor, autosize, corner radius and padding, and a size (zoom) control — Shift + mouse wheel over the box.
 - Smooth slide / fade animations for new lines, changed text, and the box resizing.
 - Hides itself when nobody is talking; stays while your mouse is over it.
 - Click-through lock, global hotkeys (`Ctrl+Alt+H` show/hide, `Ctrl+Alt+P` pause, `Ctrl+Alt+L` lock).
@@ -125,6 +125,7 @@ Settings, models, logs and transcripts are kept in `%LOCALAPPDATA%\EchoSub`. The
 - **Menu:** right-click the caption box, or click the EchoSub icon in the system tray (next to the clock).
 - **Translation language:** menu → *Translation language*, or *Settings… → Language & Engine* for all languages.
 - **Move / resize:** menu → *Adjust window position and size*, then drag the box or its corner; or pick a spot under *Settings… → Position & Alignment*.
+- **Bigger / smaller:** hold **Shift** and turn the mouse wheel over the box (also *Settings… → Position & Alignment → Size (zoom)*).
 - **Lock:** menu → *Lock window (click-through)* makes clicks pass through the box; unlock from the tray icon or `Ctrl+Alt+L`.
 - **History:** menu → *Caption history…*.
 - **Tray icon dot:** blue = listening, amber = loading or reconnecting, grey = paused, red = error.

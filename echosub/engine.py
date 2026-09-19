@@ -161,6 +161,8 @@ class CaptionEngine:
             self.on_status("Loading translation model…")
         try:
             self.translator = translate.create(cfg["translator"], self.asr.device, downloader)
+            if hasattr(self.translator, "notify"):
+                self.translator.notify = self.on_status
         except downloads.DownloadCanceled:
             raise
         except Exception as e:
@@ -436,9 +438,14 @@ class CaptionEngine:
         try:
             with self._translator_lock:
                 return self.translator.translate(text, lang, tgt)
+        except translate.RateLimited as e:
+            log.warning("%s", e)
+            self.on_status(f"{e} — showing the original text meanwhile")
+            return text
         except Exception as e:
             log.exception("Translation failed")
-            self.on_status(f"Translation error: {e}")
+            message = str(e).strip().splitlines()[0] if str(e).strip() else type(e).__name__
+            self.on_status(f"Translation error: {message[:140]}")
             return text
 
     # ---- Arabic diacritics ------------------------------------------------------

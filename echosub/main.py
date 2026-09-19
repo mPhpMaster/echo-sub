@@ -289,8 +289,8 @@ class App:
         self._save()
 
     def _placement_changed(self):
-        """The caption box was dragged or resized by hand."""
-        keys = ("geometry", "box_position", "box_screen", "box_width_pct")
+        """The caption box was dragged, resized or zoomed (Shift + wheel) by hand."""
+        keys = ("geometry", "box_position", "box_screen", "box_width_pct", "box_scale")
         if self.settings_dialog is not None:
             self._placement_override = {k: self.cfg.get(k) for k in keys}
             self.settings_dialog.sync_placement(self.cfg)
@@ -388,7 +388,7 @@ class App:
         if gen != self.generation:
             return
         log.info("Status: %s", text)
-        transient = text.startswith(("Ready", "Switched", "Recovered"))
+        transient = text.startswith(("Ready", "Switched", "Recovered", "Translation error", "Google Translate"))
         self.overlay.set_status(text, 4000 if transient else 0)
         self._update_tray(text)
 
