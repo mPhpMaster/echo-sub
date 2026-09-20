@@ -3,6 +3,11 @@
 All notable changes to EchoSub are documented in this file.
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the project uses [Semantic Versioning](https://semver.org/).
 
+## [1.0.3] — 2026-09-20
+
+### Fixed
+- Captions written in the wrong alphabet (English spoken text transcribed in Russian letters, for example). The previous sentence is passed to Whisper as context, and Whisper copies its alphabet, so one mis-recognized sentence dragged the following ones with it. EchoSub now knows which script each language is written in: context from another script is not used, a transcript that comes out in the wrong script is redone without context, and a transcript that is still wrong is dropped instead of poisoning the next ones.
+
 ## [1.0.2] — 2026-09-19
 
 ### Added
@@ -52,6 +57,7 @@ First public release.
 - `--self-test [file.wav]` checks the GPU, models and pipeline without opening a window.
 - Windows installer (Inno Setup) and PowerShell build scripts.
 
+[1.0.3]: https://github.com/mPhpMaster/echo-sub/releases/tag/v1.0.3
 [1.0.2]: https://github.com/mPhpMaster/echo-sub/releases/tag/v1.0.2
 [1.0.1]: https://github.com/mPhpMaster/echo-sub/releases/tag/v1.0.1
 [1.0.0]: https://github.com/mPhpMaster/echo-sub/releases/tag/v1.0.0

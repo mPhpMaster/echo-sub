@@ -186,3 +186,78 @@ def flag_path(code):
         return None
     path = os.path.join(FLAGS_DIR, country + ".png")
     return path if os.path.exists(path) else None
+
+
+# ---- writing systems -------------------------------------------------------
+# Whisper sometimes writes a language in the wrong alphabet (English words in Russian letters, for
+# example) when its context sentence is in another script. Comparing the text with the script its
+# language is normally written in catches that.
+_SCRIPT_RANGES = (
+    ("latin", ((0x41, 0x24F), (0x1E00, 0x1EFF))),
+    ("greek", ((0x370, 0x3FF),)),
+    ("cyrillic", ((0x400, 0x52F),)),
+    ("armenian", ((0x530, 0x58F),)),
+    ("hebrew", ((0x590, 0x5FF), (0xFB1D, 0xFB4F))),
+    ("arabic", ((0x600, 0x6FF), (0x750, 0x77F), (0x8A0, 0x8FF), (0xFB50, 0xFDFF), (0xFE70, 0xFEFF))),
+    ("syriac", ((0x700, 0x74F),)),
+    ("thaana", ((0x780, 0x7BF),)),
+    ("devanagari", ((0x900, 0x97F),)),
+    ("bengali", ((0x980, 0x9FF),)),
+    ("gurmukhi", ((0xA00, 0xA7F),)),
+    ("gujarati", ((0xA80, 0xAFF),)),
+    ("oriya", ((0xB00, 0xB7F),)),
+    ("tamil", ((0xB80, 0xBFF),)),
+    ("telugu", ((0xC00, 0xC7F),)),
+    ("kannada", ((0xC80, 0xCFF),)),
+    ("malayalam", ((0xD00, 0xD7F),)),
+    ("sinhala", ((0xD80, 0xDFF),)),
+    ("thai", ((0xE00, 0xE7F),)),
+    ("lao", ((0xE80, 0xEFF),)),
+    ("tibetan", ((0xF00, 0xFFF),)),
+    ("myanmar", ((0x1000, 0x109F),)),
+    ("georgian", ((0x10A0, 0x10FF), (0x1C90, 0x1CBF))),
+    ("ethiopic", ((0x1200, 0x139F),)),
+    ("khmer", ((0x1780, 0x17FF),)),
+    ("kana", ((0x3040, 0x30FF), (0x31F0, 0x31FF))),
+    ("hangul", ((0x1100, 0x11FF), (0x3130, 0x318F), (0xAC00, 0xD7AF))),
+    ("han", ((0x3400, 0x4DBF), (0x4E00, 0x9FFF), (0xF900, 0xFAFF))),
+)
+
+# Languages written in something other than the Latin alphabet (everything else defaults to Latin).
+# Languages that use several scripts in practice are left out, so their text is never questioned.
+LANGUAGE_SCRIPTS = {
+    "am": {"ethiopic"}, "ar": {"arabic"}, "ary": {"arabic"}, "as": {"bengali"}, "be": {"cyrillic"},
+    "bg": {"cyrillic"}, "bn": {"bengali"}, "bo": {"tibetan"}, "dv": {"thaana"}, "el": {"greek"},
+    "fa": {"arabic"}, "gu": {"gujarati"}, "he": {"hebrew"}, "hi": {"devanagari"}, "hy": {"armenian"},
+    "ja": {"kana", "han"}, "ka": {"georgian"}, "km": {"khmer"}, "kn": {"kannada"}, "ko": {"hangul"},
+    "lo": {"lao"}, "mk": {"cyrillic"}, "ml": {"malayalam"}, "mn": {"cyrillic"}, "mr": {"devanagari"},
+    "my": {"myanmar"}, "ne": {"devanagari"}, "pa": {"gurmukhi"}, "ps": {"arabic"}, "ru": {"cyrillic"},
+    "sa": {"devanagari"}, "sd": {"arabic"}, "si": {"sinhala"}, "ta": {"tamil"}, "te": {"telugu"},
+    "tg": {"cyrillic"}, "th": {"thai"}, "tt": {"cyrillic"}, "uk": {"cyrillic"}, "ur": {"arabic"},
+    "yi": {"hebrew"}, "yue": {"han"}, "zh": {"han"},
+    # Written in both Latin and Cyrillic (or Arabic) letters: never questioned
+    "az": None, "bs": None, "kk": None, "ky": None, "sr": None, "tk": None, "uz": None,
+}
+
+
+def text_script(text):
+    """The writing system most of `text` is in, or None when it has too few letters to tell."""
+    counts = {}
+    for ch in text:
+        code = ord(ch)
+        for name, ranges in _SCRIPT_RANGES:
+            if any(lo <= code <= hi for lo, hi in ranges):
+                counts[name] = counts.get(name, 0) + 1
+                break
+    if sum(counts.values()) < 4:
+        return None
+    return max(counts, key=counts.get)
+
+
+def fits_script(text, lang):
+    """False only when `text` is clearly written in another alphabet than `lang` normally uses."""
+    script = text_script(text)
+    if script is None:
+        return True
+    expected = LANGUAGE_SCRIPTS.get(lang, {"latin"} if lang in LANGUAGES else None)
+    return expected is None or script in expected

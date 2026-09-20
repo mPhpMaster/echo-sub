@@ -314,15 +314,23 @@ class CaptionEngine:
             return self._sticky_lang
         return None
 
-    def _context_prompt(self, spk):
-        """The previous sentence, if it was recent and said by the same voice."""
+    def _context_prompt(self, spk, lang=None):
+        """The previous sentence, if it was recent and said by the same voice.
+
+        A prompt in another alphabet makes Whisper write this segment in that alphabet too
+        (English spelled out in Russian letters, for example), so it is only used for the
+        language it belongs to.
+        """
         if (self._last_text and time.monotonic() - self._last_time < PROMPT_MAX_AGE_SEC
-                and (spk is None or spk == self._last_speaker)):
+                and (spk is None or spk == self._last_speaker)
+                and (lang is None or self._last_lang == lang or languages.fits_script(self._last_text, lang))):
             return self._last_text[-PROMPT_MAX_CHARS:]
         return None
 
     def _partial(self, seg):
         text, lang, _, _ = self._transcribe(seg, self._language_hint(), False)
+        if text and not languages.fits_script(text, lang):
+            return  # wrong alphabet: wait for the final transcript, which repairs itself
         if not text:
             return
         if self.cfg["source_lang"] != "auto":
@@ -382,8 +390,14 @@ class CaptionEngine:
             return
         src = self.cfg["source_lang"]
         forced = languages.whisper_code(src) if src != "auto" else None
-        prompt = self._context_prompt(spk)
+        prompt = self._context_prompt(spk, forced or self._sticky_lang)
         text, lang, prob, probs = self._transcribe(seg, forced, True, prompt)
+        if text and prompt and not languages.fits_script(text, lang):
+            # The context sentence dragged this one into another alphabet: transcribe it on its own
+            log.info("Transcript in the wrong alphabet for %s, retrying without context", lang)
+            self._last_text = ""
+            prompt = None
+            text, lang, prob, probs = self._transcribe(seg, forced, True, None)
         if forced is not None:
             lang = src  # e.g. Darija: recognized as Arabic, translated from Moroccan Arabic
 
@@ -402,6 +416,10 @@ class CaptionEngine:
         if (prompt and text.strip().lower() == prompt.strip().lower()
                 and len(seg) / SR < 0.5 * len(text) / CHARS_PER_SEC):
             text = ""  # too little audio for that sentence: Whisper echoed its context
+        if text and not languages.fits_script(text, lang):
+            log.info("Dropping a transcript written in the wrong alphabet for %s: %r", lang, text[:60])
+            text = ""
+            self._last_text, self._sticky_lang = "", None
         if not text:
             self.on_partial("", "", lang)
             return
