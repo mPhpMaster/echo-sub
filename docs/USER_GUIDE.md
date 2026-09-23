@@ -34,6 +34,10 @@ Right-click the caption box or click the tray icon:
 
 The hotkeys work while other apps (games, videos) have focus. If another program already uses one, EchoSub tells you; they can be turned off in Settings → Advanced.
 
+## Copying a caption
+
+Move the mouse over the caption box: a small copy button appears next to every line, the original and the translation. Click it to copy that line's text to the clipboard — the button shows a check mark for a moment. Turn the buttons off in *Settings → Text & Colors*. They don't appear while the box is locked (click-through).
+
 ## Settings
 
 Every dropdown accepts typing to search (e.g. type `ital` for Italian; Arabic names work too, with or without hamza).

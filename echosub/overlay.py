@@ -4,9 +4,12 @@
 import itertools
 import time
 
-from PySide6.QtCore import QEasingCurve, QEvent, QPointF, QPropertyAnimation, QRect, QRectF, QSize, Qt, QTimer
+from PySide6.QtCore import (
+    QEasingCurve, QEvent, QPoint, QPointF, QPropertyAnimation, QRect, QRectF, QSize, Qt, QTimer,
+)
 from PySide6.QtGui import (
-    QColor, QCursor, QFont, QFontMetricsF, QGuiApplication, QPainter, QPen, QPixmap, QTextLayout, QTextOption,
+    QColor, QCursor, QFont, QFontMetricsF, QGuiApplication, QPainter, QPen, QPixmap, QPolygonF, QTextLayout,
+    QTextOption,
 )
 from PySide6.QtWidgets import QLabel, QSizeGrip, QSizePolicy, QToolTip, QVBoxLayout, QWidget
 
@@ -116,6 +119,60 @@ class Badge:
             p.drawText(QPointF(x, baseline), self.text)
 
 
+class CopyButton(QWidget):
+    """Small copy icon shown over a caption row; copies that row's text to the clipboard."""
+
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self.text = ""
+        self._hover = False
+        self._copied_until = 0.0
+        self.setCursor(Qt.PointingHandCursor)
+        self.setToolTip("Copy this text")
+
+    def enterEvent(self, e):
+        self._hover = True
+        self.update()
+        super().enterEvent(e)
+
+    def leaveEvent(self, e):
+        self._hover = False
+        self.update()
+        super().leaveEvent(e)
+
+    def mousePressEvent(self, e):
+        if e.button() == Qt.LeftButton and self.text:
+            QGuiApplication.clipboard().setText(self.text)
+            self._copied_until = time.monotonic() + 1.2
+            QToolTip.showText(e.globalPosition().toPoint(), "Copied", self)
+            self.update()
+        e.accept()
+
+    def mouseReleaseEvent(self, e):
+        e.accept()  # never starts a box drag
+
+    def paintEvent(self, event):
+        p = QPainter(self)
+        p.setRenderHint(QPainter.Antialiasing)
+        copied = time.monotonic() < self._copied_until
+        alpha = 110 if copied or self._hover else 55
+        p.setPen(Qt.NoPen)
+        p.setBrush(QColor(255, 255, 255, alpha))
+        side = min(self.width(), self.height())
+        p.drawRoundedRect(QRectF(0, 0, side, side), side * 0.25, side * 0.25)
+        pen = QPen(QColor(60, 220, 130) if copied else QColor(255, 255, 255, 235 if self._hover else 190))
+        pen.setWidthF(max(1.0, side * 0.09))
+        p.setPen(pen)
+        p.setBrush(Qt.NoBrush)
+        if copied:  # a check mark while the text has just been copied
+            p.drawPolyline(QPolygonF([QPointF(side * 0.26, side * 0.53), QPointF(side * 0.43, side * 0.70),
+                                      QPointF(side * 0.76, side * 0.31)]))
+        else:       # two stacked sheets
+            r = side * 0.12
+            p.drawRoundedRect(QRectF(side * 0.20, side * 0.20, side * 0.44, side * 0.44), r, r)
+            p.drawRoundedRect(QRectF(side * 0.36, side * 0.36, side * 0.44, side * 0.44), r, r)
+
+
 class CaptionText(QWidget):
     """Word-wrapped caption text drawn with a dark outline, with an optional language badge.
 
@@ -157,6 +214,10 @@ class CaptionText(QWidget):
         self._cache = None
         self.updateGeometry()
         self.update()
+
+    @property
+    def text(self):
+        return self._text
 
     def animating(self, now):
         if self._old is not None and now - self._old[4] >= self._old[5]:
@@ -414,6 +475,7 @@ class CaptionOverlay(QWidget):
         self._hovered = False  # the box never auto-hides while the mouse is over it
         self._grip_resizing = False
         self._wheel_delta = 0  # Shift + wheel: angle collected until a full step
+        self._copy_buttons = {}  # (entry key, "original"/"translation") -> CopyButton over that row
         self._fade = QPropertyAnimation(self, b"windowOpacity", self)
         self._fade.setDuration(FADE_MS)
         self._fade.setEasingCurve(QEasingCurve.InOutQuad)
@@ -611,6 +673,7 @@ class CaptionOverlay(QWidget):
         self.status_label.setAlignment(status_align | Qt.AlignVCenter)
 
         # Nothing to say -> the window disappears completely
+        self._update_copy_buttons()
         should_show = self.positioning or (self.has_text() and self.cfg.get("overlay_enabled", True))
         if should_show:
             self._fade_in()
@@ -634,6 +697,51 @@ class CaptionOverlay(QWidget):
             self._finish_animations()
         self._place_content(self._current_offset())
         self.update()
+
+    def _copy_rows(self):
+        """(key, row widget) for every caption row that has text, top to bottom."""
+        for key, line in self._line_by_key.items():
+            if line.ghost:
+                continue
+            for which, row in (("original", line.original), ("translation", line.translated)):
+                if row.text and row.isVisible():
+                    yield (key, which), row
+
+    def _update_copy_buttons(self):
+        """A copy button on every caption row, only while the mouse is over the box."""
+        size = 0
+        if self._hovered and self.cfg.get("copy_buttons", True) and not self.cfg.get("click_through"):
+            size = max(14, round(18 * box_scale(self.cfg)))
+        rows = dict(self._copy_rows()) if size else {}
+        for key in [k for k in self._copy_buttons if k not in rows]:
+            self._copy_buttons.pop(key).deleteLater()
+        for key, row in rows.items():
+            button = self._copy_buttons.get(key)
+            if button is None:
+                button = self._copy_buttons[key] = CopyButton(self)
+            button.text = row.text
+            button.setFixedSize(size, size)
+        self._position_copy_buttons()
+
+    def _position_copy_buttons(self):
+        """Put every button in the box's right-hand padding, next to its row, and hide those that
+        would fall outside the box. With little padding the button moves onto the text edge."""
+        inside = self.viewport.geometry()
+        pad_x, _ = self._padding()
+        for (key, which), button in self._copy_buttons.items():
+            line = self._line_by_key.get(key)
+            row = None if line is None else (line.original if which == "original" else line.translated)
+            if row is None or not row.isVisible():
+                button.hide()
+                continue
+            size = button.width()
+            gap = max(2, (pad_x - size) // 2)
+            x = self.width() - gap - size
+            top = row.mapTo(self, QPoint(0, 0)).y()
+            y = top + max(0, (row.height() - size) // 2 if row.height() < size * 2 else 1)
+            button.move(round(x), round(y))
+            button.setVisible(inside.top() - 2 <= y and y + size <= inside.bottom() + 2)
+            button.raise_()
 
     def _line_screen_y(self, line):
         return self.geometry().y() + self.viewport.y() + self.content.y() + line.y()
@@ -732,6 +840,7 @@ class CaptionOverlay(QWidget):
         dx, dy = target.x() - current.x(), target.y() - current.y()
         self.content.setGeometry(dx, round(dy + inner_h - height + offset), inner_w, height)
         self.content_layout.activate()
+        self._position_copy_buttons()
 
     def _fade_in(self):
         if self.isVisible() and not self._fading_out:
@@ -922,11 +1031,20 @@ class CaptionOverlay(QWidget):
         self._hovered = True
         if self._fading_out and (self.entries or self.partial):
             self._fade_in()
+        self._update_copy_buttons()
         super().enterEvent(e)
 
+    def _cursor_inside(self):
+        return self.geometry().contains(QCursor.pos())
+
     def leaveEvent(self, e):
+        if self._cursor_inside():
+            # Moving onto a copy button or the resize grip counts as leaving the box for Qt,
+            # but the mouse is still on it: keep the box and its buttons as they are.
+            return super().leaveEvent(e)
         self._hovered = False
         self.last_update = time.monotonic()  # the hide countdown starts again once the mouse leaves
+        self._update_copy_buttons()
         super().leaveEvent(e)
 
     def wheelEvent(self, e):

@@ -3,6 +3,14 @@
 All notable changes to EchoSub are documented in this file.
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the project uses [Semantic Versioning](https://semver.org/).
 
+## [1.0.4] — 2026-09-23
+
+### Added
+- A copy button on every caption row: hover the caption box and a small button appears next to each original and translated line; clicking it copies that text to the clipboard. It can be turned off in *Settings → Text & Colors*.
+
+### Fixed
+- The caption box no longer treats the mouse moving onto its resize grip (or a copy button) as the mouse leaving the box.
+
 ## [1.0.3] — 2026-09-20
 
 ### Fixed
@@ -57,6 +65,7 @@ First public release.
 - `--self-test [file.wav]` checks the GPU, models and pipeline without opening a window.
 - Windows installer (Inno Setup) and PowerShell build scripts.
 
+[1.0.4]: https://github.com/mPhpMaster/echo-sub/releases/tag/v1.0.4
 [1.0.3]: https://github.com/mPhpMaster/echo-sub/releases/tag/v1.0.3
 [1.0.2]: https://github.com/mPhpMaster/echo-sub/releases/tag/v1.0.2
 [1.0.1]: https://github.com/mPhpMaster/echo-sub/releases/tag/v1.0.1

@@ -230,9 +230,13 @@ class SettingsDialog(QDialog):
         self.show_original.setChecked(cfg["show_original"])
         self.show_partial = QCheckBox("Show text while speaking (before the sentence ends)")
         self.show_partial.setChecked(cfg["show_partial"])
+        self.copy_buttons = QCheckBox("Show a copy button on each caption while the mouse is over the box")
+        self.copy_buttons.setToolTip("Click the button next to a caption to copy that text to the clipboard.")
+        self.copy_buttons.setChecked(cfg.get("copy_buttons", True))
         f.addRow("Font:", self.font_family)
         f.addRow(self.show_original)
         f.addRow(self.show_partial)
+        f.addRow(self.copy_buttons)
         v.addWidget(g)
 
         g = QGroupBox("Translation")
@@ -539,6 +543,7 @@ class SettingsDialog(QDialog):
             "font_family": self.font_family.currentFont().family(),
             "show_original": self.show_original.isChecked(),
             "show_partial": self.show_partial.isChecked(),
+            "copy_buttons": self.copy_buttons.isChecked(),
             "font_size": self.font_size.value(),
             "text_color": self.text_color.color,
             "translation_bold": self.translation_bold.isChecked(),
