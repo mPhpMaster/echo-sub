@@ -7,8 +7,8 @@ from PySide6.QtCore import QEvent, QObject, QSize, QStringListModel, Qt, QTimer,
 from PySide6.QtGui import QColor, QFont, QGuiApplication, QIcon, QPainter, QPixmap
 from PySide6.QtWidgets import (
     QButtonGroup, QCheckBox, QColorDialog, QComboBox, QCompleter, QDialog, QDialogButtonBox, QDoubleSpinBox,
-    QFontComboBox, QFormLayout, QGridLayout, QGroupBox, QHBoxLayout, QLabel, QMessageBox, QPushButton, QSlider,
-    QSpinBox, QTabWidget, QVBoxLayout, QWidget,
+    QFontComboBox, QFormLayout, QGridLayout, QGroupBox, QHBoxLayout, QLabel, QMessageBox, QPushButton,
+    QScrollArea, QSlider, QSpinBox, QTabWidget, QVBoxLayout, QWidget,
 )
 
 from . import APP_NAME, audio, config, history, hotkeys, languages
@@ -33,6 +33,42 @@ class SearchableComboBox(QComboBox):
 
 _ARABIC_DIACRITICS = re.compile("[\u064B-\u0652\u0670\u0640]")  # harakat, dagger alif, tatweel
 _ARABIC_LETTERS = str.maketrans({"أ": "ا", "إ": "ا", "آ": "ا", "ٱ": "ا", "ة": "ه", "ى": "ي", "ؤ": "و", "ئ": "ي"})
+
+
+def screen_for(widget):
+    from PySide6.QtGui import QCursor
+
+    return (QGuiApplication.screenAt(QCursor.pos()) or widget.screen()
+            or QGuiApplication.primaryScreen())
+
+
+def fit_to_screen(window, preferred_width, preferred_height):
+    """Open at a comfortable size, but never bigger than the screen it appears on."""
+    available = screen_for(window).availableGeometry()
+    width = min(max(preferred_width, window.sizeHint().width()), available.width() - 40)
+    height = min(max(preferred_height, window.sizeHint().height()), available.height() - 60)
+    window.setMinimumWidth(min(480, width))
+    window.setMaximumSize(available.width(), available.height())
+    window.resize(width, height)
+
+
+def move_onto_screen(window):
+    """Pull a window back if it opens partly outside the screen."""
+    available = screen_for(window).availableGeometry()
+    frame = window.frameGeometry()
+    x = min(max(frame.x(), available.left()), available.right() + 1 - frame.width())
+    y = min(max(frame.y(), available.top()), available.bottom() + 1 - frame.height())
+    if (x, y) != (frame.x(), frame.y()):
+        window.move(max(available.left(), x), max(available.top(), y))
+
+
+def _scrollable(widget):
+    """The tab's contents in a scroll area that grows with the window."""
+    area = QScrollArea()
+    area.setWidgetResizable(True)
+    area.setFrameShape(QScrollArea.NoFrame)
+    area.setWidget(widget)
+    return area
 
 
 def normalize_search(text):
@@ -144,16 +180,17 @@ class SettingsDialog(QDialog):
         self.setWindowTitle(f"{APP_NAME} Settings")
         # Above every other window, including the always-on-top caption box
         self.setWindowFlag(Qt.WindowStaysOnTopHint, True)
-        self.setMinimumWidth(560)
         root = QVBoxLayout(self)
         tabs = QTabWidget()
         root.addWidget(tabs)
 
-        tabs.addTab(self._language_tab(cfg), "Language && Engine")
-        tabs.addTab(self._text_tab(cfg), "Text && Colors")
-        tabs.addTab(self._layout_tab(cfg), "Position && Alignment")
-        tabs.addTab(self._speakers_tab(cfg), "Speakers")
-        tabs.addTab(self._advanced_tab(cfg), "Advanced")
+        # Each tab scrolls, so on a small screen (or with large Windows text scaling) the window
+        # still fits and the Save button at the bottom stays visible.
+        tabs.addTab(_scrollable(self._language_tab(cfg)), "Language && Engine")
+        tabs.addTab(_scrollable(self._text_tab(cfg)), "Text && Colors")
+        tabs.addTab(_scrollable(self._layout_tab(cfg)), "Position && Alignment")
+        tabs.addTab(_scrollable(self._speakers_tab(cfg)), "Speakers")
+        tabs.addTab(_scrollable(self._advanced_tab(cfg)), "Advanced")
 
         buttons = QDialogButtonBox(
             QDialogButtonBox.Save | QDialogButtonBox.Cancel | QDialogButtonBox.RestoreDefaults)
@@ -165,6 +202,11 @@ class SettingsDialog(QDialog):
         buttons.rejected.connect(self.reject)
         root.addWidget(buttons)
         self._connect_preview()
+        fit_to_screen(self, 640, 760)
+
+    def showEvent(self, event):
+        super().showEvent(event)
+        move_onto_screen(self)
 
     # ---- tabs --------------------------------------------------------------
     def _language_tab(self, cfg):

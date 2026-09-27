@@ -3,6 +3,11 @@
 All notable changes to EchoSub are documented in this file.
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the project uses [Semantic Versioning](https://semver.org/).
 
+## [1.0.7] — 2026-09-27
+
+### Fixed
+- The Settings window could open taller than the screen — on a 1920x1080 screen with Windows text scaling at 125 % or 150 % the Save button ended up below the bottom edge. Every tab now scrolls, the buttons stay at the bottom, and the window opens no larger than the screen it appears on (it can shrink to 406 x 144). The caption history window is sized the same way, and a window that opens partly off-screen is pulled back.
+
 ## [1.0.6] — 2026-09-27
 
 ### Fixed
@@ -81,6 +86,7 @@ First public release.
 - `--self-test [file.wav]` checks the GPU, models and pipeline without opening a window.
 - Windows installer (Inno Setup) and PowerShell build scripts.
 
+[1.0.7]: https://github.com/mPhpMaster/echo-sub/releases/tag/v1.0.7
 [1.0.6]: https://github.com/mPhpMaster/echo-sub/releases/tag/v1.0.6
 [1.0.5]: https://github.com/mPhpMaster/echo-sub/releases/tag/v1.0.5
 [1.0.4]: https://github.com/mPhpMaster/echo-sub/releases/tag/v1.0.4

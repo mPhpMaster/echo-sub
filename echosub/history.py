@@ -100,7 +100,9 @@ class HistoryWindow(QDialog):
         self.history = history
         self.cfg = cfg
         self.setWindowTitle(f"{APP_NAME} — Caption History")
-        self.resize(760, 520)
+        from .settings_dialog import fit_to_screen
+
+        fit_to_screen(self, 760, 520)
         self.setWindowFlag(Qt.WindowStaysOnTopHint, True)
 
         root = QVBoxLayout(self)
