@@ -3,6 +3,11 @@
 All notable changes to EchoSub are documented in this file.
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the project uses [Semantic Versioning](https://semver.org/).
 
+## [1.0.6] — 2026-09-27
+
+### Fixed
+- The caption box could be zoomed until it covered the screen: Shift + wheel is also how Windows scrolls sideways, so scrolling in a window underneath the box zoomed it by accident. The zoom now stops while the box still fits the screen, the box menu has **Caption size: back to 100%**, and the Settings window has a **100%** button next to Size (zoom). A size you already set is never changed on its own.
+
 ## [1.0.5] — 2026-09-27
 
 ### Added
@@ -76,6 +81,7 @@ First public release.
 - `--self-test [file.wav]` checks the GPU, models and pipeline without opening a window.
 - Windows installer (Inno Setup) and PowerShell build scripts.
 
+[1.0.6]: https://github.com/mPhpMaster/echo-sub/releases/tag/v1.0.6
 [1.0.5]: https://github.com/mPhpMaster/echo-sub/releases/tag/v1.0.5
 [1.0.4]: https://github.com/mPhpMaster/echo-sub/releases/tag/v1.0.4
 [1.0.3]: https://github.com/mPhpMaster/echo-sub/releases/tag/v1.0.3

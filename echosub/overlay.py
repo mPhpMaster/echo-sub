@@ -1061,9 +1061,31 @@ class CaptionOverlay(QWidget):
             self._wheel_delta -= steps * 120
             self.set_scale(self.cfg.get("box_scale", 100) + steps * SCALE_STEP, show_tip=True)
 
+    def max_scale(self):
+        """The largest zoom that still leaves the box a caption box and not a wall of text.
+
+        Shift + wheel is also how Windows scrolls sideways, so the box can be zoomed by accident;
+        it must never end up covering the screen.
+        """
+        avail = self.target_screen().availableGeometry()
+        scale = box_scale(self.cfg)
+        height = max(1, self.height() / scale)     # the box's height at 100 %
+        width = max(1, self._custom_width if self.cfg.get("box_position", "custom") == "custom"
+                    else self.width() / scale)
+        fits = min(avail.height() * 0.6 / height, avail.width() * 0.95 / width)
+        return max(SCALE_MIN, min(SCALE_MAX, int(fits * 100)))
+
+    def reset_scale(self):
+        """Back to 100 %."""
+        self.set_scale(100, show_tip=self._hovered)
+
     def set_scale(self, percent, show_tip=False):
         """Set the box size (zoom) in %, keeping the box anchored where it is."""
         percent = max(SCALE_MIN, min(SCALE_MAX, int(percent)))
+        limit = self.max_scale()
+        if percent > max(limit, self.cfg.get("box_scale", 100)):
+            percent = max(limit, self.cfg.get("box_scale", 100))  # don't grow past the screen
+            show_tip = show_tip and percent != self.cfg.get("box_scale", 100)
         if show_tip:
             QToolTip.showText(QCursor.pos(), f"Size {percent} %", self)
         if percent == self.cfg.get("box_scale", 100):

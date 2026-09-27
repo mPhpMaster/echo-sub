@@ -79,7 +79,7 @@ Every dropdown accepts typing to search (e.g. type `ital` for Italian; Arabic na
 - **Text alignment** — center, left, right, or follow the reading direction.
 - **Position** — 9 spots on the screen or *Custom* (drag the box anywhere; dragging switches to Custom automatically). **Screen**, **distance from the screen edge** and **box width**.
 - **Autosize** — the box shrinks and grows to fit its text, up to the box width.
-- **Box style** — **size (zoom)**, corner radius (0 = square) and padding. Size scales the whole box: text, language labels, spacing, padding, corners and width. Shortcut: hold **Shift** and turn the mouse wheel over the box (10 % per notch, 50–300 %). This doesn't work while the box is locked (click-through).
+- **Box style** — **size (zoom)**, corner radius (0 = square) and padding. Size scales the whole box: text, language labels, spacing, padding, corners and width. Shortcut: hold **Shift** and turn the mouse wheel over the box (10 % per notch, 50–300 %); it stops growing while the box still fits the screen. To undo it: the **100%** button here, or right-click the box → *Caption size: back to 100%*. This doesn't work while the box is locked (click-through).
 - **Animation** — *Slide* (lines glide, text cross-fades, the box resizes smoothly), *Fade*, or *None*, and the duration.
 
 ### Speakers

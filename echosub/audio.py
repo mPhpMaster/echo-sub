@@ -136,9 +136,9 @@ class LoopbackCapture:
             self._queued_sec -= seconds
             self.dropped_sec += seconds
         now = time.monotonic()
-        if self.dropped_sec and now - self._last_drop_log > 10:
+        if self.dropped_sec >= 1 and now - self._last_drop_log > 10:
             self._last_drop_log = now
-            log.warning("Dropped %.0f s of audio in total: the engine cannot keep up", self.dropped_sec)
+            log.warning("Dropped %.1f s of audio in total: the engine cannot keep up", self.dropped_sec)
 
     def stop(self):
         try:

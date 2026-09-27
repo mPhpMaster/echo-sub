@@ -147,6 +147,7 @@ class App:
         m.addAction(self.act_lock)
         m.addAction(self.act_pause)
         m.addAction(self.act_light)
+        m.addAction("Caption size: back to 100%", self.overlay.reset_scale)
         m.addAction("Clear captions", self.overlay.clear)
         m.addSeparator()
         m.addAction("Caption history…", self._open_history)

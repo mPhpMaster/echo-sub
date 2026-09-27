@@ -362,7 +362,12 @@ class SettingsDialog(QDialog):
         self.box_scale.setSingleStep(SCALE_STEP)
         self.box_scale.setToolTip("Makes the whole box bigger or smaller: text, labels, spacing, padding, "
                                   "corners and width.\nShortcut: hold Shift and turn the mouse wheel over the box.")
-        f.addRow("Size (zoom):", self._row(self.box_scale, QLabel("or hold Shift + mouse wheel over the box")))
+        reset_scale = QPushButton("100%")
+        reset_scale.setFixedWidth(52)
+        reset_scale.setToolTip("Back to the normal size")
+        reset_scale.clicked.connect(lambda: self.box_scale.setValue(100))
+        f.addRow("Size (zoom):", self._row(self.box_scale, reset_scale,
+                                           QLabel("or hold Shift + mouse wheel over the box")))
         self.box_radius = self._spin(0, 80, cfg["box_radius"], " px")
         self.box_radius.setSpecialValueText("Square corners")
         f.addRow("Corner radius:", self.box_radius)
