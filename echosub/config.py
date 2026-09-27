@@ -63,6 +63,7 @@ DEFAULTS = {
     "audio_device": "default",
     "show_original": True,
     "show_partial": True,
+    "light_mode": False,                  # faster on a busy PC: Small speech model, no live text
     "font_family": "Segoe UI",
     # translation text
     "font_size": 28,
@@ -150,7 +151,7 @@ BOX_ROWS = ("top", "middle", "bottom")
 BOX_COLUMNS = ("left", "center", "right")
 
 # Settings that require reloading models or reopening the audio stream
-ENGINE_KEYS = ("whisper_model", "device", "translator", "audio_device", "speaker_detection")
+ENGINE_KEYS = ("whisper_model", "device", "translator", "audio_device", "speaker_detection", "light_mode")
 
 SPEAKER_COLOR_TARGETS = {
     "both": "Translation and original text",

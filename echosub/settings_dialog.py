@@ -202,7 +202,14 @@ class SettingsDialog(QDialog):
         except Exception:
             pass
         self._select(self.audio_dev, cfg["audio_device"])
+        self.light_mode = QCheckBox("Light mode: faster captions on a busy PC")
+        self.light_mode.setToolTip("Uses the Small speech model instead of a large one and turns live "
+                                   "text off, so captions appear sooner while a game or another program "
+                                   "is using the graphics card. Your own settings are kept and come back "
+                                   "when you turn this off.")
+        self.light_mode.setChecked(cfg.get("light_mode", False))
         f.addRow("Speech recognition model:", self.model)
+        f.addRow(self.light_mode)
         f.addRow("Translation engine:", self.translator)
         f.addRow("Run on:", self.device)
         f.addRow("Audio source:", self.audio_dev)
@@ -537,6 +544,7 @@ class SettingsDialog(QDialog):
             "target_lang": self.target.currentData(),
             "source_lang": self.source.currentData(),
             "whisper_model": self.model.currentData(),
+            "light_mode": self.light_mode.isChecked(),
             "translator": self.translator.currentData(),
             "device": self.device.currentData(),
             "audio_device": self.audio_dev.currentData(),

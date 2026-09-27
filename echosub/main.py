@@ -126,6 +126,9 @@ class App:
         self.act_lock.toggled.connect(self._set_lock)
         self.act_pause = QAction("Pause", m, checkable=True)
         self.act_pause.toggled.connect(self._set_paused)
+        self.act_light = QAction("Light mode (faster on a busy PC)", m, checkable=True,
+                                 checked=self.cfg.get("light_mode", False))
+        self.act_light.toggled.connect(self._set_light_mode)
 
         lang_menu = m.addMenu("Translation language")
         group = QActionGroup(lang_menu)
@@ -143,6 +146,7 @@ class App:
         m.addAction(self.act_position)
         m.addAction(self.act_lock)
         m.addAction(self.act_pause)
+        m.addAction(self.act_light)
         m.addAction("Clear captions", self.overlay.clear)
         m.addSeparator()
         m.addAction("Caption history…", self._open_history)
@@ -198,6 +202,10 @@ class App:
             self.tray.showMessage(APP_NAME, f"Caption window locked. To unlock, {unlock} the {APP_NAME} tray icon.",
                                   QSystemTrayIcon.Information, 3000)
 
+    def _set_light_mode(self, enabled):
+        if enabled != self.cfg.get("light_mode", False):
+            self._apply({"light_mode": enabled})  # an engine setting: reloads the speech model
+
     def _set_paused(self, paused):
         if self.engine:
             self.engine.paused = paused
@@ -245,6 +253,7 @@ class App:
         self.cfg.update(values)
         self._save()
         self.history.save_to_file = self.cfg["save_transcripts"]
+        self.act_light.setChecked(self.cfg.get("light_mode", False))
         if self.cfg["target_lang"] in self.lang_actions:
             self.lang_actions[self.cfg["target_lang"]].setChecked(True)
         if hotkeys_changed:

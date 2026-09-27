@@ -28,7 +28,7 @@ def _load_wav(path):
 
 
 def run(wav_path=None):
-    from . import __version__, asr, config, downloads, speaker, tashkeel, translate
+    from . import __version__, asr, config, downloads, engine, speaker, tashkeel, translate
 
     cfg = config.load()
     ok = True
@@ -45,8 +45,9 @@ def run(wav_path=None):
 
         downloader = downloads.ModelDownloader(on_event=on_download)
         t = time.monotonic()
-        transcriber = asr.Transcriber(downloader.whisper(cfg["whisper_model"]), cfg["device"])
-        log.info("Self-test: speech model %s loaded on %s/%s in %.1f s", cfg["whisper_model"], transcriber.device,
+        model = engine.effective_whisper_model(cfg)  # honours light mode
+        transcriber = asr.Transcriber(downloader.whisper(model), cfg["device"])
+        log.info("Self-test: speech model %s loaded on %s/%s in %.1f s", model, transcriber.device,
                  transcriber.compute_type, time.monotonic() - t)
 
         t = time.monotonic()

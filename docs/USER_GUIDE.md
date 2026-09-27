@@ -34,6 +34,15 @@ Right-click the caption box or click the tray icon:
 
 The hotkeys work while other apps (games, videos) have focus. If another program already uses one, EchoSub tells you; they can be turned off in Settings → Advanced.
 
+## When captions lag behind
+
+Speech recognition is the slow part, and it shares the graphics card with whatever else is running. If captions arrive late:
+
+- Turn on **Light mode** (tray menu, or *Settings → Language & Engine*). It uses the *Small* speech model and turns live text off; your own settings are kept and return when you turn it off. Measured on a GTX 1060 6 GB **while a game was using the card**: a 5-second sentence took 2.4 s with *Large v3 Turbo* and 0.9 s with *Small*, and captions for a 39-second clip arrived about 1.5 s sooner each.
+- Or pick a smaller model yourself in *Settings → Language & Engine*, and turn off *Show text while speaking*.
+
+EchoSub never lets the delay grow without end: when it cannot keep up it drops the oldest audio that is still waiting, and when the translator is behind it shows the oldest captions in their original language. Both are reported in the status line.
+
 ## Copying a caption
 
 Move the mouse over the caption box: a small copy button appears next to every line, the original and the translation. Click it to copy that line's text to the clipboard — the button shows a check mark for a moment. Turn the buttons off in *Settings → Text & Colors*. They don't appear while the box is locked (click-through).

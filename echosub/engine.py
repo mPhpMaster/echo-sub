@@ -21,12 +21,25 @@ PROMPT_MAX_AGE_SEC = 10.0   # previous sentence is used as Whisper context only 
 PROMPT_MAX_CHARS = 200
 CHARS_PER_SEC = 15.0        # rough speaking rate, used to spot Whisper repeating its context
 HEALTH_CHECK_SEC = 2.0
+VAD_INTERVAL_SEC = 0.15     # how often speech detection may rerun; it costs more the longer the buffer
+VAD_MAX_INTERVAL_SEC = 0.5  # ...and the longest it may wait, so a long buffer isn't scanned constantly
+MAX_PENDING_TRANSLATIONS = 6  # captions waiting for translation before the oldest are shown untranslated
+LIGHT_WHISPER_MODEL = "small"  # light mode uses this instead of a large model
+HEAVY_WHISPER_MODELS = ("large-v3", "large-v3-turbo", "medium")
 
 log = logging.getLogger(__name__)
 
 
 class AudioStreamLost(RuntimeError):
     pass
+
+
+def effective_whisper_model(cfg):
+    """The speech model actually used: light mode swaps a heavy model for a faster one."""
+    model = cfg["whisper_model"]
+    if cfg.get("light_mode") and model in HEAVY_WHISPER_MODELS:
+        return LIGHT_WHISPER_MODEL
+    return model
 
 
 class CaptionEngine:
@@ -71,6 +84,10 @@ class CaptionEngine:
         self._last_lang = None
         self._last_time = 0.0
         self._last_speaker = None
+        self._partial_lock = threading.Lock()
+        self._pending_partial = None  # newest live text waiting to be translated: (seq, text, lang)
+        self._partial_seq = 0         # bumped for every new live text, so stale translations are dropped
+        self._behind_warned = 0.0     # last time the user was told captions are behind
 
     # ---- public -----------------------------------------------------------
     def start(self):
@@ -92,6 +109,12 @@ class CaptionEngine:
         self._prepare_diacritizer()
         if self.speakers is not None:
             self.speakers.threshold = cfg.get("speaker_threshold", self.speakers.threshold)
+
+    def whisper_model(self):
+        return effective_whisper_model(self.cfg)
+
+    def _live_text_enabled(self):
+        return self.cfg["show_partial"] and not self.cfg.get("light_mode")
 
     # ---- lifecycle --------------------------------------------------------
     def _run(self):
@@ -145,8 +168,9 @@ class CaptionEngine:
         downloader = downloads.ModelDownloader(
             on_event=self.on_download,
             should_cancel=lambda: self._cancel_download.is_set() or self._stop.is_set())
-        self.on_status(f"Loading speech recognition model ({cfg['whisper_model']})…")
-        whisper_path = downloader.whisper(cfg["whisper_model"])
+        model = self.whisper_model()
+        self.on_status(f"Loading speech recognition model ({model})…")
+        whisper_path = downloader.whisper(model)
         try:
             self.asr = asr.Transcriber(whisper_path, cfg["device"])
         except Exception as e:
@@ -155,7 +179,7 @@ class CaptionEngine:
             log.exception("GPU load failed, falling back to CPU")
             self.on_status(f"Could not use the GPU ({e}) — switching to CPU")
             self.asr = asr.Transcriber(whisper_path, "cpu")
-        log.info("Whisper %s on %s/%s", cfg["whisper_model"], self.asr.device, self.asr.compute_type)
+        log.info("Whisper %s on %s/%s", model, self.asr.device, self.asr.compute_type)
 
         if cfg["translator"] != "none":
             self.on_status("Loading translation model…")
@@ -216,15 +240,18 @@ class CaptionEngine:
         buf = np.zeros(0, dtype=np.float32)
         speech, vad_dirty = [], True  # VAD only reruns when the buffer changed
         last_partial_len = 0
-        last_device_check = last_health_check = time.monotonic()
+        last_device_check = last_health_check = last_vad = time.monotonic()
         last_activity = 0.0
+        max_buffer = max(20.0, 2 * self.cfg["max_segment_sec"])  # audio kept while recognition catches up
 
+        keeping_up = True
         while not self._stop.is_set():
-            chunks = []
-            while not cap.queue.empty():
-                chunks.append(cap.queue.get_nowait())
+            chunks = cap.take()
+            # More than ~0.2 s of audio arrived while the last round ran: recognition is behind
+            keeping_up = len(chunks) <= 4
             if self.paused:
                 buf, vad_dirty = buf[:0], True
+                self._clear_pending_partial()
                 time.sleep(0.1)
                 continue
             if chunks:
@@ -242,6 +269,7 @@ class CaptionEngine:
                     self._open_capture()
                     cap = self._capture
                     buf, vad_dirty = buf[:0], True
+                    speech, last_vad = [], 0.0
                     self.on_status(f"Switched audio device to: {cap.device_name}")
                     continue
 
@@ -249,8 +277,21 @@ class CaptionEngine:
                 time.sleep(0.05)
                 continue
 
-            if vad_dirty:
-                speech, vad_dirty = self._vad(buf), False
+            if len(buf) > SR * max_buffer:
+                # Recognition is slower than the speaker (busy GPU, CPU mode): rather than falling
+                # further behind for ever, throw away the oldest audio and carry on from there.
+                keep = int(SR * self.cfg["max_segment_sec"])
+                skipped = (len(buf) - keep) / SR
+                buf, vad_dirty, last_partial_len = buf[-keep:], True, 0
+                speech, last_vad = [], 0.0  # the old speech regions no longer match the buffer
+                log.warning("Recognition is behind: skipped %.1f s of audio", skipped)
+                if now - self._behind_warned > 20:
+                    self._behind_warned = now
+                    self.on_status(f"Captions are behind — skipped {skipped:.0f} s of audio "
+                                   f"(try Light mode or a smaller speech model)")
+
+            if vad_dirty and now - last_vad >= self._vad_interval(len(buf)):
+                speech, vad_dirty, last_vad = self._vad(buf), False, now
             idle = max(0.0, now - cap.last_audio_time - 0.15)  # loopback sends nothing while silent
 
             if not speech:
@@ -271,6 +312,17 @@ class CaptionEngine:
             tail_silence = (len(buf) - last_end) / SR + idle
             duration = (len(buf) - start) / SR
 
+            if tail_silence >= self.cfg["silence_sec"] and vad_dirty:
+                # About to end a caption on speech regions that may be out of date: check first,
+                # so audio that arrived in the meantime is not cut off mid-sentence.
+                speech, vad_dirty, last_vad = self._vad(buf), False, time.monotonic()
+                if not speech:
+                    continue
+                start = max(0, speech[0]["start"] - int(SR * 0.2))
+                last_end = speech[-1]["end"]
+                tail_silence = (len(buf) - last_end) / SR + idle
+                duration = (len(buf) - start) / SR
+
             if tail_silence >= self.cfg["silence_sec"]:
                 cut = min(len(buf), last_end + int(SR * 0.2))
                 self._finalize(buf[start:cut], speech, start)
@@ -279,13 +331,19 @@ class CaptionEngine:
                 cut = self._best_cut(speech, len(buf), start)
                 self._finalize(buf[start:cut], speech, start)
                 buf, vad_dirty, last_partial_len = buf[cut:], True, 0
-            elif (self.cfg["show_partial"] and self._asr_time < 1.5
+            elif (self._live_text_enabled() and self._asr_time < 1.5 and keeping_up
                   and len(buf) - last_partial_len >= SR * max(0.7, self._asr_time)):
-                # Live partial text only when the GPU keeps up; otherwise it just delays final captions
+                # Live partial text only when the GPU keeps up and no audio is waiting;
+                # otherwise it just delays final captions
                 last_partial_len = len(buf)
                 self._partial(buf[start:])
             else:
                 time.sleep(0.05)
+
+    @staticmethod
+    def _vad_interval(samples):
+        """Speech detection costs about 5 ms per second of buffer, so scan long buffers less often."""
+        return min(VAD_MAX_INTERVAL_SEC, max(VAD_INTERVAL_SEC, 0.02 * samples / SR))
 
     @staticmethod
     def _best_cut(speech, length, start):
@@ -335,15 +393,18 @@ class CaptionEngine:
             return
         if self.cfg["source_lang"] != "auto":
             lang = self.cfg["source_lang"]
-        translated = None
-        # Translate live text only when the translator is idle, so final captions never wait for it
-        if self.translator.streaming and self._translations.empty():
-            translated = self._translate(text, lang)
-        self.on_partial(text, translated, lang)
+        self.on_partial(text, None, lang)
+        # The translation of live text is done on the translation thread; the recognition loop
+        # must never wait for it. Only the newest live text is translated, older ones are dropped.
+        if self.translator.streaming and self._should_translate(lang):
+            with self._partial_lock:
+                self._partial_seq += 1
+                self._pending_partial = (self._partial_seq, text, lang)
 
     def _finalize(self, seg, speech, offset):
         if len(seg) < SR * 0.3:
             return
+        self._clear_pending_partial()  # the live text is replaced by the caption(s) below
         regions = [(max(0, r["start"] - offset), min(len(seg), r["end"] - offset)) for r in speech]
         regions = [(a, b) for a, b in regions if b - a > 0]
         for a, b, spk in self._speaker_runs(seg, regions):
@@ -421,6 +482,7 @@ class CaptionEngine:
             text = ""
             self._last_text, self._sticky_lang = "", None
         if not text:
+            self._clear_pending_partial()
             self.on_partial("", "", lang)
             return
 
@@ -431,17 +493,60 @@ class CaptionEngine:
             self.on_final(seg_id, shown, shown, lang, spk)
         else:
             self.on_final(seg_id, self._diacritize(text, lang, "original"), None, lang, spk)
-            self._translations.put((seg_id, text, lang))
+            self._queue_translation(seg_id, text, lang)
 
     # ---- translation ------------------------------------------------------
+    def _queue_translation(self, seg_id, text, lang):
+        """Queue a caption for translation, keeping the queue short.
+
+        When the translator is slower than the speaker the queue would grow for ever and
+        translations would arrive minutes late. The oldest captions are shown with their
+        original text instead, which keeps the captions in step with what is being said.
+        """
+        while self._translations.qsize() >= MAX_PENDING_TRANSLATIONS:
+            try:
+                old_id, old_text, old_lang = self._translations.get_nowait()
+            except queue.Empty:
+                break
+            log.warning("Translation is behind: showing caption %s untranslated", old_id)
+            self.on_translation(old_id, self._diacritize(old_text, old_lang, "translation"))
+            now = time.monotonic()
+            if now - self._behind_warned > 20:
+                self._behind_warned = now
+                self.on_status("Translation is behind — showing some captions in their original language")
+        self._translations.put((seg_id, text, lang))
+
+    def _clear_pending_partial(self):
+        with self._partial_lock:
+            self._partial_seq += 1
+            self._pending_partial = None
+
+    def _take_pending_partial(self):
+        with self._partial_lock:
+            pending, self._pending_partial = self._pending_partial, None
+            return pending
+
     def _translation_worker(self):
         while not self._stop.is_set():
             try:
-                seg_id, text, lang = self._translations.get(timeout=0.2)
+                seg_id, text, lang = self._translations.get(timeout=0.05)
             except queue.Empty:
+                self._translate_pending_partial()
                 continue
             translated = self._translate(text, lang)
             self.on_translation(seg_id, self._diacritize(translated, self.cfg["target_lang"], "translation"))
+
+    def _translate_pending_partial(self):
+        """Translate the newest live text, if finished captions aren't waiting for the translator."""
+        pending = self._take_pending_partial()
+        if pending is None:
+            return
+        seq, text, lang = pending
+        translated = self._translate(text, lang)
+        with self._partial_lock:
+            current = seq == self._partial_seq
+        if current and not self._stop.is_set():
+            self.on_partial(text, self._diacritize(translated, self.cfg["target_lang"], "translation"), lang)
 
     def _should_translate(self, lang):
         if isinstance(self.translator, translate.NoTranslator):

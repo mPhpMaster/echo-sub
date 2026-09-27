@@ -125,6 +125,7 @@ Settings, models, logs and transcripts are kept in `%LOCALAPPDATA%\EchoSub`. The
 - **Menu:** right-click the caption box, or click the EchoSub icon in the system tray (next to the clock).
 - **Translation language:** menu → *Translation language*, or *Settings… → Language & Engine* for all languages.
 - **Move / resize:** menu → *Adjust window position and size*, then drag the box or its corner; or pick a spot under *Settings… → Position & Alignment*.
+- **Light mode:** tray menu → *Light mode*, for when a game or another program is using the GPU: captions arrive sooner with a smaller speech model.
 - **Copy a caption:** hover the box and click the copy button next to a line.
 - **Bigger / smaller:** hold **Shift** and turn the mouse wheel over the box (also *Settings… → Position & Alignment → Size (zoom)*).
 - **Lock:** menu → *Lock window (click-through)* makes clicks pass through the box; unlock from the tray icon or `Ctrl+Alt+L`.

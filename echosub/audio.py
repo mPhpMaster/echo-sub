@@ -1,6 +1,7 @@
 # SPDX-License-Identifier: GPL-3.0-only
 # Copyright (C) 2026 Mohammad Al-Safadi
 """Capture whatever is playing on a Windows output device (WASAPI loopback)."""
+import logging
 import queue
 import time
 
@@ -9,6 +10,9 @@ import pyaudiowpatch as pyaudio
 import soxr
 
 SAMPLE_RATE = 16000
+MAX_QUEUED_SEC = 60.0  # audio kept waiting for the engine; older audio is dropped instead of piling up
+
+log = logging.getLogger(__name__)
 
 
 def list_loopback_devices():
@@ -55,6 +59,9 @@ class LoopbackCapture:
         self.queue = queue.Queue()
         self.device_name = None
         self.last_audio_time = 0.0
+        self.dropped_sec = 0.0   # audio thrown away because the engine was too far behind
+        self._queued_sec = 0.0
+        self._last_drop_log = 0.0
         self._pa = None
         self._stream = None
         self._resampler = None
@@ -99,9 +106,39 @@ class LoopbackCapture:
             pcm = pcm.reshape(-1, self._channels).mean(axis=1)
         out = self._resampler.resample_chunk(pcm)
         if out.size:
+            self._drop_old_audio()
             self.queue.put(out)
+            self._queued_sec += out.size / SAMPLE_RATE
             self.last_audio_time = time.monotonic()
         return (None, pyaudio.paContinue)
+
+    def take(self):
+        """All audio captured since the last call, oldest first."""
+        chunks = []
+        while True:
+            try:
+                chunk = self.queue.get_nowait()
+            except queue.Empty:
+                break
+            chunks.append(chunk)
+            self._queued_sec = max(0.0, self._queued_sec - chunk.size / SAMPLE_RATE)
+        return chunks
+
+    def _drop_old_audio(self):
+        """Never let more than MAX_QUEUED_SEC of audio wait: the oldest is dropped first."""
+        while self._queued_sec > MAX_QUEUED_SEC:
+            try:
+                chunk = self.queue.get_nowait()
+            except queue.Empty:
+                self._queued_sec = 0.0
+                return
+            seconds = chunk.size / SAMPLE_RATE
+            self._queued_sec -= seconds
+            self.dropped_sec += seconds
+        now = time.monotonic()
+        if self.dropped_sec and now - self._last_drop_log > 10:
+            self._last_drop_log = now
+            log.warning("Dropped %.0f s of audio in total: the engine cannot keep up", self.dropped_sec)
 
     def stop(self):
         try:

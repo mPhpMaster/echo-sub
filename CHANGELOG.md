@@ -3,6 +3,17 @@
 All notable changes to EchoSub are documented in this file.
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the project uses [Semantic Versioning](https://semver.org/).
 
+## [1.0.5] — 2026-09-27
+
+### Added
+- **Light mode** (tray menu and *Settings → Language & Engine*): uses the Small speech model instead of a large one and turns live text off, for when a game or another program is using the graphics card. Your own model choice and settings are kept and come back when you turn it off.
+- Tests under `tests/` (`python -m unittest discover -s tests`) for live-text translation, the backlog limits and light mode. They need no GPU, models or sound card.
+
+### Changed
+- Live ("partial") text is no longer translated on the recognition thread, so recognition never waits for the translator. Only the newest live text is translated; older ones are dropped, and a translation that arrives after the finished caption is discarded.
+- Speech detection (VAD) reruns at most every 0.15 s, and less often for long buffers, instead of after every 50 ms chunk of audio. Before a caption is ended on possibly outdated speech regions, detection is rerun so nothing is cut off mid-sentence.
+- When recognition or translation cannot keep up, EchoSub no longer falls further and further behind: audio waiting to be recognized is capped (the oldest is dropped), at most six captions wait for translation and older ones are shown in their original language, and the status line says so.
+
 ## [1.0.4] — 2026-09-23
 
 ### Added
@@ -65,6 +76,7 @@ First public release.
 - `--self-test [file.wav]` checks the GPU, models and pipeline without opening a window.
 - Windows installer (Inno Setup) and PowerShell build scripts.
 
+[1.0.5]: https://github.com/mPhpMaster/echo-sub/releases/tag/v1.0.5
 [1.0.4]: https://github.com/mPhpMaster/echo-sub/releases/tag/v1.0.4
 [1.0.3]: https://github.com/mPhpMaster/echo-sub/releases/tag/v1.0.3
 [1.0.2]: https://github.com/mPhpMaster/echo-sub/releases/tag/v1.0.2

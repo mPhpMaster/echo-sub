@@ -41,6 +41,14 @@ scripts\build-installer.ps1 -SkipBuild   # re-package the existing dist\EchoSub
 
 Set `ECHOSUB_MODELS_DIR` to your source checkout's `models` folder to test a build without downloading the models again.
 
+## Tests
+
+```powershell
+.venv\Scripts\python.exe -m unittest discover -s tests -v
+```
+
+They use stand-in models and Qt's offscreen platform, so they need no GPU, no downloads and no sound card. They cover the parts that are easy to break: live text must never be translated on the recognition thread, stale live translations must be dropped, the translation queue and the audio backlog must stay bounded and in order, speech detection must not rerun for every chunk, and light mode must swap the model without touching the user's settings.
+
 ## Self-test
 
 `python -m echosub --self-test [speech.wav]` (or `EchoSub.exe --self-test [speech.wav]`) loads the speech, translation and speaker models from the current settings without opening any window, optionally transcribes and translates the WAV file, logs every step with timings, and exits with code 0 (passed) or 1 (failed). Use it to verify a build:
