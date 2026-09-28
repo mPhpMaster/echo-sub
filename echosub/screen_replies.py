@@ -11,7 +11,9 @@ What it is not, on purpose:
   audio, no network request of any kind. The only thing that happens is text on your own screen.
 - **Nothing is generated.** Every answer is written by you in the settings; there is no AI here and
   no web lookup, so the same phrase always produces the same line.
-- **Off unless you switch it on**, and, like every command, only after the wake word.
+- **Off unless you switch it on.** Unlike the other commands, no wake word is needed: the phrase
+  is recognized wherever it is said, because showing your own line on your own screen cannot do
+  any harm. Upper and lower case, punctuation and Arabic spelling are all evened out first.
 """
 import re
 

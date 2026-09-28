@@ -17,7 +17,9 @@ Safety rules, in order of importance:
    nothing, and it ignores a polite request (it is a Store app), so it is closed outright.
 4. **A wake word.** EchoSub listens to whatever the PC plays, so a video saying "open the
    calculator" must not open it. A command only counts when the wake word comes first and the
-   command follows within a few words.
+   command follows within a few words. The one exception is an on-screen answer, which does
+   nothing but write a line the user wrote into the user's own caption box, and so is recognized
+   wherever the phrase is heard.
 5. **Off unless asked for.** The feature is disabled by default, and a command is ignored while the
    engine is paused.
 """
@@ -237,8 +239,17 @@ def find_detail(text, wake_words=DEFAULT_WAKE_WORDS, custom_commands=(), allow_k
 
     The second value lets the app say "I heard you but that was not a command", which is very
     different from not having been spoken to at all.
+
+    One exception to the wake word: a phrase the user wrote in the on-screen answers is recognized
+    on its own, because the only thing it can do is show that user's own text.
     """
     spoken = normalize(text)
+    # Your own phrases need no wake word: an answer only ever writes a line you wrote yourself into
+    # your own caption box, so hearing it anywhere in the sentence is safe. Case, punctuation and
+    # Arabic spelling are already evened out by `normalize`, on both sides of the comparison.
+    reply = screen_replies.find_reply(spoken, reply_pairs, position_of)
+    if reply is not None:
+        return screen_replies.reply_command(reply), reply["phrase"]
     heard = None
     for wake in wake_words:
         wake = normalize(wake)
@@ -254,9 +265,7 @@ def find_detail(text, wake_words=DEFAULT_WAKE_WORDS, custom_commands=(), allow_k
             if not tail:
                 continue
             window = " ".join(tail.split()[:MAX_WORDS_AFTER_WAKE])[:MAX_WINDOW_CHARS]
-            reply = screen_replies.find_reply(window, reply_pairs, position_of)
-            found = (screen_replies.reply_command(reply) if reply else None)
-            found = (found or _help_command(window) or _custom_command(window, custom_commands) or
+            found = (_help_command(window) or _custom_command(window, custom_commands) or
                      _echosub_command(window) or _link_command(window) or _app_command(window) or
                      _media_command(window))
             if found is None and allow_key_presses:

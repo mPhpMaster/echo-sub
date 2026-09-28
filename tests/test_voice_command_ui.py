@@ -33,9 +33,16 @@ class FakeAction:
 class FakeOverlay:
     def __init__(self):
         self.cleared = 0
+        self.shown = []
 
     def clear(self):
         self.cleared += 1
+
+    def add_final(self, seg_id, original, translated, lang, speaker, source="system"):
+        self.shown.append((translated, source))
+
+    def remove_caption(self, seg_id):
+        pass
 
 
 class FakeApp(VoiceCommandMixin):
@@ -59,6 +66,56 @@ class FakeApp(VoiceCommandMixin):
         self._voice_runner = voice_commands.CommandRunner(
             app_action=self._run_app_command, launcher=self.launched.append, closer=self.closed.append)
         return self
+
+
+PAIRS = [{"phrase": "who are you", "reply": "EchoSub, captioning this PC."}]
+
+
+class ScreenAnswerAppTest(unittest.TestCase):
+    """An answer only writes your own line on your own screen, so it needs no wake word."""
+
+    def app(self, **overrides):
+        return FakeApp(screen_replies=True, screen_reply_pairs=PAIRS, **overrides).use_fake_runner()
+
+    def test_a_phrase_is_answered_without_the_wake_word(self):
+        app = self.app()
+        self.assertEqual(app._handle_voice_command("so, Who Are You?")["action"], "reply")
+        self.assertEqual(app.overlay.shown, [("EchoSub, captioning this PC.", "reply")])
+
+    def test_it_works_with_spoken_commands_switched_off(self):
+        app = self.app(voice_commands=False)
+        self.assertIsNotNone(app._handle_voice_command("who are you"))
+        self.assertEqual(app.launched, [], "an answer never starts a program")
+
+    def test_and_with_them_switched_on(self):
+        app = self.app(voice_commands=True)
+        self.assertIsNotNone(app._handle_voice_command("who are you"))
+        self.assertEqual(len(app.overlay.shown), 1)
+
+    def test_real_commands_still_need_the_wake_word(self):
+        app = self.app(voice_commands=False)
+        self.assertIsNone(app._handle_voice_command("open calculator"))
+        self.assertEqual((app.launched, app.overlay.shown), ([], []))
+
+    def test_other_captions_are_left_alone(self):
+        app = self.app()
+        self.assertIsNone(app._handle_voice_command("nobody asked that question"))
+        self.assertEqual(app.overlay.shown, [])
+
+    def test_the_answers_switch_still_rules(self):
+        app = FakeApp(screen_replies=False, screen_reply_pairs=PAIRS).use_fake_runner()
+        self.assertIsNone(app._handle_voice_command("who are you"))
+
+    def test_the_same_phrase_twice_in_a_row_is_shown_once(self):
+        app = self.app()
+        self.assertIsNotNone(app._handle_voice_command("who are you"))
+        self.assertIsNone(app._handle_voice_command("who are you"))
+        self.assertEqual(len(app.overlay.shown), 1)
+
+    def test_an_answer_is_ignored_while_captions_are_paused(self):
+        app = self.app()
+        app._paused = True
+        self.assertIsNone(app._handle_voice_command("who are you"))
 
 
 class VoiceCommandAppTest(unittest.TestCase):

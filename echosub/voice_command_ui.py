@@ -59,16 +59,21 @@ class VoiceCommandMixin:
 
     def _handle_voice_command(self, text, source="system"):
         """Called for every finished caption; returns the command that ran, if any."""
-        if not text or not self.cfg.get("voice_commands", False) or getattr(self, "_paused", False):
+        if not text or getattr(self, "_paused", False):
             return None
         if source == "mic" and not self.cfg.get("mic_commands", True):
             return None  # the user asked for their own voice to be captioned, not obeyed
+        pairs = self._reply_pairs()
+        if not self.cfg.get("voice_commands", False):
+            # An on-screen answer writes your own line in your own caption box and can do nothing
+            # else, so it stands on its own switch and does not wait for the command one.
+            return self._only_an_answer(text, pairs)
         command, heard = voice_commands.find_detail(
             text,
             self._wake_words(),
             self.cfg.get("voice_custom_commands", []),
             self.cfg.get("voice_key_presses", False),
-            self._reply_pairs(),
+            pairs,
         )
         if command is None:
             self._report_unknown_command(heard)
@@ -90,6 +95,21 @@ class VoiceCommandMixin:
             return command
         if message:
             self.tray.showMessage(APP_NAME, message, QSystemTrayIcon.Information, 2500)
+        return command
+
+    def _only_an_answer(self, text, pairs):
+        """With spoken commands switched off, one of your own phrases may still be answered."""
+        if not pairs:
+            return None
+        reply = screen_replies.find_reply(voice_commands.normalize(text), pairs, voice_commands.position_of)
+        if reply is None:
+            return None
+        command = screen_replies.reply_command(reply)
+        if self._voice_runner is None:
+            self._voice_runner = voice_commands.CommandRunner(app_action=self._run_app_command)
+        if self._voice_runner.run(command) is None:
+            return None  # the same phrase again a moment later
+        self._show_screen_reply(command["target"])
         return command
 
     def _reply_pairs(self):

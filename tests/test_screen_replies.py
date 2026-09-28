@@ -30,8 +30,37 @@ class MatchingTest(unittest.TestCase):
         found = voice_commands.find("مايا من انت", ("مايا",), reply_pairs=PAIRS)
         self.assertEqual(found["target"], "أنا إيكو سب.")
 
-    def test_the_wake_word_is_still_required(self):
-        self.assertIsNone(voice_commands.find("who are you", ("maya",), reply_pairs=PAIRS))
+    def test_no_wake_word_is_needed(self):
+        found = voice_commands.find("who are you", ("maya",), reply_pairs=PAIRS)
+        self.assertEqual(found["target"], "EchoSub, captioning this PC.")
+
+    def test_upper_and_lower_case_make_no_difference(self):
+        for said in ("WHO ARE YOU", "Who Are You", "wHo aRe yOu", "Who are you?"):
+            with self.subTest(said=said):
+                found = voice_commands.find(said, ("maya",), reply_pairs=PAIRS)
+                self.assertIsNotNone(found, said)
+                self.assertEqual(found["target"], "EchoSub, captioning this PC.")
+
+    def test_a_phrase_written_in_capitals_is_matched_too(self):
+        pairs = [{"phrase": "WHO ARE YOU", "reply": "shouted, answered calmly"}]
+        found = voice_commands.find("so, who are you then", ("maya",), reply_pairs=pairs)
+        self.assertEqual(found["target"], "shouted, answered calmly")
+
+    def test_it_is_heard_in_the_middle_of_a_sentence(self):
+        found = voice_commands.find("hey everyone who are you running this", ("maya",), reply_pairs=PAIRS)
+        self.assertEqual(found["target"], "EchoSub, captioning this PC.")
+
+    def test_a_phrase_is_still_whole_words(self):
+        pairs = [{"phrase": "cat", "reply": "meow"}]
+        self.assertIsNone(voice_commands.find("catalogue", ("maya",), reply_pairs=pairs))
+
+    def test_the_wake_word_still_works_in_front_of_a_phrase(self):
+        found = voice_commands.find("maya who are you", ("maya",), reply_pairs=PAIRS)
+        self.assertEqual(found["target"], "EchoSub, captioning this PC.")
+
+    def test_real_commands_still_need_the_wake_word(self):
+        self.assertIsNone(voice_commands.find("open calculator", ("maya",), reply_pairs=PAIRS),
+                          "only answers are free of the wake word; everything else is not")
 
     def test_no_pairs_means_no_answers(self):
         self.assertIsNone(voice_commands.find("maya who are you", ("maya",), reply_pairs=()))

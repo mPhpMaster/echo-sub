@@ -97,10 +97,16 @@ the whole caption has to be the name.
 **Websites:** "echo sub, open YouTube" and "echo sub, open Google" open those two addresses in your own browser.
 The addresses are written into EchoSub; a spoken word can never become a web address.
 
-**On-screen answers** (*Settings → Commands*, off by default) are for a shared screen: when someone says the wake
-word and one of your phrases, EchoSub writes your own prepared line in the caption box, in its own colour and
-labelled EchoSub, and takes it away again after a few seconds. Nothing is sent to Discord or anywhere else, no
-message is typed into another program, and no answer is generated — every line is one you wrote in the settings.
+**On-screen answers** (*Settings → Commands*, off by default) are for a shared screen: whenever someone says one
+of your phrases, EchoSub writes your own prepared line in the caption box, in its own colour and labelled EchoSub,
+and takes it away again after a few seconds. Nothing is sent to Discord or anywhere else, no message is typed into
+another program, and no answer is generated — every line is one you wrote in the settings.
+
+These are the one thing that needs **no wake word**: the phrase is recognized wherever it comes in the sentence,
+because writing your own line in your own caption box cannot do anything to the PC. Upper and lower case make no
+difference, and neither do punctuation or the usual Arabic spelling differences. They also have their own switch,
+so they work whether or not spoken commands are enabled. The same phrase twice in a row is shown once. Everything
+else — opening apps, the media keys, the caption controls — still needs the wake word first.
 
 Commands are read from finished captions only, never from live text, and they are ignored while captions are paused. If EchoSub hears the wake word but the rest is not a command, it shows a short notification with what it heard, so you can see how it understood you — at most one such notice every few seconds.
 

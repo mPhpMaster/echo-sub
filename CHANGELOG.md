@@ -5,6 +5,12 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and 
 
 ## [Unreleased]
 
+### Changed
+- **On-screen answers no longer need the wake word.** A phrase you wrote is recognized wherever it is said, in any letter case, and with or without spoken commands switched on — writing your own line in your own caption box cannot do anything to the PC. Everything else, from opening apps to the media keys, still needs the wake word first. The same phrase twice in a row is still shown once.
+
+### Fixed
+- Two settings files had a stray blank line after almost every statement, left behind by an earlier edit. Only the source formatting changed.
+
 ## [1.2.0] — 2026-09-28
 
 ### Added

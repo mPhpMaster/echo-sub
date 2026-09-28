@@ -133,7 +133,7 @@ Settings, models, logs and transcripts are kept in `%LOCALAPPDATA%\EchoSub`. The
 - **Delayed captions:** *Settings… → Advanced → Catch-up audio buffer* temporarily keeps delayed audio on disk so captions can recover after a short slowdown. It does not run another AI model or create a permanent recording.
 - **Updates:** the installed app checks once a day for an official release. Use *Check for updates…* from the tray menu to check now; EchoSub opens the installer only after you choose it.
 - **Your microphone:** *Settings… → Language & Engine → Microphone* captions what you say as well as what the PC plays, in its own colour and with your own label.
-- **On-screen answers:** for a shared screen — someone says a phrase you chose, EchoSub shows your own prepared line in the box. Off by default, and nothing is sent anywhere.
+- **On-screen answers:** for a shared screen — someone says a phrase you chose, in any letter case and with no wake word needed, and EchoSub shows your own prepared line in the box. Off by default, and nothing is sent anywhere.
 - **Voice commands:** tray menu → *Voice commands* (off by default). Say the wake word ("echo sub") and then, for example, "open chrome", "close paint" or "pause captions" — in English, Arabic, French, Spanish, German, Turkish, Russian, Chinese and more. Only a fixed list of everyday apps and EchoSub's own controls can be reached this way.
 - **Copy a caption:** hover the box and click the copy button next to a line.
 - **Bigger / smaller:** hold **Shift** and turn the mouse wheel over the box (also *Settings… → Position & Alignment → Size (zoom)*).
