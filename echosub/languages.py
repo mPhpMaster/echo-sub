@@ -106,7 +106,8 @@ LANGUAGES = {
 
 # Whisper language code -> English name shown in the interface
 ENGLISH_NAMES = {
-    "ar": "Arabic", "ary": "Moroccan Arabic (Darija)", "en": "English", "fr": "French", "de": "German", "es": "Spanish", "it": "Italian",
+    "ar": "Arabic", "ary": "Moroccan Arabic (Darija)", "en": "English", "fr": "French", "de": "German",
+    "es": "Spanish", "it": "Italian",
     "pt": "Portuguese", "ru": "Russian", "tr": "Turkish", "fa": "Persian", "ur": "Urdu", "hi": "Hindi",
     "bn": "Bengali", "zh": "Chinese", "yue": "Cantonese", "ja": "Japanese", "ko": "Korean", "id": "Indonesian",
     "ms": "Malay", "th": "Thai", "vi": "Vietnamese", "tl": "Filipino", "nl": "Dutch", "pl": "Polish",

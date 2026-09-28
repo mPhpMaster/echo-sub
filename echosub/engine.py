@@ -11,13 +11,12 @@ import queue
 import threading
 import time
 
-import numpy as np
 from faster_whisper.vad import VadOptions, get_speech_timestamps
 
 from . import asr, audio, downloads, languages, speaker, translate  # noqa: F401
 from . import segmentation
 from .engine_sources import MICROPHONE, SYSTEM, AudioStream
-from .engine_translation import MAX_PENDING_TRANSLATIONS, TranslationMixin
+from .engine_translation import MAX_PENDING_TRANSLATIONS, TranslationMixin  # noqa: F401 (kept for callers)
 from .transcript_quality import is_unreliable_live_text
 
 SR = audio.SAMPLE_RATE
@@ -28,7 +27,7 @@ HEALTH_CHECK_SEC = 2.0
 RECONNECT_MAX_DELAY_SEC = 5  # a card that is unplugged and plugged back in should be picked up quickly
 VAD_INTERVAL_SEC = 0.15     # how often speech detection may rerun; it costs more the longer the buffer
 VAD_MAX_INTERVAL_SEC = 0.5  # ...and the longest it may wait, so a long buffer isn't scanned constantly
-LIGHT_WHISPER_MODEL = "small"  # light mode uses this instead of a large model
+LIGHT_WHISPER_MODEL = "small"  # what light mode uses when nothing else is chosen
 HEAVY_WHISPER_MODELS = ("large-v3", "large-v3-turbo", "medium")
 
 log = logging.getLogger(__name__)
@@ -42,7 +41,8 @@ def effective_whisper_model(cfg):
     """The speech model actually used: light mode swaps a heavy model for a faster one."""
     model = cfg["whisper_model"]
     if cfg.get("light_mode") and model in HEAVY_WHISPER_MODELS:
-        return LIGHT_WHISPER_MODEL
+        light = cfg.get("light_model") or LIGHT_WHISPER_MODEL
+        return light if light in HEAVY_WHISPER_MODELS + ("small", "base") else LIGHT_WHISPER_MODEL
     return model
 
 

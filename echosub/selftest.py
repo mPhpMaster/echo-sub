@@ -35,8 +35,9 @@ def run(wav_path=None):
     log.info("Self-test: EchoSub %s, data folder %s, models %s", __version__, config.DATA_DIR, config.MODELS_DIR)
     try:
         import ctranslate2
-        log.info("Self-test: CUDA devices: %d, compute types: %s", ctranslate2.get_cuda_device_count(),
-                 sorted(ctranslate2.get_supported_compute_types("cuda")) if ctranslate2.get_cuda_device_count() else "-")
+        cuda_devices = ctranslate2.get_cuda_device_count()
+        log.info("Self-test: CUDA devices: %d, compute types: %s", cuda_devices,
+                 sorted(ctranslate2.get_supported_compute_types("cuda")) if cuda_devices else "-")
 
         def on_download(event):
             if event["state"] != "progress" or event["done"] == event["total"]:

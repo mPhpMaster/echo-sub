@@ -34,6 +34,8 @@ Right-click the caption box or click the tray icon:
 
 The hotkeys work while other apps (games, videos) have focus. If another program already uses one, EchoSub tells you; they can be turned off in Settings → Advanced.
 
+![Advanced settings](screenshots/settings-advanced.png)
+
 ## When captions lag behind
 
 Speech recognition is the slow part, and it shares the graphics card with whatever else is running. If captions arrive late:
@@ -46,6 +48,8 @@ While it catches up, the audio still waiting is kept in a temporary folder (*Set
 EchoSub never lets the delay grow without end: when it cannot keep up it drops the oldest audio that is still waiting, and when the translator is behind it shows the oldest captions in their original language. Both are reported in the status line.
 
 ## Your microphone
+
+![Your voice captioned in its own colour](screenshots/captions-microphone.png)
 
 EchoSub normally captions what the PC plays. Turn on *Settings → Language & Engine → Microphone* and it captions
 what you say as well, on the same models, so a call with someone reads as one list of lines.

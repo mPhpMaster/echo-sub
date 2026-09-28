@@ -131,7 +131,8 @@ class ModelDownloader:
                 continue
             if exclude and name in exclude:
                 continue
-            files.append((hf_hub_url(repo, name, revision=info.sha), os.path.join(folder, name), sibling.size or 0, name))
+            files.append((hf_hub_url(repo, name, revision=info.sha), os.path.join(folder, name),
+                          sibling.size or 0, name))
         if not files:
             raise DownloadFailed(f"no model files found in {repo}")
         os.makedirs(folder, exist_ok=True)

@@ -3,6 +3,15 @@
 All notable changes to EchoSub are documented in this file.
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the project uses [Semantic Versioning](https://semver.org/).
 
+## [Unreleased]
+
+### Added
+- **Light mode can use the Base model** instead of Small (*Settings → Language & Engine*). Measured on this machine over a 39-second clip: Base is two to six times faster than Small and just as accurate down to 0 dB of noise; Small only pulls ahead in heavy noise (-5 dB: 4 % against 11 % of words wrong). Small stays the default.
+
+### Changed
+- flake8 runs clean over the whole app and its tests (`setup.cfg`, 120 columns). The vendored `tashkeel/` code is excluded, as it belongs to the CATT project. Imports left behind by the 1.1.0 file split were removed.
+- Fresh screenshots in the README and the user guide, including the microphone and the Advanced tab.
+
 ## [1.1.0] — 2026-09-28
 
 ### Added

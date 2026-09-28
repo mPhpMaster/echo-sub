@@ -1,14 +1,14 @@
 # SPDX-License-Identifier: GPL-3.0-only
 # Copyright (C) 2026 Mohammad Al-Safadi
 from PySide6.QtCore import QSize, Qt, Signal
-from PySide6.QtGui import QColor, QFont, QGuiApplication
+from PySide6.QtGui import QFont, QGuiApplication
 from PySide6.QtWidgets import (
-    QButtonGroup, QCheckBox, QColorDialog, QComboBox, QCompleter, QDialog, QDialogButtonBox, QDoubleSpinBox,
-    QFontComboBox, QFormLayout, QGridLayout, QGroupBox, QHBoxLayout, QLabel, QMessageBox, QPushButton,
-    QScrollArea, QSlider, QSpinBox, QTabWidget, QVBoxLayout, QWidget,
+    QButtonGroup, QCheckBox, QComboBox, QDialog, QDialogButtonBox, QDoubleSpinBox, QFontComboBox, QFormLayout,
+    QGridLayout, QGroupBox, QHBoxLayout, QLabel, QMessageBox, QPushButton, QSlider, QSpinBox, QTabWidget,
+    QVBoxLayout, QWidget,
 )
 
-from . import APP_NAME, audio, config, history, hotkeys, languages
+from . import APP_NAME, audio, config, languages
 from .settings_microphone import MicrophoneGroupMixin
 from .settings_tabs import NUMBER_WIDTH, AdvancedTabMixin
 from .settings_widgets import (
@@ -96,6 +96,12 @@ class SettingsDialog(AdvancedTabMixin, MicrophoneGroupMixin, QDialog):
         except Exception:
             pass
         self._select(self.audio_dev, cfg["audio_device"])
+        self.light_model = SearchableComboBox()
+        for key in ("small", "base"):
+            self.light_model.addItem(config.WHISPER_MODELS[key], key)
+        self._select(self.light_model, cfg.get("light_model", "small"))
+        self.light_model.setToolTip("Base is two to six times faster than Small and just as accurate on clear "
+                                    "speech; Small holds up better in heavy noise.")
         self.light_mode = QCheckBox("Light mode: faster captions on a busy PC")
         self.light_mode.setToolTip("Uses the Small speech model instead of a large one and turns live "
                                    "text off, so captions appear sooner while a game or another program "
@@ -104,6 +110,9 @@ class SettingsDialog(AdvancedTabMixin, MicrophoneGroupMixin, QDialog):
         self.light_mode.setChecked(cfg.get("light_mode", False))
         f.addRow("Speech recognition model:", self.model)
         f.addRow(self.light_mode)
+        f.addRow("Light mode uses:", self.light_model)
+        self.light_mode.toggled.connect(self.light_model.setEnabled)
+        self.light_model.setEnabled(self.light_mode.isChecked())
         f.addRow("Translation engine:", self.translator)
         f.addRow("Run on:", self.device)
         f.addRow("Audio source:", self.audio_dev)
@@ -187,7 +196,10 @@ class SettingsDialog(AdvancedTabMixin, MicrophoneGroupMixin, QDialog):
         f.addRow("Lines shown:", self.max_lines)
         opacity_value = QLabel()
         opacity_value.setMinimumWidth(52)
-        show_opacity = lambda value: opacity_value.setText(f"{round(value / 255 * 100)} %")  # noqa: E731
+
+        def show_opacity(value):
+            opacity_value.setText(f"{round(value / 255 * 100)} %")
+
         self.bg_opacity.valueChanged.connect(show_opacity)
         show_opacity(self.bg_opacity.value())
         f.addRow("Background opacity:", self._row(self.bg_opacity, opacity_value))
@@ -400,7 +412,9 @@ class SettingsDialog(AdvancedTabMixin, MicrophoneGroupMixin, QDialog):
             combo.setCurrentIndex(i)
 
     def _connect_preview(self):
-        emit = lambda *_: self.preview.emit(self.values())
+        def emit(*_):
+            self.preview.emit(self.values())
+
         for child in self.findChildren(QWidget):
             if isinstance(child, ColorButton):
                 child.changed.connect(emit)
@@ -421,6 +435,7 @@ class SettingsDialog(AdvancedTabMixin, MicrophoneGroupMixin, QDialog):
             "source_lang": self.source.currentData(),
             "whisper_model": self.model.currentData(),
             "light_mode": self.light_mode.isChecked(),
+            "light_model": self.light_model.currentData(),
             **self._microphone_values(),
             "translator": self.translator.currentData(),
             "device": self.device.currentData(),

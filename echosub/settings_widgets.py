@@ -5,7 +5,7 @@ position icons, and keeping a window inside the screen it opens on."""
 import re
 
 import shiboken6
-from PySide6.QtCore import QEvent, QObject, QSize, QStringListModel, Qt, QTimer, Signal
+from PySide6.QtCore import QEvent, QObject, QStringListModel, Qt, QTimer, Signal
 from PySide6.QtGui import QColor, QGuiApplication, QIcon, QPainter, QPixmap
 from PySide6.QtWidgets import (
     QColorDialog, QComboBox, QCompleter, QPushButton, QScrollArea,

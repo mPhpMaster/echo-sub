@@ -4,10 +4,9 @@
 import itertools
 import time
 
-from PySide6.QtCore import QPoint, QPointF, QRectF, QSize, Qt
+from PySide6.QtCore import QPointF, QRectF, QSize, Qt
 from PySide6.QtGui import (
-    QColor, QCursor, QFont, QFontMetricsF, QGuiApplication, QPainter, QPen, QPixmap, QPolygonF, QTextLayout,
-    QTextOption,
+    QColor, QFont, QFontMetricsF, QGuiApplication, QPainter, QPen, QPixmap, QPolygonF, QTextLayout, QTextOption,
 )
 from PySide6.QtWidgets import QSizePolicy, QToolTip, QVBoxLayout, QWidget
 

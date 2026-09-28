@@ -63,7 +63,8 @@ DEFAULTS = {
     "audio_device": "default",
     "show_original": True,
     "show_partial": True,
-    "light_mode": False,                  # faster on a busy PC: Small speech model, no live text
+    "light_mode": False,                  # faster on a busy PC: a smaller speech model, no live text
+    "light_model": "small",               # which model light mode uses
     "mic_enabled": False,                 # also caption what your microphone hears
     "mic_device": "default",              # microphone to use; "default" follows Windows
     "mic_label": "You",                   # shown on the microphone's captions
@@ -163,7 +164,7 @@ BOX_COLUMNS = ("left", "center", "right")
 
 # Settings that require reloading models or reopening the audio stream
 ENGINE_KEYS = ("whisper_model", "device", "translator", "audio_device", "speaker_detection", "light_mode",
-               "audio_backlog_sec", "audio_backlog_dir", "mic_enabled", "mic_device")
+               "audio_backlog_sec", "audio_backlog_dir", "mic_enabled", "mic_device", "light_model")
 
 SPEAKER_COLOR_TARGETS = {
     "both": "Translation and original text",

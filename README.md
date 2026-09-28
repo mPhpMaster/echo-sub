@@ -67,7 +67,11 @@ Everything runs locally: speech recognition and translation happen on your own m
 
 | Position, alignment & animation | Speakers |
 |---|---|
-| <img src="docs/screenshots/settings-position.png" alt="Position, alignment, box style and animation settings" width="400"> | <img src="docs/screenshots/settings-speakers.png" alt="Speaker detection settings" width="400"> |
+| <img src="docs/screenshots/settings-position.png" alt="Position, alignment, box style and animation settings" width="400"> | <img src="docs/screenshots/settings-advanced.png" alt="Recognition, catch-up buffer, updates and voice command settings" width="400"> |
+
+| Your microphone, captioned beside the PC's sound |
+|---|
+| <img src="docs/screenshots/captions-microphone.png" alt="A conversation where the other side comes from the PC and your own voice is captioned in its own colour" width="620"> |
 
 | Caption history | Model download | About |
 |---|---|---|

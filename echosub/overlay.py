@@ -1,25 +1,20 @@
 # SPDX-License-Identifier: GPL-3.0-only
 # Copyright (C) 2026 Mohammad Al-Safadi
 """Always-on-top translucent caption window."""
-import itertools
 import time
 
-from PySide6.QtCore import (
-    QEasingCurve, QEvent, QPoint, QPointF, QPropertyAnimation, QRect, QRectF, QSize, Qt, QTimer,
-)
-from PySide6.QtGui import (
-    QColor, QCursor, QFont, QFontMetricsF, QGuiApplication, QPainter, QPen, QPixmap, QPolygonF, QTextLayout,
-    QTextOption,
-)
-from PySide6.QtWidgets import QLabel, QSizeGrip, QSizePolicy, QToolTip, QVBoxLayout, QWidget
+from PySide6.QtCore import QEasingCurve, QEvent, QPoint, QPropertyAnimation, QRect, QRectF, Qt, QTimer
+from PySide6.QtGui import QColor, QCursor, QGuiApplication, QPainter, QPen
+from PySide6.QtWidgets import QLabel, QSizeGrip, QToolTip, QVBoxLayout, QWidget
 
 from . import APP_NAME
 from .overlay_animation import AnimationMixin
 from .overlay_placement import PlacementMixin
 from .caption_widgets import (
-    CaptionLine, CopyButton, ENTER_SHIFT_PX, FADE_MS, MERGE_MAX_CHARS, MERGE_WINDOW_SEC, PENDING_PLACEHOLDER,
-    SCALE_MAX, SCALE_MIN, SCALE_STEP, box_scale, ease_out, entry_view, _entry_keys,
+    CaptionLine, CopyButton, ENTER_SHIFT_PX, FADE_MS, MERGE_MAX_CHARS, MERGE_WINDOW_SEC, SCALE_MAX, SCALE_MIN,
+    SCALE_STEP, box_scale, entry_view, _entry_keys,
 )
+
 
 class CaptionOverlay(AnimationMixin, PlacementMixin, QWidget):
     """The caption box.

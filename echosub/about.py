@@ -6,7 +6,7 @@ import sys
 
 from PySide6.QtCore import QRectF, QSize, Qt, QUrl
 from PySide6.QtGui import QColor, QDesktopServices, QFont, QIcon, QPainter, QPainterPath, QPixmap
-from PySide6.QtWidgets import QDialog, QHBoxLayout, QLabel, QPushButton, QVBoxLayout, QWidget
+from PySide6.QtWidgets import QDialog, QHBoxLayout, QLabel, QPushButton, QVBoxLayout
 
 from . import (
     APP_NAME, AUTHOR, AUTHOR_EMAIL, COPYRIGHT, DESCRIPTION, LICENSE_NAME, LINKS, REPOSITORY_URL, __version__, config,
@@ -127,8 +127,8 @@ class AboutDialog(QDialog):
         docs = QHBoxLayout()
         docs.addStretch(1)
         for i, (label, target) in enumerate((("License", "LICENSE"), ("Privacy", "PRIVACY.md"),
-                                              ("Third-party notices", "THIRD_PARTY_NOTICES.md"),
-                                              ("Source code", REPOSITORY_URL))):
+                                             ("Third-party notices", "THIRD_PARTY_NOTICES.md"),
+                                             ("Source code", REPOSITORY_URL))):
             if i:
                 dot = QLabel("·")
                 dot.setObjectName("muted")

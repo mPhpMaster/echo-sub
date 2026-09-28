@@ -11,8 +11,8 @@ from . import cuda_setup, logging_setup
 cuda_setup.setup()
 LOG_PATH = logging_setup.setup()
 
-from PySide6.QtCore import QObject, Qt, QTimer, Signal  # noqa: E402
-from PySide6.QtGui import QAction, QActionGroup, QColor, QFont, QIcon, QPainter, QPixmap  # noqa: E402
+from PySide6.QtCore import QObject, QTimer, Signal  # noqa: E402
+from PySide6.QtGui import QAction, QActionGroup, QColor, QIcon, QPainter  # noqa: E402
 from PySide6.QtNetwork import QLocalServer, QLocalSocket  # noqa: E402
 from PySide6.QtWidgets import QApplication, QMenu, QSystemTrayIcon  # noqa: E402
 
@@ -330,9 +330,9 @@ class App(UpdateCheckMixin, VoiceCommandMixin):
         b = self.bridge
         self.engine = CaptionEngine(
             self.cfg,
-            on_partial=lambda o, t, l, src="system": b.partial.emit(gen, o, t or "", l, src),
-            on_final=lambda sid, o, t, l, spk, src="system": b.final.emit(
-                gen, sid, o, t, l, -1 if spk is None else spk, src),
+            on_partial=lambda text, tr, lang, src="system": b.partial.emit(gen, text, tr or "", lang, src),
+            on_final=lambda sid, text, tr, lang, spk, src="system": b.final.emit(
+                gen, sid, text, tr, lang, -1 if spk is None else spk, src),
             on_translation=lambda sid, t: b.translation.emit(gen, sid, t),
             on_status=lambda s: b.status.emit(gen, s),
             on_error=lambda s: b.error.emit(gen, s),
@@ -478,6 +478,7 @@ def main():
 
     def on_connection():
         conn = server.nextPendingConnection()
+
         def on_ready_read():
             conn.readAll()
             app.activate_from_second_instance()
