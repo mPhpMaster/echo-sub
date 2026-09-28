@@ -3,7 +3,7 @@
 All notable changes to EchoSub are documented in this file.
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the project uses [Semantic Versioning](https://semver.org/).
 
-## [Unreleased]
+## [1.1.1] — 2026-09-28
 
 ### Added
 - **Light mode can use the Base model** instead of Small (*Settings → Language & Engine*). Measured on this machine over a 39-second clip: Base is two to six times faster than Small and just as accurate down to 0 dB of noise; Small only pulls ahead in heavy noise (-5 dB: 4 % against 11 % of words wrong). Small stays the default.
@@ -116,6 +116,7 @@ First public release.
 - `--self-test [file.wav]` checks the GPU, models and pipeline without opening a window.
 - Windows installer (Inno Setup) and PowerShell build scripts.
 
+[1.1.1]: https://github.com/mPhpMaster/echo-sub/releases/tag/v1.1.1
 [1.1.0]: https://github.com/mPhpMaster/echo-sub/releases/tag/v1.1.0
 [1.0.7]: https://github.com/mPhpMaster/echo-sub/releases/tag/v1.0.7
 [1.0.6]: https://github.com/mPhpMaster/echo-sub/releases/tag/v1.0.6
