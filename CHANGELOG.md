@@ -3,6 +3,27 @@
 All notable changes to EchoSub are documented in this file.
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the project uses [Semantic Versioning](https://semver.org/).
 
+## [1.1.0] — 2026-09-28
+
+### Added
+- **Your microphone, captioned too** (*Settings → Language & Engine → Microphone*, off by default). What you say is recognized and translated like anything else, shown in its own colour with your own label ("You"), kept on its own line, and spoken commands are accepted from it as well — that last part can be switched off. Both sources share the one speech model, so nothing extra runs while nobody is talking, and a microphone that cannot be opened never stops the captions.
+- **Voice commands** (off by default; tray menu and *Settings → Advanced*). Only a fixed list of harmless actions can run: open or close eighteen everyday apps (Calculator, Notepad, Paint, File Explorer, Windows Settings, Task Manager, Snipping Tool, on-screen keyboard, Magnifier, Character Map, Chrome, Edge, Firefox, VLC, VS Code, Discord, Steam, Spotify), and pause, resume, hide, show or clear captions. Closing is the same as clicking the X, so unsaved work is still protected; File Explorer only loses its folder windows, never the desktop. A command counts only after a wake word ("echo sub" by default), because EchoSub hears everything the PC plays. Nothing from what is said is ever passed to a shell or used as a program name. Commands are understood in about twenty languages, in everyday wording and with grammatical endings, and the wake word is matched as a whole word so a short one is not heard inside another word. Several wake words can be listed, separated by commas ("mama, ماما"). When the wake word is heard but the rest is not a command, a notification shows what was heard.
+- **Catch-up audio buffer**: when recognition falls behind, waiting audio is kept in a temporary folder and recognized in order instead of being thrown away. Session-only, deleted as it is read and when the app closes; capped in *Settings → Advanced* (0 min = off).
+- The catch-up buffer's folder can be chosen in *Settings → Advanced*, to put it on a fast drive. Empty means the Windows temp folder, the folder is created if needed, and a drive that cannot be written to falls back to the temp folder with a message instead of failing.
+- **Update checks for the installed app** through the official GitHub releases: once a day in the background, plus *Check for updates…* in the tray menu. A newer version shows a message with a button that opens the download page — EchoSub never downloads or installs anything by itself. Can be turned off in *Settings → Advanced*.
+- Tests for the quality gates, the catch-up buffer, sound-device reconnection, release comparison and voice commands (no GPU, models or sound card needed).
+
+### Changed
+- **Fewer made-up captions.** Whisper's own signals are weighed together (no-speech probability with average log probability, and the compression ratio), known filler phrases and looping repetitions are dropped, and text too long for the audio it came from is rejected. Live text is held to a stricter standard than a finished caption and can never enter the history or the transcript file.
+- Text that fails these gates is never sent to translation.
+- Every source file is under 500 lines: captions, placement, animation, translation, segmentation, settings widgets and tabs, update checks and voice commands each live in their own module.
+
+### Fixed
+- The Advanced settings were wider than the window: a long hint beside the wake word forced a sideways scrollbar, and the folder field showed the end of the path instead of its start. The tab is now grouped into boxes, every hint wraps on its own line, and the path reads from the beginning.
+- Number fields across the whole Settings window are one width instead of stretching the full row, "Box width" no longer cuts off its own unit, background opacity shows its value as a percentage, and colour buttons no longer stretch across the window.
+- **The sound card can now be unplugged and plugged back in.** A failed attempt to open a device used to leave a PortAudio instance behind, each with its own stale device list, so the device that came back kept failing with "Invalid device info"; now every attempt cleans up after itself. If the device you picked is missing, EchoSub listens to the default one and says so, then moves back on its own when your device returns. Reconnection attempts are at most 5 s apart.
+- The catch-up buffer is written by a background worker, never inside the sound card's callback, and is handed to the engine in slices, so a long backlog cannot stall capture or make speech detection scan minutes of audio at once.
+
 ## [1.0.7] — 2026-09-27
 
 ### Fixed
@@ -86,6 +107,7 @@ First public release.
 - `--self-test [file.wav]` checks the GPU, models and pipeline without opening a window.
 - Windows installer (Inno Setup) and PowerShell build scripts.
 
+[1.1.0]: https://github.com/mPhpMaster/echo-sub/releases/tag/v1.1.0
 [1.0.7]: https://github.com/mPhpMaster/echo-sub/releases/tag/v1.0.7
 [1.0.6]: https://github.com/mPhpMaster/echo-sub/releases/tag/v1.0.6
 [1.0.5]: https://github.com/mPhpMaster/echo-sub/releases/tag/v1.0.5

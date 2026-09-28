@@ -18,6 +18,8 @@ from PySide6.QtWidgets import QApplication, QMenu, QSystemTrayIcon  # noqa: E402
 
 from . import APP_NAME, AUTHOR, __version__, config, history, hotkeys, languages  # noqa: E402
 from .overlay import CaptionOverlay  # noqa: E402
+from .update_ui import UpdateCheckMixin  # noqa: E402
+from .voice_command_ui import VoiceCommandMixin  # noqa: E402
 from .settings_dialog import SettingsDialog  # noqa: E402
 
 log = logging.getLogger("echosub")
@@ -48,14 +50,15 @@ STATE_LABELS = {
 
 class Bridge(QObject):
     """Carries engine callbacks (worker threads) to the Qt main thread."""
-    partial = Signal(int, str, str, str)
-    final = Signal(int, int, str, object, str, int)
+    partial = Signal(int, str, str, str, str)
+    final = Signal(int, int, str, object, str, int, str)
     translation = Signal(int, int, str)
     activity = Signal(int)
     status = Signal(int, str)
     error = Signal(int, str)
     state = Signal(int, str)
     download = Signal(int, object)
+    update_result = Signal(object, bool)
 
 
 def app_icon():
@@ -74,7 +77,7 @@ def make_icon(color):
     return QIcon(pm)
 
 
-class App:
+class App(UpdateCheckMixin, VoiceCommandMixin):
     def __init__(self, qt):
         self.qt = qt
         self.qt.setQuitOnLastWindowClosed(False)
@@ -102,7 +105,10 @@ class App:
         self.bridge.activity.connect(self._on_activity)
         self.bridge.state.connect(self._on_state)
         self.bridge.download.connect(self._on_download)
+        self.bridge.update_result.connect(self._on_update_result)
         self.download_dialog = None
+        self._update_check_running = False
+        self._voice_runner = None
 
         self.overlay = CaptionOverlay(self.cfg, self._show_menu_at, self._geometry_changed,
                                       self._placement_changed, self._raise_app_windows)
@@ -114,6 +120,7 @@ class App:
         self.tray.show()
         self._apply_hotkeys()
         self._start_engine()
+        self._schedule_update_check()
 
     # ---- menu --------------------------------------------------------------
     def _build_menu(self):
@@ -147,12 +154,14 @@ class App:
         m.addAction(self.act_lock)
         m.addAction(self.act_pause)
         m.addAction(self.act_light)
+        m.addAction(self._make_voice_command_action(m))
         m.addAction("Caption size: back to 100%", self.overlay.reset_scale)
         m.addAction("Clear captions", self.overlay.clear)
         m.addSeparator()
         m.addAction("Caption history…", self._open_history)
         m.addAction("Settings…", self._open_settings)
         m.addAction("Open log file", self._open_log)
+        m.addAction("Check for updates…", lambda: self._check_updates_async(manual=True))
         m.addAction(f"About {APP_NAME}…", self._open_about)
         m.addAction("Restart engine", self._start_engine)
         m.addSeparator()
@@ -208,6 +217,7 @@ class App:
             self._apply({"light_mode": enabled})  # an engine setting: reloads the speech model
 
     def _set_paused(self, paused):
+        self._paused = paused
         if self.engine:
             self.engine.paused = paused
         self.overlay.clear()
@@ -320,8 +330,9 @@ class App:
         b = self.bridge
         self.engine = CaptionEngine(
             self.cfg,
-            on_partial=lambda o, t, l: b.partial.emit(gen, o, t or "", l),
-            on_final=lambda sid, o, t, l, spk: b.final.emit(gen, sid, o, t, l, -1 if spk is None else spk),
+            on_partial=lambda o, t, l, src="system": b.partial.emit(gen, o, t or "", l, src),
+            on_final=lambda sid, o, t, l, spk, src="system": b.final.emit(
+                gen, sid, o, t, l, -1 if spk is None else spk, src),
             on_translation=lambda sid, t: b.translation.emit(gen, sid, t),
             on_status=lambda s: b.status.emit(gen, s),
             on_error=lambda s: b.error.emit(gen, s),
@@ -341,16 +352,17 @@ class App:
 
         threading.Thread(target=swap, name="engine-swap", daemon=True).start()
 
-    def _on_partial(self, gen, original, translated, lang):
+    def _on_partial(self, gen, original, translated, lang, source="system"):
         if gen == self.generation:
-            self.overlay.set_partial(original, translated or None, lang)
+            self.overlay.set_partial(original, translated or None, lang, source)
 
-    def _on_final(self, gen, seg_id, original, translated, lang, speaker):
+    def _on_final(self, gen, seg_id, original, translated, lang, speaker, source="system"):
         if gen != self.generation:
             return
         spk = None if speaker < 0 else speaker
-        self.overlay.add_final(seg_id, original, translated, lang, spk)
+        self.overlay.add_final(seg_id, original, translated, lang, spk, source)
         self.history.add((gen, seg_id), original, translated, lang, spk)
+        self._handle_voice_command(original, source)
 
     def _on_translation(self, gen, seg_id, translated):
         if gen == self.generation:

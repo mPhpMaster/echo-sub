@@ -41,7 +41,58 @@ Speech recognition is the slow part, and it shares the graphics card with whatev
 - Turn on **Light mode** (tray menu, or *Settings → Language & Engine*). It uses the *Small* speech model and turns live text off; your own settings are kept and return when you turn it off. Measured on a GTX 1060 6 GB **while a game was using the card**: a 5-second sentence took 2.4 s with *Large v3 Turbo* and 0.9 s with *Small*, and captions for a 39-second clip arrived about 1.5 s sooner each.
 - Or pick a smaller model yourself in *Settings → Language & Engine*, and turn off *Show text while speaking*.
 
+While it catches up, the audio still waiting is kept in a temporary folder (*Settings → Advanced → Catch-up audio buffer*) and recognized in order, so nothing said is lost. **Keep it on this drive** picks the folder — put it on your fastest drive; writing a minute of audio took 0.1 s on an SSD and 0.24 s on a slower drive here, and reading it back 0.9 s against 2.5 s. Leave it empty for the Windows temp folder, and set the buffer to 0 min to switch it off. The folder is emptied as the audio is used and deleted when EchoSub closes.
+
 EchoSub never lets the delay grow without end: when it cannot keep up it drops the oldest audio that is still waiting, and when the translator is behind it shows the oldest captions in their original language. Both are reported in the status line.
+
+## Your microphone
+
+EchoSub normally captions what the PC plays. Turn on *Settings → Language & Engine → Microphone* and it captions
+what you say as well, on the same models, so a call with someone reads as one list of lines.
+
+- **Microphone** — which device to listen to; *Default* follows Windows.
+- **Shown as** — the label on your captions ("You" by default), so it is clear who said what.
+- **Its colour** — your captions are drawn in this colour.
+- **Accept spoken commands from the microphone too** — on by default, so you can say "echo sub, open calculator"
+  yourself. Turn it off to be captioned without being obeyed.
+
+Your voice is never mixed with the other sound: the two are recognized separately and never merged into one line.
+Speaker detection is not run on your microphone — it is you.
+
+## Voice commands
+
+Off by default. Turn them on from the tray menu (*Voice commands*) or *Settings → Advanced*.
+
+EchoSub hears everything your PC plays, so a video saying "open the calculator" must not open it: a command
+counts only when the **wake word** comes first. The wake word is "echo sub" and you can change it in the settings.
+
+| Say | What happens |
+|---|---|
+| "echo sub, open calculator" / "افتح الحاسبة" | The app opens |
+| "echo sub, close calculator" | The app closes |
+| "echo sub, pause captions" / "resume captions" | Captions pause or continue |
+| "echo sub, hide captions" / "show captions" | The caption box hides or comes back |
+| "echo sub, clear captions" | The box is emptied |
+
+The apps it can open and close: **Calculator, Notepad, Paint, File Explorer, Windows Settings, Task Manager,
+Snipping Tool, On-screen keyboard, Magnifier, Character Map, Chrome, Edge, Firefox, VLC, VS Code, Discord,
+Steam and Spotify**. If an app is not installed, EchoSub says so instead of doing nothing.
+
+Closing is the same as clicking the window's X, so an app with unsaved work still asks you about it. Two
+exceptions keep nothing and ignore a polite request, so they are simply ended: Calculator and the on-screen
+keyboard. File Explorer only has its folder windows closed — never the desktop or the taskbar.
+
+Commands work in the languages EchoSub captions, not only English: "ouvre la calculatrice", "abre la calculadora", "öffne den rechner", "открой калькулятор", "打开计算器", "電卓を開いて", "계산기 열어", "altyazıları duraklat", "اخف الترجمة" and so on. Endings are allowed, so Turkish "hesap makinesini kapat" works too.
+
+That is the whole list, and it cannot be extended from the settings. Nothing you say is ever run as a command
+on your PC: shutting down, deleting files, opening a terminal and anything similar are simply not recognized.
+Commands are read from finished captions only, never from live text, and they are ignored while captions are paused. If EchoSub hears the wake word but the rest is not a command, it shows a short notification with what it heard, so you can see how it understood you — at most one such notice every few seconds.
+
+## When the sound device disconnects
+
+If the device disappears (a USB card unplugged, a driver restart), EchoSub reconnects by itself, trying every
+few seconds. If you picked a specific device in the settings and it is missing, EchoSub listens to the default
+device and says so in the status line, then moves back to yours as soon as it is available again.
 
 ## Copying a caption
 
@@ -105,6 +156,8 @@ Every dropdown accepts typing to search (e.g. type `ital` for Italian; Arabic na
 | Wrong language detected | Set *Spoken language* instead of Auto-detect. |
 | Words invented during music | Raise the speech detection threshold (Settings → Advanced). |
 | "Could not use the GPU" | Update the NVIDIA driver; EchoSub keeps working on the CPU meanwhile. |
+| "Sound device problem — reconnecting" | The device was unplugged or its driver restarted. EchoSub keeps trying every few seconds; nothing to do. |
+| "Captions are behind" | Recognition cannot keep up. Turn on Light mode, or raise the catch-up buffer in *Settings → Advanced*. |
 | A model download failed or was canceled | Menu → *Restart engine* (or *Retry* in the download window). Downloads resume where they stopped. |
 | Not sure if the GPU / models work | Run `"%LOCALAPPDATA%\Programs\EchoSub\EchoSub.exe" --self-test` (or the path you installed to). It loads every model without opening a window and writes the result to the log; add a 16-bit `.wav` file path to also test recognition and translation. |
 | Anything else | Menu → *Open log file*, and include the relevant lines when reporting an issue. |

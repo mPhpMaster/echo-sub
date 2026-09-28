@@ -45,8 +45,10 @@ def make_engine(**cfg_overrides):
     events = {"partial": [], "final": [], "translation": [], "status": [], "error": []}
     e = engine.CaptionEngine(
         cfg,
-        on_partial=lambda text, translated, lang: events["partial"].append((text, translated, lang)),
-        on_final=lambda sid, text, tr, lang, spk: events["final"].append((sid, text, tr)),
+        on_partial=lambda text, translated, lang, source="system": events["partial"].append(
+            (text, translated, lang, source)),
+        on_final=lambda sid, text, tr, lang, spk, source="system": events["final"].append(
+            (sid, text, tr, source)),
         on_translation=lambda sid, text: events["translation"].append((sid, text)),
         on_status=lambda text: events["status"].append(text),
         on_error=lambda text: events["error"].append(text))
@@ -79,13 +81,13 @@ class LiveTextTest(unittest.TestCase):
         self.e._partial(np.zeros(SR, dtype=np.float32))
         elapsed = time.monotonic() - started
         self.assertLess(elapsed, 0.1, "the recognition loop waited for the translator")
-        self.assertEqual(self.events["partial"], [("hello there", None, "en")])
+        self.assertEqual(self.events["partial"], [("hello there", None, "en", "system")])
         self.assertEqual(self.e.translator.calls, [], "translation must not run on the recognition thread")
 
     def test_the_translation_arrives_later_on_the_translation_thread(self):
         self.e._partial(np.zeros(SR, dtype=np.float32))
         run_worker(self.e, 2.0, until=lambda: len(self.events["partial"]) > 1)
-        self.assertEqual(self.events["partial"][-1], ("hello there", "[ar] hello there", "en"))
+        self.assertEqual(self.events["partial"][-1], ("hello there", "[ar] hello there", "en", "system"))
 
     def test_only_the_newest_live_text_is_translated(self):
         for text in ("one", "one two", "one two three"):
@@ -98,7 +100,7 @@ class LiveTextTest(unittest.TestCase):
         self.e._partial(np.zeros(SR, dtype=np.float32))
         self.e._finalize(np.zeros(SR, dtype=np.float32), [{"start": 0, "end": SR}], 0)
         run_worker(self.e, 1.0)
-        self.assertTrue(all(translated is None for _, translated, _ in self.events["partial"]),
+        self.assertTrue(all(translated is None for _, translated, *_ in self.events["partial"]),
                         "a translation of outdated live text was shown after the caption")
 
     def test_pausing_cancels_the_live_translation(self):
@@ -158,13 +160,19 @@ class FakeCapture:
             self.last_audio_time = time.monotonic()
             time.sleep(self.chunk / 2)  # twice as fast as real time, to push the loop harder
 
-    def take(self):
-        chunks = []
-        while True:
+    def take(self, max_seconds=None):
+        chunks, seconds = [], 0.0
+        while max_seconds is None or seconds < max_seconds:
             try:
-                chunks.append(self.queue.get_nowait())
+                chunk = self.queue.get_nowait()
             except queue.Empty:
-                return chunks
+                break
+            chunks.append(chunk)
+            seconds += chunk.size / SR
+        return chunks
+
+    def pending_sec(self):
+        return self.queue.qsize() * self.chunk
 
     def is_healthy(self):
         return True
@@ -184,6 +192,9 @@ class CaptureQueueTest(unittest.TestCase):
         cap._last_drop_log = 0.0
         cap._channels = 1
         cap._resampler = type("Passthrough", (), {"resample_chunk": staticmethod(lambda pcm: pcm)})()
+        cap._queue_lock = threading.Lock()
+        cap._backlog = None
+        cap.spilled_sec = 0.0
         return cap, audio
 
     def test_old_audio_is_dropped_once_the_limit_is_reached(self):
@@ -206,6 +217,66 @@ class CaptureQueueTest(unittest.TestCase):
         self.assertEqual(cap.dropped_sec, 0.0)
         self.assertAlmostEqual(cap._queued_sec, 0.0, places=6)
 
+    def test_old_audio_moves_to_the_recovery_buffer_before_it_is_dropped(self):
+        cap, audio = self._capture()
+        cap._backlog = audio.DiskAudioBacklog(SR, 180)
+        block = np.zeros(int(SR * 0.05), dtype=np.int16).tobytes()
+        try:
+            for i in range(int(120 / 0.05)):
+                cap._callback(block, 0, None, None)
+                if i % 20 == 0:
+                    cap.spill_once()  # what the writer thread does while the engine is busy
+            cap.spill_once()
+            chunks, seconds = [], 0.0
+            while True:
+                slice_ = cap.take(10)
+                if not slice_:
+                    break
+                chunks += slice_
+                seconds += sum(c.size for c in slice_) / SR
+        finally:
+            cap._backlog.close()
+        self.assertEqual(cap.dropped_sec, 0.0, "audio was dropped although the buffer had room")
+        self.assertGreater(cap.spilled_sec, 50)
+        self.assertAlmostEqual(seconds, 120, places=1, msg="audio was lost on its way through the buffer")
+
+    def test_the_audio_callback_never_writes_to_disk(self):
+        """The sound card's callback must stay quick, or playback itself starts to stutter."""
+        cap, audio = self._capture()
+        cap._backlog = audio.DiskAudioBacklog(SR, 180)
+        writes = []
+        cap._backlog.append = lambda chunk: writes.append(chunk) or 0.0
+        block = np.zeros(int(SR * 0.05), dtype=np.int16).tobytes()
+        try:
+            for _ in range(int(90 / 0.05)):
+                cap._callback(block, 0, None, None)
+            self.assertEqual(writes, [], "the callback wrote to the recovery buffer itself")
+            cap.spill_once()
+            self.assertTrue(writes, "the writer thread's pass moved nothing out of memory")
+        finally:
+            cap._backlog.close()
+
+    def test_the_buffer_is_handed_over_in_slices_and_in_order(self):
+        cap, audio = self._capture()
+        cap._backlog = audio.DiskAudioBacklog(SR, 180)
+        try:
+            for value in range(1, 121):  # 120 seconds, each second marked with its own number
+                cap._queue_audio(np.full(SR, float(value), dtype=np.float32))
+            cap.spill_once()
+            order, rounds = [], 0
+            while rounds < 200:
+                rounds += 1
+                chunks = cap.take(10)
+                if not chunks:
+                    break
+                seconds = sum(c.size for c in chunks) / SR
+                self.assertLessEqual(seconds, 11, "more audio was handed over than was asked for")
+                order += [float(c[0]) for c in chunks]
+            self.assertEqual(order, sorted(order), "audio came back out of order")
+            self.assertEqual(len(order), 120, "audio was lost between memory and disk")
+        finally:
+            cap._backlog.close()
+
 
 class RecognitionBacklogTest(unittest.TestCase):
     """When recognition is slower than the speaker, audio must not pile up for ever."""
@@ -222,8 +293,17 @@ class RecognitionBacklogTest(unittest.TestCase):
         e._transcribe = transcribe
         return e, events
 
-    def test_audio_is_skipped_instead_of_falling_further_behind(self):
+    def test_only_as_much_audio_as_fits_is_taken_from_the_capture(self):  # noqa: D401
+        """The rest waits in the capture's buffer, so speech detection never scans minutes of audio."""
         e, events = self._engine_with_slow_recognition(90, 0.5)
+        capture, requests = e._capture, []
+        original_take = capture.take
+
+        def take(max_seconds=None):
+            requests.append(max_seconds)
+            return original_take(max_seconds)
+
+        capture.take = take
         thread = threading.Thread(target=e._loop, daemon=True)
         thread.start()
         time.sleep(6)
@@ -233,11 +313,41 @@ class RecognitionBacklogTest(unittest.TestCase):
         ids = [sid for sid, *_ in events["final"]]
         self.assertEqual(ids, sorted(ids), "captions came out in the wrong order")
         self.assertTrue(events["final"], "no captions at all")
-        lengths = [float(text.split()[2]) for _, text, _ in events["final"]]
+        lengths = [float(text.split()[2]) for _, text, *_ in events["final"]]
         limit = max(20.0, 2 * e.cfg["max_segment_sec"]) + 1
         self.assertTrue(all(length <= limit for length in lengths),
-                        f"a caption covered more audio than the backlog limit: {lengths}")
-        self.assertTrue(any("behind" in s for s in events["status"]), "the user was not told")
+                        f"the engine held more audio than its limit: {lengths}")
+        self.assertTrue(requests, "the engine never asked the capture for audio")
+        self.assertTrue(all(asked is not None and asked <= limit for asked in requests),
+                        "the engine asked for unbounded audio")
+        self.assertTrue(all(asked <= limit for asked in requests), f"asked for too much: {max(requests)}")
+
+    def test_the_user_is_told_when_the_catch_up_buffer_overflows(self):
+        e, events = self._engine_with_slow_recognition(30, 0.2)
+        e._capture.dropped_sec = 0.0
+        thread = threading.Thread(target=e._loop, daemon=True)
+        thread.start()
+        time.sleep(1)
+        e._capture.dropped_sec = 12.0  # the capture had to throw audio away
+        time.sleep(2)
+        e._stop.set()
+        thread.join(timeout=5)
+        self.assertTrue(any("behind" in status for status in events["status"]),
+                        f"the user was not told: {events['status']}")
+
+    def test_the_engine_trims_its_own_buffer_if_a_capture_hands_over_too_much(self):
+        e, events = self._engine_with_slow_recognition(200, 0.5)
+        capture = e._capture
+        capture.take = lambda max_seconds=None: FakeCapture.take(capture, None)  # ignores the limit
+        thread = threading.Thread(target=e._loop, daemon=True)
+        thread.start()
+        time.sleep(4)
+        e._stop.set()
+        thread.join(timeout=5)
+        lengths = [float(text.split()[2]) for _, text, *_ in events["final"]]
+        limit = max(20.0, 2 * e.cfg["max_segment_sec"]) + 1
+        self.assertTrue(all(length <= limit for length in lengths),
+                        f"a caption covered more audio than the engine's limit: {lengths}")
 
     def test_speech_regions_still_match_the_audio_after_skipping(self):
         """After old audio is dropped, the engine must not cut captions with the old positions."""
@@ -246,10 +356,10 @@ class RecognitionBacklogTest(unittest.TestCase):
         real_finalize = e._finalize
         problems = []
 
-        def finalize(seg, speech, offset):
+        def finalize(seg, speech, offset, source="system"):
             if len(seg) == 0 or any(region["end"] - offset > len(seg) for region in speech):
                 problems.append((len(seg), speech, offset))
-            return real_finalize(seg, speech, offset)
+            return real_finalize(seg, speech, offset, source)
 
         e._finalize = finalize
         thread = threading.Thread(target=e._loop, daemon=True)
@@ -278,6 +388,43 @@ class RecognitionBacklogTest(unittest.TestCase):
         self.assertLessEqual(len(calls), allowed,
                              f"speech detection ran {len(calls)} times in {elapsed:.1f} s")
         self.assertGreater(len(calls), 1, "speech detection did not run at all")
+
+
+class AudioStreamTest(unittest.TestCase):
+    """One source's own buffer: it only ever asks for what it has room for."""
+
+    def _stream(self, held_seconds=0.0):
+        from echosub.engine_sources import AudioStream
+
+        e, _ = make_engine(max_segment_sec=5.0)
+        capture = FakeCapture(30)
+        asked = []
+        real_take = capture.take
+        capture.take = lambda max_seconds=None: (asked.append(max_seconds), real_take(max_seconds))[1]
+        stream = AudioStream(e, capture, "system")
+        stream.buf = np.zeros(int(SR * held_seconds), dtype=np.float32)
+        return stream, asked
+
+    def test_it_asks_for_the_whole_buffer_when_it_holds_nothing(self):
+        stream, asked = self._stream()
+        stream.pull()
+        self.assertEqual(asked, [stream.max_buffer])
+
+    def test_it_asks_for_less_when_it_is_already_holding_audio(self):
+        stream, asked = self._stream(held_seconds=8)
+        stream.pull()
+        self.assertAlmostEqual(asked[0], stream.max_buffer - 8, places=1)
+
+    def test_it_asks_for_nothing_when_it_is_full(self):
+        stream, asked = self._stream(held_seconds=40)
+        self.assertEqual(stream.pull(), 0.0)
+        self.assertEqual(asked, [], "it asked for audio it has no room for")
+
+    def test_pausing_empties_the_buffer(self):
+        stream, _ = self._stream(held_seconds=8)
+        stream.clear()
+        self.assertEqual(len(stream.buf), 0)
+        self.assertTrue(stream.vad_dirty)
 
 
 class LightModeTest(unittest.TestCase):

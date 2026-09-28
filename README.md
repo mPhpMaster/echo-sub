@@ -126,6 +126,10 @@ Settings, models, logs and transcripts are kept in `%LOCALAPPDATA%\EchoSub`. The
 - **Translation language:** menu → *Translation language*, or *Settings… → Language & Engine* for all languages.
 - **Move / resize:** menu → *Adjust window position and size*, then drag the box or its corner; or pick a spot under *Settings… → Position & Alignment*.
 - **Light mode:** tray menu → *Light mode*, for when a game or another program is using the GPU: captions arrive sooner with a smaller speech model.
+- **Delayed captions:** *Settings… → Advanced → Catch-up audio buffer* temporarily keeps delayed audio on disk so captions can recover after a short slowdown. It does not run another AI model or create a permanent recording.
+- **Updates:** the installed app checks once a day for an official release. Use *Check for updates…* from the tray menu to check now; EchoSub opens the installer only after you choose it.
+- **Your microphone:** *Settings… → Language & Engine → Microphone* captions what you say as well as what the PC plays, in its own colour and with your own label.
+- **Voice commands:** tray menu → *Voice commands* (off by default). Say the wake word ("echo sub") and then, for example, "open chrome", "close paint" or "pause captions" — in English, Arabic, French, Spanish, German, Turkish, Russian, Chinese and more. Only a fixed list of everyday apps and EchoSub's own controls can be reached this way.
 - **Copy a caption:** hover the box and click the copy button next to a line.
 - **Bigger / smaller:** hold **Shift** and turn the mouse wheel over the box (also *Settings… → Position & Alignment → Size (zoom)*).
 - **Lock:** menu → *Lock window (click-through)* makes clicks pass through the box; unlock from the tray icon or `Ctrl+Alt+L`.

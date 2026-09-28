@@ -1,10 +1,7 @@
 # SPDX-License-Identifier: GPL-3.0-only
 # Copyright (C) 2026 Mohammad Al-Safadi
-import re
-
-import shiboken6
-from PySide6.QtCore import QEvent, QObject, QSize, QStringListModel, Qt, QTimer, Signal
-from PySide6.QtGui import QColor, QFont, QGuiApplication, QIcon, QPainter, QPixmap
+from PySide6.QtCore import QSize, Qt, Signal
+from PySide6.QtGui import QColor, QFont, QGuiApplication
 from PySide6.QtWidgets import (
     QButtonGroup, QCheckBox, QColorDialog, QComboBox, QCompleter, QDialog, QDialogButtonBox, QDoubleSpinBox,
     QFontComboBox, QFormLayout, QGridLayout, QGroupBox, QHBoxLayout, QLabel, QMessageBox, QPushButton,
@@ -12,165 +9,16 @@ from PySide6.QtWidgets import (
 )
 
 from . import APP_NAME, audio, config, history, hotkeys, languages
+from .settings_microphone import MicrophoneGroupMixin
+from .settings_tabs import NUMBER_WIDTH, AdvancedTabMixin
+from .settings_widgets import (
+    SEARCH_ALIAS_ROLE, ColorButton, SearchableComboBox, _scrollable, _sorted_languages, fit_to_screen,
+    make_searchable, move_onto_screen, position_icon,
+)
 from .overlay import SCALE_MAX, SCALE_MIN, SCALE_STEP
 
 
-def _sorted_languages():
-    return sorted(languages.LANGUAGES, key=languages.name)
-
-
-# Extra text an item can be found by (e.g. a language's Arabic name) without showing it
-SEARCH_ALIAS_ROLE = Qt.UserRole + 1
-
-
-class SearchableComboBox(QComboBox):
-    """Dropdown you can type into: the list filters to items containing the typed text."""
-
-    def __init__(self, parent=None):
-        super().__init__(parent)
-        make_searchable(self)
-
-
-_ARABIC_DIACRITICS = re.compile("[\u064B-\u0652\u0670\u0640]")  # harakat, dagger alif, tatweel
-_ARABIC_LETTERS = str.maketrans({"أ": "ا", "إ": "ا", "آ": "ا", "ٱ": "ا", "ة": "ه", "ى": "ي", "ؤ": "و", "ئ": "ي"})
-
-
-def screen_for(widget):
-    from PySide6.QtGui import QCursor
-
-    return (QGuiApplication.screenAt(QCursor.pos()) or widget.screen()
-            or QGuiApplication.primaryScreen())
-
-
-def fit_to_screen(window, preferred_width, preferred_height):
-    """Open at a comfortable size, but never bigger than the screen it appears on."""
-    available = screen_for(window).availableGeometry()
-    width = min(max(preferred_width, window.sizeHint().width()), available.width() - 40)
-    height = min(max(preferred_height, window.sizeHint().height()), available.height() - 60)
-    window.setMinimumWidth(min(480, width))
-    window.setMaximumSize(available.width(), available.height())
-    window.resize(width, height)
-
-
-def move_onto_screen(window):
-    """Pull a window back if it opens partly outside the screen."""
-    available = screen_for(window).availableGeometry()
-    frame = window.frameGeometry()
-    x = min(max(frame.x(), available.left()), available.right() + 1 - frame.width())
-    y = min(max(frame.y(), available.top()), available.bottom() + 1 - frame.height())
-    if (x, y) != (frame.x(), frame.y()):
-        window.move(max(available.left(), x), max(available.top(), y))
-
-
-def _scrollable(widget):
-    """The tab's contents in a scroll area that grows with the window."""
-    area = QScrollArea()
-    area.setWidgetResizable(True)
-    area.setFrameShape(QScrollArea.NoFrame)
-    area.setWidget(widget)
-    return area
-
-
-def normalize_search(text):
-    """Case-, hamza- and diacritic-insensitive form, so "ايطال" matches "الإيطالية"."""
-    return _ARABIC_DIACRITICS.sub("", text.casefold()).translate(_ARABIC_LETTERS)
-
-
-def make_searchable(combo):
-    combo.setEditable(True)
-    combo.setInsertPolicy(QComboBox.NoInsert)
-    edit = combo.lineEdit()
-    edit.setPlaceholderText("Type to search…")
-
-    # Our own match list instead of QCompleter's filtering, which can't ignore hamza/diacritics
-    matches = QStringListModel(edit)
-    completer = QCompleter(matches, edit)
-    completer.setCompletionMode(QCompleter.UnfilteredPopupCompletion)
-    edit.setCompleter(completer)
-
-    def update_matches(text):
-        needle = normalize_search(text.strip())
-        items = []
-        for i in range(combo.count()):
-            label = combo.itemText(i)
-            haystack = normalize_search(f"{label} {combo.itemData(i, SEARCH_ALIAS_ROLE) or ''}")
-            if needle in haystack:
-                items.append(label)
-        matches.setStringList(items)
-        if matches.rowCount():
-            completer.complete()
-        else:
-            completer.popup().hide()
-
-    def choose(text):
-        index = combo.findText(text, Qt.MatchExactly)
-        if index >= 0:
-            combo.setCurrentIndex(index)
-
-    def restore_text():
-        # Typed text that isn't an item -> fall back to the selected item
-        if not shiboken6.isValid(edit) or not shiboken6.isValid(combo):
-            return  # fired while the dialog is being destroyed
-        if combo.findText(edit.text(), Qt.MatchExactly) < 0:
-            edit.setText(combo.itemText(combo.currentIndex()))  # currentText() would echo the typed text
-
-    edit.textEdited.connect(update_matches)
-    completer.activated[str].connect(choose)
-    edit.editingFinished.connect(restore_text)
-    edit.installEventFilter(_SelectAllOnFocus(edit))
-
-
-class _SelectAllOnFocus(QObject):
-    def eventFilter(self, obj, event):
-        if event.type() == QEvent.FocusIn:
-            QTimer.singleShot(0, obj.selectAll)  # typing replaces the current value right away
-        return False
-
-
-def position_icon(row, col):
-    """A tiny screen with the caption box drawn where this preset puts it."""
-    w, h = 28, 18
-    pm = QPixmap(w, h)
-    pm.fill(Qt.transparent)
-    p = QPainter(pm)
-    p.setRenderHint(QPainter.Antialiasing)
-    p.setPen(QColor("#9E9E9E"))
-    p.setBrush(Qt.NoBrush)
-    p.drawRoundedRect(1, 1, w - 2, h - 2, 3, 3)
-    bw, bh = 12, 4
-    x = {"left": 4, "center": (w - bw) // 2, "right": w - bw - 4}[col]
-    y = {"top": 4, "middle": (h - bh) // 2, "bottom": h - bh - 4}[row]
-    p.setPen(Qt.NoPen)
-    p.setBrush(QColor("#E0E0E0"))
-    p.drawRoundedRect(x, y, bw, bh, 1.5, 1.5)
-    p.end()
-    return QIcon(pm)
-
-
-class ColorButton(QPushButton):
-    changed = Signal()
-
-    def __init__(self, color, text=True):
-        super().__init__()
-        self.show_text = text
-        self.setMinimumWidth(36)
-        self.set_color(color)
-        self.clicked.connect(self._pick)
-
-    def set_color(self, color):
-        self.color = color
-        self.setText(color.upper() if self.show_text else "")
-        fg = "#000" if QColor(color).lightness() > 128 else "#fff"
-        self.setStyleSheet(f"background:{color}; color:{fg}; border:1px solid #666; padding:4px;")
-
-    def _pick(self):
-        c = QColorDialog.getColor(QColor(self.color), self)
-        if c.isValid():
-            self.set_color(c.name())
-            self.changed.emit()
-
-
-class SettingsDialog(QDialog):
+class SettingsDialog(AdvancedTabMixin, MicrophoneGroupMixin, QDialog):
     preview = Signal(dict)  # emitted on every change so the overlay can show it live
 
     def __init__(self, cfg, parent=None):
@@ -211,7 +59,11 @@ class SettingsDialog(QDialog):
     # ---- tabs --------------------------------------------------------------
     def _language_tab(self, cfg):
         w = QWidget()
-        f = QFormLayout(w)
+        outer = QVBoxLayout(w)
+        form = QWidget()
+        f = QFormLayout(form)
+        f.setContentsMargins(0, 0, 0, 0)
+        outer.addWidget(form)
         self.target = SearchableComboBox()
         self.source = SearchableComboBox()
         self.source.addItem("Auto-detect (any language)", "auto")
@@ -264,6 +116,8 @@ class SettingsDialog(QDialog):
         self.arabic_diacritics.setToolTip("Adds harakat (fatha, damma, kasra, shadda, sukun, tanween) to Arabic "
                                           "captions. The first use downloads a 70 MB model.")
         f.addRow("Arabic diacritics (تشكيل):", self.arabic_diacritics)
+        outer.addWidget(self._microphone_group(cfg))
+        outer.addStretch(1)
         return w
 
     def _text_tab(self, cfg):
@@ -322,6 +176,7 @@ class SettingsDialog(QDialog):
         self.original_gap = self._spin(0, 60, cfg["original_gap"], " px")
         self.bg_opacity = QSlider(Qt.Horizontal)
         self.bg_opacity.setRange(0, 255)
+        self.bg_opacity.setMinimumWidth(220)
         self.bg_opacity.setValue(cfg["bg_opacity"])
         self.max_lines = self._spin(1, 8, cfg["max_lines"])
         self.clear_after = self._spin(0, 120, cfg["clear_after_sec"], " s")
@@ -330,7 +185,12 @@ class SettingsDialog(QDialog):
         f.addRow("Space between caption lines:", self.entry_spacing)
         f.addRow("Space between original and translation:", self.original_gap)
         f.addRow("Lines shown:", self.max_lines)
-        f.addRow("Background opacity:", self.bg_opacity)
+        opacity_value = QLabel()
+        opacity_value.setMinimumWidth(52)
+        show_opacity = lambda value: opacity_value.setText(f"{round(value / 255 * 100)} %")  # noqa: E731
+        self.bg_opacity.valueChanged.connect(show_opacity)
+        show_opacity(self.bg_opacity.value())
+        f.addRow("Background opacity:", self._row(self.bg_opacity, opacity_value))
         f.addRow("Hide window after silence of:", self.clear_after)
         v.addWidget(g)
         return w
@@ -384,8 +244,8 @@ class SettingsDialog(QDialog):
         f.addRow("Screen:", self.box_screen)
         self.box_margin = self._spin(0, 400, cfg["box_margin"], " px")
         f.addRow("Distance from screen edge:", self.box_margin)
-        self.box_width = self._spin(20, 100, cfg["box_width_pct"], " % of screen width")
-        f.addRow("Box width:", self.box_width)
+        self.box_width = self._spin(20, 100, cfg["box_width_pct"], " %")
+        f.addRow("Box width (of the screen):", self.box_width)
         self.box_autosize = QCheckBox("Autosize: shrink and grow the box to fit its text")
         self.box_autosize.setToolTip("The box is only as wide as its longest line and as tall as its lines. "
                                      "The box width above (or the dragged width for Custom) becomes the maximum.")
@@ -485,6 +345,7 @@ class SettingsDialog(QDialog):
         f.addRow("Speaker colors:", palette)
 
         self.speaker_threshold = QDoubleSpinBox()
+        self.speaker_threshold.setMaximumWidth(NUMBER_WIDTH)
         self.speaker_threshold.setRange(0.3, 0.85)
         self.speaker_threshold.setSingleStep(0.05)
         self.speaker_threshold.setValue(cfg["speaker_threshold"])
@@ -494,39 +355,6 @@ class SettingsDialog(QDialog):
         hint.setWordWrap(True)
         hint.setStyleSheet("color: gray;")
         f.addRow(hint)
-        return w
-
-    def _advanced_tab(self, cfg):
-        w = QWidget()
-        f = QFormLayout(w)
-        self.vad = QDoubleSpinBox()
-        self.vad.setRange(0.1, 0.9)
-        self.vad.setSingleStep(0.05)
-        self.vad.setValue(cfg["vad_threshold"])
-        self.silence = QDoubleSpinBox()
-        self.silence.setRange(0.2, 3.0)
-        self.silence.setSingleStep(0.1)
-        self.silence.setSuffix(" s")
-        self.silence.setValue(cfg["silence_sec"])
-        self.max_seg = QDoubleSpinBox()
-        self.max_seg.setRange(3.0, 28.0)
-        self.max_seg.setSuffix(" s")
-        self.max_seg.setValue(cfg["max_segment_sec"])
-        f.addRow("Speech detection threshold (lower = more sensitive):", self.vad)
-        f.addRow("Silence that ends a sentence:", self.silence)
-        f.addRow("Maximum sentence length:", self.max_seg)
-
-        self.save_transcripts = QCheckBox("Save every caption to a transcript file")
-        self.save_transcripts.setChecked(cfg["save_transcripts"])
-        open_folder = QPushButton("Open transcripts folder")
-        open_folder.clicked.connect(history.open_transcripts_folder)
-        f.addRow(self._row(self.save_transcripts, open_folder))
-
-        keys = ", ".join(f"{hotkeys.label(k)} {what}" for k, what in
-                         (("toggle_captions", "show/hide"), ("pause", "pause"), ("lock", "lock")))
-        self.global_hotkeys = QCheckBox(f"Global hotkeys: {keys}")
-        self.global_hotkeys.setChecked(cfg["global_hotkeys"])
-        f.addRow(self.global_hotkeys)
         return w
 
     def _restore_defaults(self):
@@ -552,6 +380,7 @@ class SettingsDialog(QDialog):
         s.setValue(value)
         if suffix:
             s.setSuffix(suffix)
+        s.setMaximumWidth(NUMBER_WIDTH)
         return s
 
     @staticmethod
@@ -592,6 +421,7 @@ class SettingsDialog(QDialog):
             "source_lang": self.source.currentData(),
             "whisper_model": self.model.currentData(),
             "light_mode": self.light_mode.isChecked(),
+            **self._microphone_values(),
             "translator": self.translator.currentData(),
             "device": self.device.currentData(),
             "audio_device": self.audio_dev.currentData(),
@@ -636,6 +466,11 @@ class SettingsDialog(QDialog):
             "vad_threshold": round(self.vad.value(), 2),
             "silence_sec": round(self.silence.value(), 2),
             "max_segment_sec": round(self.max_seg.value(), 1),
+            "audio_backlog_sec": self.audio_backlog.value() * 60,
+            "audio_backlog_dir": self.audio_backlog_dir.text().strip(),
             "save_transcripts": self.save_transcripts.isChecked(),
+            "update_checks": self.update_checks.isChecked(),
+            "voice_commands": self.voice_commands.isChecked(),
+            "voice_command_wake": self.voice_wake.text().strip() or config.DEFAULTS["voice_command_wake"],
             "global_hotkeys": self.global_hotkeys.isChecked(),
         }

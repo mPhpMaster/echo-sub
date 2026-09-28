@@ -64,6 +64,11 @@ DEFAULTS = {
     "show_original": True,
     "show_partial": True,
     "light_mode": False,                  # faster on a busy PC: Small speech model, no live text
+    "mic_enabled": False,                 # also caption what your microphone hears
+    "mic_device": "default",              # microphone to use; "default" follows Windows
+    "mic_label": "You",                   # shown on the microphone's captions
+    "mic_color": "#8AD7FF",               # their colour in the caption box
+    "mic_commands": True,                 # spoken commands may come from the microphone too
     "font_family": "Segoe UI",
     # translation text
     "font_size": 28,
@@ -106,7 +111,13 @@ DEFAULTS = {
     "vad_threshold": 0.45,
     "silence_sec": 0.6,
     "max_segment_sec": 10.0,
+    "audio_backlog_sec": 600,           # temporary disk buffer used to catch up after slow recognition
+    "audio_backlog_dir": "",            # where to write it; empty = the Windows temp folder
     "save_transcripts": False,
+    "update_checks": True,
+    "voice_commands": False,              # spoken commands from a fixed, harmless list (off by default)
+    "voice_command_wake": "echo sub",     # a command only counts after this wake word
+    "last_update_check": 0,
     "global_hotkeys": True,
     "click_through": False,
     "overlay_enabled": True,
@@ -151,7 +162,8 @@ BOX_ROWS = ("top", "middle", "bottom")
 BOX_COLUMNS = ("left", "center", "right")
 
 # Settings that require reloading models or reopening the audio stream
-ENGINE_KEYS = ("whisper_model", "device", "translator", "audio_device", "speaker_detection", "light_mode")
+ENGINE_KEYS = ("whisper_model", "device", "translator", "audio_device", "speaker_detection", "light_mode",
+               "audio_backlog_sec", "audio_backlog_dir", "mic_enabled", "mic_device")
 
 SPEAKER_COLOR_TARGETS = {
     "both": "Translation and original text",

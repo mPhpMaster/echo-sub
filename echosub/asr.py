@@ -8,15 +8,10 @@ import re
 import ctranslate2
 from faster_whisper import WhisperModel
 
+from .transcript_quality import is_hallucination, is_implausibly_fast
+
 DEBUG = bool(os.environ.get("ECHOSUB_DEBUG"))
 log = logging.getLogger(__name__)
-
-# Phrases Whisper tends to hallucinate on music / silence
-HALLUCINATIONS = [
-    "thank you for watching", "thanks for watching", "subscribe", "amara.org",
-    "subtitles by", "ترجمة نانسي قنقر", "اشتركوا في القناة", "شكرا للمشاهدة",
-    "شكراً للمشاهدة", "ご視聴ありがとうございました", "字幕", "продолжение следует",
-]
 
 
 def pick_compute_type(device):
@@ -66,25 +61,17 @@ class Transcriber:
                 log.debug("seg dur=%.1fs lang=%s:%.2f nsp=%.2f lp=%.2f cr=%.2f %r", len(audio) / 16000,
                           info.language, info.language_probability, seg.no_speech_prob, seg.avg_logprob,
                           seg.compression_ratio, seg.text)
-            if seg.no_speech_prob > 0.6 and seg.avg_logprob < -0.8:
+            # A slightly stricter joint gate than Whisper's built-in filter.  It does not reject
+            # quiet real speech merely because one of the two signals is uncertain.
+            if seg.no_speech_prob > 0.5 and seg.avg_logprob < -0.6:
                 continue
             if seg.compression_ratio > 2.6:
                 continue
             parts.append(seg.text.strip())
         text = re.sub(r"\s+", " ", " ".join(parts)).strip()
-        if is_hallucination(text):
+        if is_hallucination(text) or is_implausibly_fast(text, len(audio) / 16000):
             text = ""
         # Very short clips with an unsure language guess are usually noise read as "Thank you."
         if language is None and len(audio) < 16000 * 1.2 and info.language_probability < 0.5:
             text = ""
         return text, info.language, info.language_probability, info.all_language_probs
-
-
-def is_hallucination(text):
-    t = text.lower().strip(" .!?,،")
-    if not t:
-        return True
-    if len(t) < 40 and any(h in t for h in HALLUCINATIONS):
-        return True
-    # Only punctuation / music symbols
-    return not re.search(r"\w", t)
