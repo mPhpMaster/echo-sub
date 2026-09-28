@@ -5,6 +5,8 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and 
 
 ## [Unreleased]
 
+## [1.2.0] — 2026-09-28
+
 ### Added
 - Saying the wake word on its own switches captions off, and again to bring them back. The explicit "pause captions" and "resume captions" still work, and a name inside an ordinary sentence is still ignored.
 - "Open YouTube" and "open Google", in English and Arabic, opening those two fixed addresses in your own browser. The addresses live in the code; nothing is ever built from what was said.
