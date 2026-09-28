@@ -10,7 +10,9 @@ from PySide6.QtGui import (
 )
 from PySide6.QtWidgets import QSizePolicy, QToolTip, QVBoxLayout, QWidget
 
-from . import languages
+from . import APP_NAME, languages
+
+REPLY_COLOR = "#B7F7C6"  # the app's own written answers, told apart from anything anyone said
 
 MERGE_WINDOW_SEC = 6.0
 MERGE_MAX_CHARS = 140
@@ -68,8 +70,9 @@ def resolve_alignment(align, rtl):
 class Badge:
     """Language label drawn next to a caption: optional flag and optional text (code or name)."""
 
-    def __init__(self, lang, kind, position, font, extra=""):
+    def __init__(self, lang, kind, position, font, extra="", prominent=False):
         self.position = position
+        self.prominent = prominent
         self.flag = _flag_pixmap(lang) if kind.startswith("flag") else None
         if kind in ("code", "flag_code") or (kind == "flag" and self.flag is None):
             self.text = languages.code_label(lang)  # a language without a flag image shows its code instead
@@ -78,24 +81,31 @@ class Badge:
         else:
             self.text = ""
         if extra:  # the microphone's label ("You"), so it is clear who is talking
-            self.text = f"{extra} {self.text}".strip()
+            self.text = f"{extra} \u00b7 {self.text}".strip(" \u00b7")
         self.font = QFont(font)
-        self.font.setPointSizeF(max(7.0, font.pointSizeF() * 0.8))
+        scale = 1.0 if prominent else 0.8
+        self.font.setPointSizeF(max(7.0, font.pointSizeF() * scale))
         self.font.setBold(True)
         fm = QFontMetricsF(self.font)
         self.gap = fm.averageCharWidth() * 0.6
+        self.padding = max(3.0, fm.height() * 0.22)
         self.text_width = fm.horizontalAdvance(self.text) if self.text else 0.0
         self.text_height = fm.height()
         self.flag_height = round(fm.height() * 0.8)
         self.flag_width = (round(self.flag.width() * self.flag_height / self.flag.height()) if self.flag else 0)
-        self.width = self.flag_width + self.text_width + (self.gap * 0.6 if self.flag and self.text else 0)
-        self.height = max(self.flag_height, self.text_height if self.text else 0)
+        between = self.gap * 0.6 if self.flag and self.text else 0
+        self.width = self.flag_width + self.text_width + between + self.padding * 2
+        self.height = max(self.flag_height, self.text_height if self.text else 0) + self.padding * 2
 
     def key(self):
-        return (self.position, self.text, id(self.flag), self.font.toString())
+        return (self.position, self.text, id(self.flag), self.font.toString(), self.prominent)
 
     def draw(self, p, x, y, color):
         cy = y + self.height / 2
+        p.setPen(Qt.NoPen)
+        p.setBrush(QColor(0, 0, 0, int(color.alpha() * (0.60 if self.prominent else 0.42))))
+        p.drawRoundedRect(QRectF(x, y, self.width, self.height), self.height * 0.28, self.height * 0.28)
+        x += self.padding
         if self.flag is not None:
             target = QRectF(x, cy - self.flag_height / 2, self.flag_width, self.flag_height)
             p.setRenderHint(QPainter.SmoothPixmapTransform)
@@ -392,9 +402,13 @@ class CaptionLine(QWidget):
         live = partial
 
         trans_color, orig_color = cfg["text_color"], cfg["original_color"]
-        from_mic = entry.get("source") == "mic"
+        source = entry.get("source", "system")
+        from_mic = source == "mic"
+        from_reply = source == "reply"
         if from_mic and cfg.get("mic_color"):
             trans_color = orig_color = cfg["mic_color"]
+        elif from_reply:
+            trans_color = orig_color = QColor(REPLY_COLOR)
         spk = entry.get("speaker")
         if spk is not None and cfg["speaker_detection"] and cfg["speaker_colors"]:
             spk_color = cfg["speaker_colors"][spk % len(cfg["speaker_colors"])]
@@ -415,13 +429,16 @@ class CaptionLine(QWidget):
 
         def badge(font, text_lang, which):
             kind = cfg[f"{which}_label"]
-            label = cfg.get("mic_label", "") if from_mic else ""
+            label = cfg.get("mic_label", "") if from_mic else (APP_NAME if from_reply else "")
             if kind == "none" and not label:
                 return None
             if not text_lang and not label:
                 return None
-            return Badge(text_lang, kind if kind != "none" else "none", cfg[f"{which}_label_position"], font,
-                         extra=label)
+            # A microphone speaker label is always shown as its own, prominent heading.  It must
+            # not look joined to the transcript or translation beneath it.
+            position = "above" if from_mic and label else cfg[f"{which}_label_position"]
+            return Badge(text_lang, kind if kind != "none" else "none", position, font,
+                         extra=label, prominent=True)
 
         same_language = bool(translated) and original == translated and not pending
         if cfg["show_original"] and original and not same_language:

@@ -44,6 +44,13 @@ class WakeWordTest(unittest.TestCase):
         self.assertEqual(voice_commands.find("إيكو صب افتح الحاسبة")["key"], "open_calculator")
         self.assertEqual(voice_commands.find("ايكو صب أغلق الحاسبة")["key"], "close_calculator")
 
+    def test_pc_is_a_built_in_wake_word_in_english_and_arabic(self):
+        self.assertEqual(voice_commands.find("PC open calculator")["key"], "open_calculator")
+        self.assertEqual(voice_commands.find("بي سي افتح الحاسبة")["key"], "open_calculator")
+
+    def test_help_is_available_after_a_wake_word(self):
+        self.assertEqual(voice_commands.find("alexa help")["key"], "voice_help")
+
     def test_a_short_wake_word_is_not_heard_inside_other_words(self):
         """Someone may pick a wake word as short as "da"; ordinary speech must not trigger it."""
         self.assertEqual(voice_commands.find("da open calculator", ("da",))["key"], "open_calculator")
@@ -55,6 +62,30 @@ class WakeWordTest(unittest.TestCase):
     def test_a_custom_wake_word_is_used(self):
         self.assertEqual(voice_commands.find("computer open notepad", ("computer",))["key"], "open_notepad")
         self.assertIsNone(voice_commands.find("computer open notepad", ("jarvis",)))
+
+    def test_a_custom_phrase_only_maps_to_an_approved_action(self):
+        custom = [{"phrase": "calculator please", "command": "open_calculator"}]
+        found = voice_commands.find_detail("echo sub calculator please", custom_commands=custom)[0]
+        self.assertEqual(found["key"], "open_calculator")
+        unsafe = [{"phrase": "do it", "command": "open_terminal"}]
+        self.assertIsNone(voice_commands.find_detail("echo sub do it", custom_commands=unsafe)[0])
+
+    def test_key_presses_are_disabled_unless_explicitly_allowed(self):
+        self.assertIsNone(voice_commands.find_detail("echo sub press a b c")[0])
+        found = voice_commands.find_detail("echo sub press a b c", allow_key_presses=True)[0]
+        self.assertEqual(found["target"], ("A", "B", "C"))
+        self.assertIsNone(voice_commands.find_detail("echo sub press ctrl c", allow_key_presses=True)[0])
+
+    def test_media_commands_accept_short_arabic_and_english_phrases(self):
+        self.assertEqual(voice_commands.find("maya stop music", ("maya",))["key"], "media_stop")
+        self.assertEqual(voice_commands.find("مايا ارفع الصوت", ("مايا",))["key"], "media_volume_up")
+        self.assertEqual(voice_commands.find("maya next song", ("maya",))["key"], "media_next")
+
+    def test_short_arabic_commands_control_echosub_without_hijacking_media(self):
+        self.assertEqual(voice_commands.find("مايا وقف", ("مايا",))["key"], "pause_captions")
+        self.assertEqual(voice_commands.find("مايا طفي", ("مايا",))["key"], "pause_captions")
+        self.assertEqual(voice_commands.find("مايا اشتغل", ("مايا",))["key"], "resume_captions")
+        self.assertEqual(voice_commands.find("مايا وقف الموسيقى", ("مايا",))["key"], "media_stop")
 
 
 class OtherLanguagesTest(unittest.TestCase):
@@ -123,7 +154,7 @@ class HarmlessOnlyTest(unittest.TestCase):
     def test_the_list_holds_only_harmless_actions(self):
         for command in voice_commands.COMMANDS:
             with self.subTest(command=command["key"]):
-                self.assertIn(command["action"], ("open_app", "close_app", "app"))
+                self.assertIn(command["action"], ("open_app", "close_app", "app", "help", "media", "open_link"))
                 if command["action"] in ("open_app", "close_app"):
                     self.assertIn(command["target"], voice_commands.APPS)
 
@@ -217,6 +248,20 @@ class RunnerTest(unittest.TestCase):
         forged = {"key": "wipe_disk", "action": "open_app", "target": "calculator", "label": "x"}
         self.assertIsNone(self.runner.run(forged, now=0))
         self.assertEqual(self.launched, [])
+
+    def test_a_safe_key_sequence_uses_the_injected_key_presser(self):
+        pressed = []
+        runner = voice_commands.CommandRunner(key_presser=lambda keys: pressed.extend(keys))
+        command = voice_commands.find_detail("echo sub press a 2", allow_key_presses=True)[0]
+        self.assertEqual(runner.run(command, now=0), "Pressed A 2")
+        self.assertEqual(pressed, ["A", "2"])
+
+    def test_media_commands_use_the_injected_media_controller(self):
+        media = []
+        runner = voice_commands.CommandRunner(media_controller=media.append)
+        command = voice_commands.find("echo sub next song")
+        self.assertEqual(runner.run(command, now=0), "Next track")
+        self.assertEqual(media, ["next"])
 
 
 class SettingsTest(unittest.TestCase):

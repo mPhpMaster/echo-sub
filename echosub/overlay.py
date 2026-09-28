@@ -156,6 +156,13 @@ class CaptionOverlay(AnimationMixin, PlacementMixin, QWidget):
         self.last_update = now
         self.refresh()
 
+    def remove_caption(self, seg_id):
+        """Take one caption out again, used by the timed on-screen answers."""
+        kept = [e for e in self.entries if not all(s["id"] == seg_id for s in e["segments"])]
+        if len(kept) != len(self.entries):
+            self.entries = kept
+            self.refresh()
+
     def set_translation(self, seg_id, translated):
         for entry in self.entries:
             for segment in entry["segments"]:

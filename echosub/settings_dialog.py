@@ -11,6 +11,7 @@ from PySide6.QtWidgets import (
 from . import APP_NAME, audio, config, languages
 from .settings_microphone import MicrophoneGroupMixin
 from .settings_tabs import NUMBER_WIDTH, AdvancedTabMixin
+from .settings_voice_commands import VoiceCommandsTabMixin
 from .settings_widgets import (
     SEARCH_ALIAS_ROLE, ColorButton, SearchableComboBox, _scrollable, _sorted_languages, fit_to_screen,
     make_searchable, move_onto_screen, position_icon,
@@ -18,7 +19,7 @@ from .settings_widgets import (
 from .overlay import SCALE_MAX, SCALE_MIN, SCALE_STEP
 
 
-class SettingsDialog(AdvancedTabMixin, MicrophoneGroupMixin, QDialog):
+class SettingsDialog(VoiceCommandsTabMixin, AdvancedTabMixin, MicrophoneGroupMixin, QDialog):
     preview = Signal(dict)  # emitted on every change so the overlay can show it live
 
     def __init__(self, cfg, parent=None):
@@ -38,6 +39,7 @@ class SettingsDialog(AdvancedTabMixin, MicrophoneGroupMixin, QDialog):
         tabs.addTab(_scrollable(self._text_tab(cfg)), "Text && Colors")
         tabs.addTab(_scrollable(self._layout_tab(cfg)), "Position && Alignment")
         tabs.addTab(_scrollable(self._speakers_tab(cfg)), "Speakers")
+        tabs.addTab(_scrollable(self._commands_tab(cfg)), "Commands")
         tabs.addTab(_scrollable(self._advanced_tab(cfg)), "Advanced")
 
         buttons = QDialogButtonBox(
@@ -485,7 +487,6 @@ class SettingsDialog(AdvancedTabMixin, MicrophoneGroupMixin, QDialog):
             "audio_backlog_dir": self.audio_backlog_dir.text().strip(),
             "save_transcripts": self.save_transcripts.isChecked(),
             "update_checks": self.update_checks.isChecked(),
-            "voice_commands": self.voice_commands.isChecked(),
-            "voice_command_wake": self.voice_wake.text().strip() or config.DEFAULTS["voice_command_wake"],
+            **self.voice_command_values(),
             "global_hotkeys": self.global_hotkeys.isChecked(),
         }

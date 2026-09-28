@@ -15,7 +15,7 @@ from PySide6.QtWidgets import (
     QVBoxLayout, QWidget,
 )
 
-from . import config, history, hotkeys
+from . import history, hotkeys
 
 NUMBER_WIDTH = 120  # every spin box in the window is this wide, so the rows line up
 
@@ -56,7 +56,7 @@ class AdvancedTabMixin:
         v.addWidget(self._recognition_group(cfg))
         v.addWidget(self._catch_up_group(cfg))
         v.addWidget(self._transcripts_group(cfg))
-        v.addWidget(self._voice_group(cfg))
+        v.addWidget(self._hotkeys_group(cfg))
         v.addStretch(1)
         return w
 
@@ -119,20 +119,9 @@ class AdvancedTabMixin:
                       "It never downloads or installs anything by itself."))
         return group
 
-    def _voice_group(self, cfg):
-        group = QGroupBox("Voice commands and hotkeys")
+    def _hotkeys_group(self, cfg):
+        group = QGroupBox("Hotkeys")
         f = QFormLayout(group)
-        self.voice_commands = QCheckBox("Act on spoken commands from a fixed list")
-        self.voice_commands.setChecked(cfg.get("voice_commands", False))
-        self.voice_wake = QLineEdit(cfg.get("voice_command_wake", config.DEFAULTS["voice_command_wake"]))
-        self.voice_wake.setPlaceholderText(config.DEFAULTS["voice_command_wake"])
-        self.voice_wake.setMaximumWidth(200)
-        f.addRow(self.voice_commands)
-        f.addRow("Wake word:", self.voice_wake)
-        f.addRow(hint('Say the wake word and then, for example, "open calculator", "close chrome" or '
-                      '"pause captions". EchoSub hears everything your PC plays, so nothing counts as a '
-                      'command without the wake word. Several wake words can be listed, separated by '
-                      'commas ("mama, ماما").'))
         keys = ", ".join(f"{hotkeys.label(k)} {what}" for k, what in
                          (("toggle_captions", "show/hide"), ("pause", "pause"), ("lock", "lock")))
         self.global_hotkeys = QCheckBox("Global hotkeys")

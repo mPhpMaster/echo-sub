@@ -90,6 +90,18 @@ Commands work in the languages EchoSub captions, not only English: "ouvre la cal
 
 That is the whole list, and it cannot be extended from the settings. Nothing you say is ever run as a command
 on your PC: shutting down, deleting files, opening a terminal and anything similar are simply not recognized.
+**The wake word on its own switches captions off and back on.** Say just "echo sub" (or whatever name you
+chose) and the captions pause; say it again and they come back. A name inside an ordinary sentence does nothing —
+the whole caption has to be the name.
+
+**Websites:** "echo sub, open YouTube" and "echo sub, open Google" open those two addresses in your own browser.
+The addresses are written into EchoSub; a spoken word can never become a web address.
+
+**On-screen answers** (*Settings → Commands*, off by default) are for a shared screen: when someone says the wake
+word and one of your phrases, EchoSub writes your own prepared line in the caption box, in its own colour and
+labelled EchoSub, and takes it away again after a few seconds. Nothing is sent to Discord or anywhere else, no
+message is typed into another program, and no answer is generated — every line is one you wrote in the settings.
+
 Commands are read from finished captions only, never from live text, and they are ignored while captions are paused. If EchoSub hears the wake word but the rest is not a command, it shows a short notification with what it heard, so you can see how it understood you — at most one such notice every few seconds.
 
 ## When the sound device disconnects

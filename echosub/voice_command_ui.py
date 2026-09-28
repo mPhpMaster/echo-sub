@@ -6,13 +6,16 @@ Only finished captions are considered — never live text, which is a guess — 
 feature is switched on and the engine is not paused. The list of commands lives in
 `voice_commands.py`; this file only connects it to the app's own buttons.
 """
+import itertools
 import logging
 import time
 
 from PySide6.QtGui import QAction
 from PySide6.QtWidgets import QSystemTrayIcon
 
-from . import APP_NAME, voice_commands
+from PySide6.QtCore import QTimer
+
+from . import APP_NAME, screen_replies, voice_commands
 
 log = logging.getLogger("echosub")
 
@@ -23,6 +26,7 @@ class VoiceCommandMixin:
     """Adds 'Voice commands' to the tray menu and acts on commands heard in captions."""
 
     _unknown_command_at = 0.0
+    _reply_ids = itertools.count(20_000_000)  # far from the engine's caption numbers
 
     def _make_voice_command_action(self, menu):
         self.act_voice = QAction("Voice commands", menu, checkable=True,
@@ -59,10 +63,20 @@ class VoiceCommandMixin:
             return None
         if source == "mic" and not self.cfg.get("mic_commands", True):
             return None  # the user asked for their own voice to be captioned, not obeyed
-        command, heard = voice_commands.find_detail(text, self._wake_words())
+        command, heard = voice_commands.find_detail(
+            text,
+            self._wake_words(),
+            self.cfg.get("voice_custom_commands", []),
+            self.cfg.get("voice_key_presses", False),
+            self._reply_pairs(),
+        )
         if command is None:
             self._report_unknown_command(heard)
             return None
+        if command["action"] == "help":
+            self.tray.showMessage(APP_NAME, voice_commands.help_text(self.cfg.get("voice_custom_commands", [])),
+                                  QSystemTrayIcon.Information, 8000)
+            return command
         if self._voice_runner is None:
             self._voice_runner = voice_commands.CommandRunner(app_action=self._run_app_command)
         try:
@@ -71,9 +85,25 @@ class VoiceCommandMixin:
             log.exception("Voice command failed")
             self.tray.showMessage(APP_NAME, f"Could not run that command: {e}", QSystemTrayIcon.Warning, 4000)
             return None
+        if command.get("action") == "reply":
+            self._show_screen_reply(command["target"])
+            return command
         if message:
             self.tray.showMessage(APP_NAME, message, QSystemTrayIcon.Information, 2500)
         return command
+
+    def _reply_pairs(self):
+        """The phrase/answer pairs, only while the feature is on."""
+        if not self.cfg.get("screen_replies", False):
+            return ()
+        return screen_replies.valid_pairs(self.cfg.get("screen_reply_pairs", []))
+
+    def _show_screen_reply(self, text):
+        """Write one of your prepared answers in the caption box, and take it away again."""
+        answer_id = next(self._reply_ids)
+        self.overlay.add_final(answer_id, text, text, self.cfg.get("target_lang", "en"), None, "reply")
+        seconds = max(2, min(60, int(self.cfg.get("screen_reply_seconds", screen_replies.DEFAULT_SECONDS))))
+        QTimer.singleShot(seconds * 1000, lambda: self.overlay.remove_caption(answer_id))
 
     def _report_unknown_command(self, heard):
         """Say so when the wake word was heard but the rest was not a command."""
@@ -89,6 +119,7 @@ class VoiceCommandMixin:
     def _run_app_command(self, target):
         """EchoSub's own controls, through the same actions as the menu entries."""
         actions = {
+            "toggle": lambda: self.act_pause.setChecked(not self.act_pause.isChecked()),
             "pause": lambda: self.act_pause.setChecked(True),
             "resume": lambda: self.act_pause.setChecked(False),
             "hide": lambda: self.act_show.setChecked(False),

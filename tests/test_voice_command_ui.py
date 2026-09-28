@@ -108,6 +108,18 @@ class VoiceCommandAppTest(unittest.TestCase):
         self.assertIsNone(app._handle_voice_command("open calculator"))
         self.assertEqual(app._wake_word(), "mama")
 
+    def test_help_shows_the_available_actions(self):
+        app = FakeApp(voice_commands=True, voice_command_wake="alexa").use_fake_runner()
+        self.assertEqual(app._handle_voice_command("alexa help")["key"], "voice_help")
+        self.assertTrue(any("calculator" in message for message in app.tray.messages))
+
+    def test_a_saved_custom_phrase_runs_its_approved_action(self):
+        app = FakeApp(voice_commands=True, voice_custom_commands=[
+            {"phrase": "show calculator", "command": "open_calculator"},
+        ]).use_fake_runner()
+        self.assertEqual(app._handle_voice_command("echo sub show calculator")["key"], "open_calculator")
+        self.assertEqual(app.launched, [voice_commands.APPS["calculator"]])
+
     def test_a_short_wake_word_is_not_heard_inside_another_word(self):
         app = FakeApp(voice_commands=True, voice_command_wake="mama").use_fake_runner()
         self.assertIsNone(app._handle_voice_command("mamamia open calculator"))

@@ -120,6 +120,16 @@ APP_WORDS = {
     "spotify": ("spotify", "سبوتيفاي", "спотифай", "スポティファイ", "스포티파이"),
 }
 
+LINK_WORDS = {
+    "youtube": (
+        "youtube", "you tube", "يوتيوب", "اليوتيوب", "youtub",
+        "ютуб", "यूट्यूब", "油管", "ユーチューブ", "유튜브",
+    ),
+    "google": (
+        "google", "جوجل", "قوقل", "غوغل", "гугл", "гугле", "गूगल", "谷歌", "グーグル", "구글",
+    ),
+}
+
 CAPTION_WORDS = (
     "captions", "caption", "subtitles", "subtitle", "text", "box",  # English (the caption box)
     "الترجمه", "الترجمات", "النص", "الصندوق", "المربع",          # Arabic
@@ -142,9 +152,11 @@ CAPTION_WORDS = (
 CAPTION_ACTIONS = (
     ("pause_captions", ("pause", "stop", "halt", "اوقف", "ايقاف", "وقف", "pause les", "arrete", "arrête",
                         "detén", "deten", "pausa", "anhalten", "stopp", "duraklat", "durdur",
-                        "останови", "пауза", "متوقف کن", "روکو", "रोको", "बंद करो", "बंद कर", "jeda", "暂停", "暫停",
+                        "останови", "пауза", "متوقف کن", "روکو", "रोको", "बंद करो", "बंद कर", "jeda", "طفي", "اطفي",
+                        "暂停", "暫停",
                         "一時停止", "止めて", "정지", "멈춰")),
-    ("resume_captions", ("resume", "continue", "keep going", "تابع", "استانف", "كمل", "شغل الترجمه",
+    ("resume_captions", ("resume", "continue", "keep going", "تابع", "استانف", "كمل", "اشتغل",
+                         "شغل الترجمه",
                          "reprends", "continue les", "reanuda", "continua", "continúa", "fortsetze",
                          "weiter", "devam", "возобнови", "продолжи", "ادامه بده", "जारी रखो",
                          "lanjutkan", "继续", "繼續", "再開", "계속")),

@@ -117,6 +117,8 @@ class CaptionBoxTest(unittest.TestCase):
         badge = overlay.lines[0].original._badge
         self.assertIsNotNone(badge, "the microphone caption has no label")
         self.assertIn("Mohammad", badge.text)
+        self.assertEqual(badge.position, "above")
+        self.assertTrue(badge.prominent)
 
     def test_microphone_and_system_captions_are_not_merged_into_one_line(self):
         overlay, _ = self._overlay()

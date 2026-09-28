@@ -7,10 +7,11 @@ Safety rules, in order of importance:
 1. **A closed list.** Only the actions in `COMMANDS` and the apps in `APPS` can ever run. Nothing
    from the transcript is passed to a shell, used as a file name, or turned into a command line:
    what is heard only ever *selects* one of the entries written in this file.
-2. **Nothing destructive.** The list holds only: opening or closing two ordinary Windows apps, and
-   EchoSub's own caption controls. Shutting down or restarting the PC, deleting or moving files,
-   changing Windows settings, sending keystrokes to other programs, opening a terminal and running
-   any program by name are all deliberately absent, and must stay absent.
+2. **Nothing destructive.** The list holds only: opening or closing ordinary Windows apps and
+   EchoSub's own caption controls. An optional setting permits only up to six individual A-Z or
+   0-9 key presses; shortcuts, Enter, navigation, terminal access, and system keys remain absent.
+   Shutting down or restarting the PC, deleting or moving files, changing Windows settings, and
+   running any program by transcript are deliberately absent, and must stay absent.
 3. **Closing is as gentle as the app allows.** Notepad can hold text you have not saved, so it is
    asked to close the way the X button does, and it may still ask you to save. Calculator keeps
    nothing, and it ignores a polite request (it is a Store app), so it is closed outright.
@@ -20,108 +21,49 @@ Safety rules, in order of importance:
 5. **Off unless asked for.** The feature is disabled by default, and a command is ignored while the
    engine is paused.
 """
-import ctypes
 import logging
-import os
 import re
-import shutil
-import subprocess
-import time
-import winreg
 
-from . import voice_vocabulary as vocabulary
+from . import screen_replies, voice_vocabulary as vocabulary
+from .voice_actions import (  # noqa: F401 (kept where callers and tests expect them)
+    AppNotInstalled, CommandRunner, REPEAT_COOLDOWN_SEC, close_program, open_link, press_keys,
+    resolve_program, send_media_key, start_program,
+)
+from .voice_registry import (
+    APPS, CLOSE_WORDS, LINKS, MAX_PRESS_KEYS, MEDIA_ACTIONS, MEDIA_NOUNS, OPEN_WORDS, SAFE_PRESS_KEY,
+)
 
 log = logging.getLogger(__name__)
 
-DEFAULT_WAKE_WORDS = ("echo sub", "echosub", "إيكو صب", "ايكو صب")
+DEFAULT_WAKE_WORDS = (
+    "echo sub", "echosub", "إيكو صب", "ايكو صب", "pc", "computer", "بي سي", "alexa", "اليكسا",
+)
 MAX_WORDS_AFTER_WAKE = 8   # the command must follow the wake word closely
 MAX_WINDOW_CHARS = 60      # ...and in languages written without spaces, this many characters
 PREFIX_MATCH_MIN_CHARS = 5  # from this length a word may carry a grammatical ending
-REPEAT_COOLDOWN_SEC = 4.0  # the same command is not run twice in a row within this time
 CREATE_NO_WINDOW = 0x08000000
 WM_CLOSE = 0x0010
 
-# Only these programs may be started or closed. Both are ordinary Windows accessories.
-# "close": "polite" asks the window to close (unsaved work is safe); "force" ends the process,
-# which is only used for an app that keeps nothing and ignores the polite request.
-APPS = {
-    "calculator": {
-        "launch": "calc.exe", "close": "force",
-        "processes": ("CalculatorApp.exe", "Calculator.exe", "calc.exe"),
-    },
-    "notepad": {
-        "launch": "notepad.exe", "close": "polite", "processes": ("Notepad.exe", "notepad.exe"),
-    },
-    "paint": {
-        "launch": "mspaint.exe", "close": "polite", "processes": ("mspaint.exe", "PaintApp.exe"),
-    },
-    "files": {  # File Explorer: only its folder windows are closed, never the desktop or taskbar
-        "launch": "explorer.exe", "close": "polite", "processes": ("explorer.exe",),
-        "window_classes": ("CabinetWClass", "ExploreWClass"),
-    },
-    "settings": {
-        "launch": "ms-settings:", "close": "polite", "processes": ("SystemSettings.exe",),
-    },
-    "task manager": {
-        "launch": "taskmgr.exe", "close": "polite", "processes": ("Taskmgr.exe", "taskmgr.exe"),
-    },
-    "snipping tool": {
-        "launch": "snippingtool.exe", "close": "polite",
-        "processes": ("SnippingTool.exe", "ScreenSketch.exe", "snippingtool.exe"),
-    },
-    "on-screen keyboard": {
-        "launch": "osk.exe", "close": "force", "processes": ("osk.exe",),
-    },
-    "magnifier": {
-        "launch": "magnify.exe", "close": "force", "processes": ("Magnify.exe", "magnify.exe"),
-    },
-    "character map": {
-        "launch": "charmap.exe", "close": "polite", "processes": ("charmap.exe",),
-    },
-    "chrome": {
-        "launch": "chrome.exe", "close": "polite", "processes": ("chrome.exe",),
-    },
-    "edge": {
-        "launch": "msedge.exe", "close": "polite", "processes": ("msedge.exe",),
-    },
-    "firefox": {
-        "launch": "firefox.exe", "close": "polite", "processes": ("firefox.exe",),
-    },
-    "vlc": {
-        "launch": "vlc.exe", "close": "polite", "processes": ("vlc.exe",),
-        "paths": (r"%ProgramFiles%\VideoLAN\VLC\vlc.exe", r"%ProgramFiles(x86)%\VideoLAN\VLC\vlc.exe"),
-    },
-    "vs code": {
-        "launch": "code.exe", "close": "polite", "processes": ("Code.exe",),
-        "paths": (r"%LOCALAPPDATA%\Programs\Microsoft VS Code\Code.exe",
-                  r"%ProgramFiles%\Microsoft VS Code\Code.exe"),
-    },
-    "discord": {
-        "launch": "discord.exe", "close": "polite", "processes": ("Discord.exe",),
-        "paths": (r"%LOCALAPPDATA%\Discord\Update.exe",),
-        "arguments": ("--processStart", "Discord.exe"),
-    },
-    "steam": {
-        "launch": "steam.exe", "close": "polite", "processes": ("steam.exe",),
-        "paths": (r"%ProgramFiles(x86)%\Steam\steam.exe", r"%ProgramFiles%\Steam\steam.exe"),
-    },
-    "spotify": {
-        "launch": "spotify.exe", "close": "polite", "processes": ("Spotify.exe",),
-        "paths": (r"%APPDATA%\Spotify\Spotify.exe",),
-    },
-}
-for _name, _app in APPS.items():
-    _app["words"] = vocabulary.APP_WORDS[_name]
-
-OPEN_WORDS = vocabulary.OPEN_WORDS
-CLOSE_WORDS = vocabulary.CLOSE_WORDS
-
+HELP_WORDS = ("help", "commands", "اوامر", "الأوامر", "مساعده", "مساعدة")
+PRESS_WORDS = ("press", "اضغط", "اكبس")
 CAPTION_COMMANDS = (
+    {"key": "voice_help", "action": "help", "target": "help", "label": "Voice command help"},
+    {"key": "toggle_captions", "action": "app", "target": "toggle", "label": "Captions switched"},
     {"key": "pause_captions", "action": "app", "target": "pause", "label": "Captions paused"},
     {"key": "resume_captions", "action": "app", "target": "resume", "label": "Captions resumed"},
     {"key": "hide_captions", "action": "app", "target": "hide", "label": "Caption box hidden"},
     {"key": "show_captions", "action": "app", "target": "show", "label": "Caption box shown"},
     {"key": "clear_captions", "action": "app", "target": "clear", "label": "Captions cleared"},
+)
+
+MEDIA_COMMANDS = tuple(
+    {"key": key, "action": "media", "target": target, "label": label}
+    for key, target, label, _words in MEDIA_ACTIONS
+)
+
+LINK_COMMANDS = tuple(
+    {"key": f"open_{name}", "action": "open_link", "target": name, "label": f"{link['title']} opened"}
+    for name, link in LINKS.items()
 )
 
 APP_COMMANDS = tuple(
@@ -130,7 +72,7 @@ APP_COMMANDS = tuple(
     for name in APPS for verb in ("open", "close")
 )
 
-COMMANDS = CAPTION_COMMANDS + APP_COMMANDS
+COMMANDS = CAPTION_COMMANDS + MEDIA_COMMANDS + LINK_COMMANDS + APP_COMMANDS
 
 _ARABIC_MARKS = re.compile(r"[ً-ْـ]")
 _PUNCTUATION = re.compile(r"[^\w\s؀-ۿ]+", re.UNICODE)
@@ -188,23 +130,109 @@ def _app_command(window):
 
 
 def _echosub_command(window):
-    """A caption command is 'a word for the action' plus a word for captions/subtitles."""
-    if _first_position(window, vocabulary.CAPTION_WORDS) < 0:
+    """A caption command is 'a word for the action', with or without a word for captions.
+
+    "pause the captions" and a bare "pause" both mean the captions: nothing else here is paused.
+    A word that also belongs to a media phrase ("stop the music") is left to the media commands.
+    """
+    named = _first_position(window, vocabulary.CAPTION_WORDS) >= 0
+    if not named and _first_position(window, MEDIA_NOUNS) >= 0:
         return None
     best, best_at = None, -1
     for key, words in vocabulary.CAPTION_ACTIONS:
         at = _first_position(window, words)
         if at >= 0 and (best_at < 0 or at < best_at):
             best, best_at = key, at
-    return command(best) if best else None
+    if best is None or (not named and best_at > 0):
+        return None  # a bare action word only counts when it comes first
+    return command(best)
 
 
-def find(text, wake_words=DEFAULT_WAKE_WORDS):
+def _link_command(window):
+    """Opening one of the fixed websites: the name is recognized, the address is written in code."""
+    if _first_position(window, OPEN_WORDS) < 0:
+        return None
+    for name, link in LINKS.items():
+        if _first_position(window, link["words"]) >= 0:
+            return command(f"open_{name}")
+    return None
+
+
+def _help_command(window):
+    return command("voice_help") if _first_position(window, HELP_WORDS) >= 0 else None
+
+
+def _press_command(window):
+    """Return a short, explicitly safe key sequence, never a shortcut or system key."""
+    parts = window.split()
+    if not parts or parts[0] not in PRESS_WORDS:
+        return None
+    keys = tuple(part.upper() for part in parts[1:])
+    if not keys or len(keys) > MAX_PRESS_KEYS or not all(SAFE_PRESS_KEY.fullmatch(key.lower()) for key in keys):
+        return None
+    return {"key": f"press:{''.join(keys)}", "action": "press_keys", "target": keys,
+            "label": f"Pressed {' '.join(keys)}"}
+
+
+def _media_command(window):
+    """Recognize fixed Windows media keys; never target or automate a specific application."""
+    for key, target, label, words in MEDIA_ACTIONS:
+        if _first_position(window, words) < 0:
+            continue
+        if target in ("play_pause", "stop") and _first_position(window, MEDIA_NOUNS) < 0:
+            continue
+        # The wake word already scopes this to EchoSub. Allow short, natural phrases such as
+        # “Maya stop” and “مايا ارفع الصوت” without requiring the word "music".
+        return command(key)
+    return None
+
+
+def valid_custom_commands(entries):
+    """Normalize stored mappings; custom speech can select only an approved built-in action."""
+    approved = {item["key"] for item in COMMANDS if item["action"] != "help"}
+    result, seen = [], set()
+    for entry in entries if isinstance(entries, list) else ():
+        if not isinstance(entry, dict):
+            continue
+        phrase = normalize(entry.get("phrase", ""))
+        key = entry.get("command")
+        if not phrase or key not in approved or phrase in seen:
+            continue
+        if len(phrase) > MAX_WINDOW_CHARS or len(phrase.split()) > MAX_WORDS_AFTER_WAKE:
+            continue
+        seen.add(phrase)
+        result.append({"phrase": phrase, "command": key})
+    return result[:20]
+
+
+def _custom_command(window, entries):
+    """Exact phrase matching prevents ordinary speech from triggering a custom mapping."""
+    for entry in valid_custom_commands(entries):
+        if window == entry["phrase"]:
+            return command(entry["command"])
+    return None
+
+
+def help_text(custom_commands=()):
+    """Brief, local-only help shown after the wake word; no sensitive data is included."""
+    app_names = ", ".join(sorted(APPS))
+    phrases = [entry["phrase"] for entry in valid_custom_commands(custom_commands)]
+    custom = f" Custom: {', '.join(phrases)}." if phrases else ""
+    sites = ", ".join(link["title"] for link in LINKS.values())
+    return ("Say open or close followed by an approved app: " + app_names +
+            ". Open a site with: " + sites +
+            ". You can also pause, resume, hide, show, or clear captions; say the wake word on its own to "
+            "switch captions off or back on; control media with play, stop, next, previous, mute, volume up, "
+            "or volume down." + custom)
+
+
+def find(text, wake_words=DEFAULT_WAKE_WORDS, **options):
     """The command in `text`, or None. The wake word must come first, then the command."""
-    return find_detail(text, wake_words)[0]
+    return find_detail(text, wake_words, **options)[0]
 
 
-def find_detail(text, wake_words=DEFAULT_WAKE_WORDS):
+def find_detail(text, wake_words=DEFAULT_WAKE_WORDS, custom_commands=(), allow_key_presses=False,
+                reply_pairs=()):
     """(command, what was said after the wake word).
 
     The second value lets the app say "I heard you but that was not a command", which is very
@@ -216,164 +244,25 @@ def find_detail(text, wake_words=DEFAULT_WAKE_WORDS):
         wake = normalize(wake)
         if not wake:
             continue
+        if spoken == wake:
+            # Just the name, nothing else: switch the captions off, or back on. A name inside an
+            # ordinary sentence is not this, which is why the whole caption has to be the name.
+            return command("toggle_captions"), wake
         # Whole words only: a short wake word such as "da" must not fire inside "today"
         for match in re.finditer(rf"(?<!\w){re.escape(wake)}(?!\w)", spoken):
             tail = spoken[match.end():].strip()
             if not tail:
                 continue
             window = " ".join(tail.split()[:MAX_WORDS_AFTER_WAKE])[:MAX_WINDOW_CHARS]
-            found = _echosub_command(window) or _app_command(window)
+            reply = screen_replies.find_reply(window, reply_pairs, position_of)
+            found = (screen_replies.reply_command(reply) if reply else None)
+            found = (found or _help_command(window) or _custom_command(window, custom_commands) or
+                     _echosub_command(window) or _link_command(window) or _app_command(window) or
+                     _media_command(window))
+            if found is None and allow_key_presses:
+                found = _press_command(window)
             if found is not None:
                 return found, window
             heard = heard or window
             log.info("Heard the wake word but no command in %r", window)
     return None, heard
-
-
-class CommandRunner:
-    """Runs a command from `COMMANDS`; anything else is refused."""
-
-    def __init__(self, app_action=None, launcher=None, closer=None):
-        """`app_action(target)` handles EchoSub's own controls; the others exist for the tests."""
-        self.app_action = app_action or (lambda target: False)
-        self.launcher = launcher or start_program
-        self.closer = closer or close_program
-        self._last = (None, 0.0)
-
-    def run(self, command_entry, now=None):
-        """Returns what to tell the user, or None when the command was refused or repeated."""
-        now = time.monotonic() if now is None else now
-        if command_entry not in COMMANDS:
-            log.warning("Refused a command that is not on the list: %r", command_entry)
-            return None
-        key, last_time = self._last
-        if key == command_entry["key"] and now - last_time < REPEAT_COOLDOWN_SEC:
-            return None  # the same sentence recognized twice, or an echo of it
-        self._last = (command_entry["key"], now)
-        action, target = command_entry["action"], command_entry["target"]
-        if action == "open_app":
-            try:
-                self.launcher(APPS[target])
-            except AppNotInstalled:
-                return f"{target.title()} is not installed on this PC"
-        elif action == "close_app":
-            if not self.closer(APPS[target], APPS[target]["close"]):
-                return f"{target.title()} was not open"
-        elif action == "app":
-            if not self.app_action(target):
-                return None
-        else:
-            log.warning("Refused an unknown action: %r", action)
-            return None
-        log.info("Voice command: %s", command_entry["key"])
-        return command_entry["label"]
-
-
-class AppNotInstalled(Exception):
-    """The app is on the list but not on this PC."""
-
-
-def resolve_program(app):
-    """Where the program is, or None. Only entries of APPS are ever looked up."""
-    launch = app["launch"]
-    if launch.endswith(":"):
-        return launch  # a Windows page such as ms-settings:
-    found = shutil.which(launch)
-    if found:
-        return found
-    for root in (winreg.HKEY_LOCAL_MACHINE, winreg.HKEY_CURRENT_USER):
-        try:
-            with winreg.OpenKey(root, rf"SOFTWARE\Microsoft\Windows\CurrentVersion\App Paths\{launch}") as key:
-                path = str(winreg.QueryValueEx(key, None)[0]).strip('"')
-        except OSError:
-            continue
-        if path and os.path.exists(path):
-            return path
-    for candidate in app.get("paths", ()):
-        candidate = os.path.expandvars(candidate)
-        if os.path.exists(candidate):
-            return candidate
-    return None
-
-
-def start_program(app):
-    """Start one of the allowed programs. The entry is from APPS, never from the transcript."""
-    if app not in APPS.values():
-        raise ValueError("that program is not on the list")
-    target = resolve_program(app)
-    if target is None:
-        raise AppNotInstalled(app["launch"])
-    if target.endswith(":"):
-        os.startfile(target)  # noqa: S606 - a fixed Windows page from the list above
-        return
-    subprocess.Popen([target, *app.get("arguments", ())], shell=False, creationflags=CREATE_NO_WINDOW)
-
-
-def close_program(app, mode="polite"):
-    """Close an allowed program. Returns True when something was closed.
-
-    "polite" asks its windows to close, exactly like clicking the X, so an app with unsaved work
-    can still ask the user about it. "force" is only used for an app that keeps nothing and that
-    ignores the polite request. File Explorer only ever has its folder windows closed, never the
-    desktop or the taskbar, which belong to the same program.
-    """
-    if app not in APPS.values():
-        raise ValueError("that program is not on the list")
-    closed = False
-    for name in app["processes"]:
-        pids = _pids_of(name)
-        if not pids:
-            continue
-        if mode == "polite" and _ask_windows_to_close(pids, app.get("window_classes")):
-            closed = True
-            continue
-        if mode == "force":
-            result = subprocess.run(["taskkill", "/IM", name, "/F"], shell=False, capture_output=True,
-                                    creationflags=CREATE_NO_WINDOW, timeout=5)
-            closed = closed or result.returncode == 0
-    return closed
-
-
-def _pids_of(image_name):
-    """The process ids of a running allowed program, straight from Windows' own task list."""
-    try:
-        result = subprocess.run(["tasklist", "/FI", f"IMAGENAME eq {image_name}", "/NH", "/FO", "CSV"],
-                                shell=False, capture_output=True, text=True,
-                                creationflags=CREATE_NO_WINDOW, timeout=5)
-    except (OSError, subprocess.SubprocessError) as e:
-        log.warning("Could not list processes: %s", e)
-        return []
-    pids = []
-    for line in result.stdout.splitlines():
-        parts = [part.strip('" ') for part in line.split('","')]
-        if len(parts) > 1 and parts[0].lower() == image_name.lower() and parts[1].isdigit():
-            pids.append(int(parts[1]))
-    return pids
-
-
-def _ask_windows_to_close(pids, window_classes=None):
-    """Send every top-level window of those processes the same message the X button sends."""
-    user32 = ctypes.windll.user32
-    wanted, closed = set(pids), False
-
-    @ctypes.WINFUNCTYPE(ctypes.c_bool, ctypes.c_void_p, ctypes.c_void_p)
-    def visit(handle, _param):
-        nonlocal closed
-        pid = ctypes.c_ulong()
-        user32.GetWindowThreadProcessId(handle, ctypes.byref(pid))
-        if pid.value not in wanted or not user32.IsWindowVisible(handle):
-            return True
-        if window_classes and _window_class(handle) not in window_classes:
-            return True  # the desktop and the taskbar are windows of Explorer too
-        user32.PostMessageW(handle, WM_CLOSE, 0, 0)
-        closed = True
-        return True
-
-    user32.EnumWindows(visit, None)
-    return closed
-
-
-def _window_class(handle):
-    buffer = ctypes.create_unicode_buffer(256)
-    ctypes.windll.user32.GetClassNameW(handle, buffer, len(buffer))
-    return buffer.value
