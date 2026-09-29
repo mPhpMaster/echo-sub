@@ -43,6 +43,7 @@ DEFAULT_WAKE_WORDS = (
 MAX_WORDS_AFTER_WAKE = 8   # the command must follow the wake word closely
 MAX_WINDOW_CHARS = 60      # ...and in languages written without spaces, this many characters
 PREFIX_MATCH_MIN_CHARS = 5  # from this length a word may carry a grammatical ending
+MAX_RUN_CHARS = 500         # a program and its arguments, typed by you in the settings
 CREATE_NO_WINDOW = 0x08000000
 WM_CLOSE = 0x0010
 
@@ -215,7 +216,11 @@ def _media_command(window):
 
 
 def valid_custom_commands(entries):
-    """Normalize stored mappings; custom speech can select only an approved built-in action."""
+    """Normalize stored mappings: a phrase picks an approved action, or a program you wrote down.
+
+    The program line is only ever the text typed in the settings. Nothing that was *said* reaches
+    it: speech chooses which of your own saved lines to start, and can never compose one.
+    """
     approved = {item["key"] for item in COMMANDS if item["action"] != "help"}
     result, seen = [], set()
     for entry in entries if isinstance(entries, list) else ():
@@ -223,20 +228,27 @@ def valid_custom_commands(entries):
             continue
         phrase = normalize(entry.get("phrase", ""))
         key = entry.get("command")
-        if not phrase or key not in approved or phrase in seen:
+        run = " ".join(str(entry.get("run", "")).split())[:MAX_RUN_CHARS]
+        if not phrase or phrase in seen or (not run and key not in approved):
             continue
         if len(phrase) > MAX_WINDOW_CHARS or len(phrase.split()) > MAX_WORDS_AFTER_WAKE:
             continue
         seen.add(phrase)
-        result.append({"phrase": phrase, "command": key})
+        result.append({"phrase": phrase, "run": run} if run else {"phrase": phrase, "command": key})
     return result[:20]
+
+
+def run_command(entry):
+    """A command that starts one of the program lines saved in the settings."""
+    return {"key": f"run:{entry['phrase']}", "action": "run", "target": entry["run"],
+            "label": f"Started {entry['run']}"}
 
 
 def _custom_command(window, entries):
     """Exact phrase matching prevents ordinary speech from triggering a custom mapping."""
     for entry in valid_custom_commands(entries):
         if window == entry["phrase"]:
-            return command(entry["command"])
+            return run_command(entry) if "run" in entry else command(entry["command"])
     return None
 
 

@@ -108,6 +108,13 @@ difference, and neither do punctuation or the usual Arabic spelling differences.
 so they work whether or not spoken commands are enabled. The same phrase twice in a row is shown once. Everything
 else — opening apps, the media keys, the caption controls — still needs the wake word first.
 
+**A custom command can start a program of your own.** In *Settings → Commands*, add a phrase, choose “Start a
+program…” and type the program with its arguments, as in a shortcut: `notepad.exe "D:\my notes.txt"`. The phrase has
+to be said in full for it to count. The line is started directly rather than handed to a command shell, so `|`, `>`
+and `&&` are ordinary characters in an argument and never a second command; if you need those, put them in a script
+of your own and name that script here. Only the line you typed is ever started — nothing that was said is added to
+it.
+
 **“Go to a place”** covers two things. A web address — “go to www.example.com” — opens in your own browser; only
 plain `http`/`https` sites are accepted, and a `file:`, `javascript:` or `data:` address is refused outright. A name
 opens a folder in File Explorer: your own Windows folders are known already (desktop, documents, downloads, music,

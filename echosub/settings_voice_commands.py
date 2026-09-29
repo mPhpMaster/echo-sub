@@ -10,6 +10,8 @@ from . import config, voice_commands, voice_destinations
 from .settings_screen_replies import ScreenRepliesGroupMixin
 from .settings_voice_places import GoToGroupMixin
 
+RUN_KEY = "__run__"  # the combo entry that means "start the program I typed", not a built-in action
+
 
 class VoiceCommandsTabMixin(ScreenRepliesGroupMixin, GoToGroupMixin):
     """Keeps custom phrases constrained to the approved command registry."""
@@ -58,13 +60,16 @@ class VoiceCommandsTabMixin(ScreenRepliesGroupMixin, GoToGroupMixin):
         custom = QGroupBox("Custom commands")
         custom_layout = QVBoxLayout(custom)
         description = QLabel(
-            "Add a phrase and choose one approved action. EchoSub never runs text as a shell command, "
-            "program path, or script.")
+            "Add a phrase, then either pick one of the approved actions or choose “Start a program…” and "
+            "type the program and its arguments yourself, the way you would in a shortcut. That line is "
+            "started directly — it is not handed to a command shell, so pipes, redirection and “&&” are "
+            "not run — and only ever the line you typed here: nothing that was said is ever added to it.")
         description.setWordWrap(True)
         description.setStyleSheet("color: gray;")
         custom_layout.addWidget(description)
-        self.voice_custom_table = QTableWidget(0, 2)
-        self.voice_custom_table.setHorizontalHeaderLabels(("Spoken phrase", "Approved action"))
+        self.voice_custom_table = QTableWidget(0, 3)
+        self.voice_custom_table.setHorizontalHeaderLabels(
+            ("Spoken phrase", "Action", "Program and arguments"))
         self.voice_custom_table.verticalHeader().setVisible(False)
         self.voice_custom_table.setSelectionBehavior(QTableWidget.SelectRows)
         self.voice_custom_table.setMinimumHeight(190)
@@ -85,24 +90,39 @@ class VoiceCommandsTabMixin(ScreenRepliesGroupMixin, GoToGroupMixin):
         layout.addStretch(1)
 
         for item in voice_commands.valid_custom_commands(cfg.get("voice_custom_commands", [])):
-            self._add_voice_custom_command(item["phrase"], item["command"])
+            self._add_voice_custom_command(item["phrase"], item.get("command"), item.get("run", ""))
         return widget
 
     @staticmethod
     def _command_combo(selected=None):
         combo = QComboBox()
+        combo.addItem("Start a program…", RUN_KEY)
         for item in voice_commands.COMMANDS:
             combo.addItem(item["label"], item["key"])
         index = combo.findData(selected)
-        combo.setCurrentIndex(max(0, index))
+        combo.setCurrentIndex(index if index >= 0 else 1)
         return combo
 
-    def _add_voice_custom_command(self, phrase="", command_key=None):
+    def _add_voice_custom_command(self, phrase="", command_key=None, run=""):
         row = self.voice_custom_table.rowCount()
         self.voice_custom_table.insertRow(row)
         self.voice_custom_table.setItem(row, 0, QTableWidgetItem(str(phrase)))
-        self.voice_custom_table.setCellWidget(row, 1, self._command_combo(command_key))
+        combo = self._command_combo(RUN_KEY if run else command_key)
+        self.voice_custom_table.setCellWidget(row, 1, combo)
+        line = QLineEdit(str(run))
+        line.setPlaceholderText('notepad.exe "D:\\my notes.txt"')
+        self.voice_custom_table.setCellWidget(row, 2, line)
+        combo.currentIndexChanged.connect(lambda _index, edit=line, box=combo: self._follow_combo(box, edit))
+        self._follow_combo(combo, line)
         self.voice_custom_table.setCurrentCell(row, 0)
+
+    @staticmethod
+    def _follow_combo(combo, line):
+        """The program box only matters for a row that starts a program."""
+        running = combo.currentData() == RUN_KEY
+        line.setEnabled(running)
+        if not running:
+            line.clear()
 
     def _remove_voice_custom_command(self):
         selected = sorted({index.row() for index in self.voice_custom_table.selectedIndexes()}, reverse=True)
@@ -114,10 +134,14 @@ class VoiceCommandsTabMixin(ScreenRepliesGroupMixin, GoToGroupMixin):
         for row in range(self.voice_custom_table.rowCount()):
             item = self.voice_custom_table.item(row, 0)
             combo = self.voice_custom_table.cellWidget(row, 1)
+            line = self.voice_custom_table.cellWidget(row, 2)
             phrase = item.text().strip() if item else ""
             key = combo.currentData() if combo else None
-            if phrase and key:
-                entries.append({"phrase": phrase, "command": key})
+            run = line.text().strip() if line else ""
+            if not phrase or not key:
+                continue
+            entries.append({"phrase": phrase, "run": run} if key == RUN_KEY else
+                           {"phrase": phrase, "command": key})
         return {
             "voice_commands": self.voice_commands.isChecked(),
             "voice_command_wake": self.voice_wake.text().strip() or config.DEFAULTS["voice_command_wake"],

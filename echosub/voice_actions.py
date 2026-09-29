@@ -2,12 +2,14 @@
 # Copyright (C) 2026 Mohammad Al-Safadi
 """Carrying out a command that was already recognized and checked.
 
-Every entry that reaches here comes from `voice_registry`: a program name, a fixed address or a
-Windows media key. Nothing is ever taken from the spoken text, and nothing goes through a shell.
+Every entry that reaches here comes from `voice_registry` — a program name, a fixed address or a
+Windows media key — or from something the user wrote in the settings: a folder, or a program line
+of their own. Nothing is ever taken from the spoken text, and nothing goes through a shell.
 """
 import ctypes
 import logging
 import os
+import shlex
 import shutil
 import subprocess
 import time
@@ -40,12 +42,13 @@ class CommandRunner:
     """Runs a command from `COMMANDS`; anything else is refused."""
 
     def __init__(self, app_action=None, launcher=None, closer=None, key_presser=None, media_controller=None,
-                 link_opener=None, url_opener=None, folder_opener=None):
+                 link_opener=None, url_opener=None, folder_opener=None, program_starter=None):
         """`app_action(target)` handles EchoSub's own controls; the others exist for the tests."""
         self.app_action = app_action or (lambda target: False)
         self.link_opener = link_opener or open_link
         self.url_opener = url_opener or open_url
         self.folder_opener = folder_opener or open_folder
+        self.program_starter = program_starter or start_command_line
         self.launcher = launcher or start_program
         self.closer = closer or close_program
         self.key_presser = key_presser or press_keys
@@ -59,7 +62,8 @@ class CommandRunner:
         is_press = action_of == "press_keys"
         if (command_entry not in allowed_commands() and not (is_press and _valid_press_command(command_entry))
                 and not (action_of == "reply" and isinstance(command_entry.get("target"), str))
-                and not _valid_destination_command(command_entry)):
+                and not _valid_destination_command(command_entry)
+                and not _valid_run_command(command_entry)):
             log.warning("Refused a command that is not on the list: %r", command_entry)
             return None
         key, last_time = self._last
@@ -77,6 +81,8 @@ class CommandRunner:
                 return f"{target.title()} was not open"
         elif action == "open_link":
             self.link_opener(LINKS[target]["url"])
+        elif action == "run":
+            self.program_starter(target)
         elif action == "open_url":
             self.url_opener(target)
         elif action == "open_folder":
@@ -112,6 +118,12 @@ def _valid_destination_command(entry):
     return False
 
 
+def _valid_run_command(entry):
+    """A saved program line, checked again here: it must be text that names something to start."""
+    return (isinstance(entry, dict) and entry.get("action") == "run" and
+            isinstance(entry.get("target"), str) and bool(split_command_line(entry["target"])))
+
+
 def _valid_press_command(entry):
     keys = entry.get("target")
     return (isinstance(keys, tuple) and 0 < len(keys) <= MAX_PRESS_KEYS and
@@ -123,6 +135,32 @@ def open_link(url):
     if url not in {link["url"] for link in LINKS.values()}:
         raise ValueError("that address is not on the list")
     webbrowser.open(url)
+
+
+def split_command_line(command_line):
+    """A typed line into program plus arguments, the way Windows quotes them.
+
+    No shell is involved, so a backslash stays a path separator rather than an escape, and the
+    shell's own punctuation (pipes, redirection, `&&`, variables) has no special meaning at all:
+    every part here becomes one argument to one program and nothing more.
+    """
+    lexer = shlex.shlex(str(command_line), posix=True)
+    lexer.escape = ""
+    lexer.whitespace_split = True
+    return [part for part in lexer if part]
+
+
+def start_command_line(command_line):
+    """Start a program the user wrote into the settings, with the arguments they gave it.
+
+    Only ever a line from the settings file: nothing from a transcript is added to it, so speech
+    can pick one of these but can never build one. It is started directly, without a shell.
+    """
+    parts = split_command_line(command_line) if isinstance(command_line, str) else []
+    if not parts:
+        raise ValueError("there is no program to start")
+    log.info("Starting a saved program line")
+    subprocess.Popen(parts, shell=False, creationflags=CREATE_NO_WINDOW)
 
 
 def open_url(url):
