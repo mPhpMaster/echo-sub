@@ -169,11 +169,23 @@ def _spoken_tail(raw_text, words):
 
 
 def _go_command(window, raw_text, folders):
-    """"Go to ..." — one of your folders, or a web address read out of what followed."""
-    if _first_position(window, vocabulary.GO_WORDS) < 0:
-        return None
-    said = _spoken_tail(raw_text, vocabulary.GO_WORDS)
-    return voice_destinations.destination_command(said, folders) if said else None
+    """"Go to ..." or "play ..." — one of your places, or a web address read out of what followed.
+
+    Nothing happens unless what followed names a place you saved or a real web address, so "play"
+    with anything else after it falls through to the media keys, where it still means play.
+    """
+    if _first_position(window, vocabulary.GO_WORDS) >= 0:
+        said = _spoken_tail(raw_text, vocabulary.GO_WORDS)
+        found = voice_destinations.destination_command(said, folders) if said else None
+        if found is not None:
+            return found
+    if _first_position(window, vocabulary.PLAY_WORDS) >= 0:
+        # "Play ..." reaches only the places you added yourself: "play music" means press play,
+        # not open your Music folder, and a web address is not something one plays.
+        said = _spoken_tail(raw_text, vocabulary.PLAY_WORDS)
+        if said:
+            return voice_destinations.destination_command(said, folders, windows_too=False, allow_url=False)
+    return None
 
 
 def _link_command(window):

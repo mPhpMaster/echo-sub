@@ -11,6 +11,8 @@ from a list, so it is kept narrow on purpose:
 - **A folder only opens in File Explorer**, and only if it is one of your own Windows folders or
   one you added yourself in the settings, with the name you want to say for it. A spoken word never
   becomes a path: it only picks a path that is already written down.
+- **A file opens the way double-clicking it would**, with whatever program Windows normally uses
+  for it, and again only if you chose that exact file in the settings yourself.
 """
 import ctypes
 import os
@@ -76,7 +78,7 @@ def windows_folders():
 
 
 def valid_folders(entries):
-    """Folders the user added: a name to say and the path it stands for."""
+    """Places the user added: a name to say and the folder or file it stands for."""
     folders, seen = [], set()
     for entry in entries or ():
         if not isinstance(entry, dict):
@@ -107,14 +109,20 @@ def spoken_url(text):
     return f"{scheme}://{rest}"
 
 
-def find_folder(said, folders):
-    """The folder one of the spoken words names, or None. The path is never taken from speech."""
+def find_folder(said, folders, windows_too=True):
+    """The place one of the spoken words names, or None. The path is never taken from speech.
+
+    `windows_too` is off for "play …", where only the places you added yourself are meant: "play
+    music" should press play, not open your Music folder.
+    """
     wanted = re.sub(r"\s+", " ", str(said)).strip().lower().rstrip(".,;:!?،؟")
     if not wanted:
         return None
     for entry in valid_folders(folders):
         if entry["name"].lower() == wanted:
             return {"name": entry["name"], "path": entry["path"]}
+    if not windows_too:
+        return None
     from . import voice_vocabulary as vocabulary
 
     for name, words in vocabulary.FOLDER_WORDS.items():
@@ -125,13 +133,17 @@ def find_folder(said, folders):
     return None
 
 
-def destination_command(said, folders):
-    """A "go to ..." command for what followed those words, or None when it names nothing known."""
-    folder = find_folder(said, folders)
+def destination_command(said, folders, windows_too=True, allow_url=True):
+    """A command for what followed "go to" or "play", or None when it names nothing known."""
+    folder = find_folder(said, folders, windows_too)
     if folder is not None:
-        return {"key": f"go_folder:{folder['name'].lower()}", "action": "open_folder",
+        # A folder is shown in Explorer; a file is opened with the program Windows uses for it, the
+        # way double-clicking it would. Which of the two it is, is decided by the path on disk.
+        a_file = os.path.isfile(folder["path"])
+        return {"key": f"go_{'file' if a_file else 'folder'}:{folder['name'].lower()}",
+                "action": "open_file" if a_file else "open_folder",
                 "target": folder["path"], "label": f"Opened {folder['name']}"}
-    url = spoken_url(said)
+    url = spoken_url(said) if allow_url else None
     if url is not None:
         return {"key": f"go_url:{url.lower()}", "action": "open_url", "target": url,
                 "label": f"Opened {url}"}

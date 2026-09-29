@@ -5,6 +5,9 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and 
 
 ## [Unreleased]
 
+### Added
+- **Play a file you picked.** In *Settings → Commands*, “Add file…” next to a name you choose: say that name after “play” or “go to” and the file opens with the program Windows normally uses for it, so a song plays in your own music player. “Play …” reaches only the names you added yourself — “play music” still presses play, while “go to music” opens your Music folder — and a web address is never something it will play.
+
 ## [1.3.0] — 2026-09-29
 
 ### Added

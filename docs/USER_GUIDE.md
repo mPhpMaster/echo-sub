@@ -115,6 +115,11 @@ and `&&` are ordinary characters in an argument and never a second command; if y
 of your own and name that script here. Only the line you typed is ever started — nothing that was said is added to
 it.
 
+**To play a song**, add the file in *Settings → Commands* with “Add file…” and give it a name to say. Then “play
+<name>” — or “go to <name>” — opens it with the program Windows normally uses for that kind of file, exactly as
+double-clicking it would. “Play …” only reaches names you added yourself, so “play music” still works the media key
+rather than opening your Music folder.
+
 **“Go to a place”** covers two things. A web address — “go to www.example.com” — opens in your own browser; only
 plain `http`/`https` sites are accepted, and a `file:`, `javascript:` or `data:` address is refused outright. A name
 opens a folder in File Explorer: your own Windows folders are known already (desktop, documents, downloads, music,

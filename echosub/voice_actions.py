@@ -42,12 +42,14 @@ class CommandRunner:
     """Runs a command from `COMMANDS`; anything else is refused."""
 
     def __init__(self, app_action=None, launcher=None, closer=None, key_presser=None, media_controller=None,
-                 link_opener=None, url_opener=None, folder_opener=None, program_starter=None):
+                 link_opener=None, url_opener=None, folder_opener=None, program_starter=None,
+                 file_opener=None):
         """`app_action(target)` handles EchoSub's own controls; the others exist for the tests."""
         self.app_action = app_action or (lambda target: False)
         self.link_opener = link_opener or open_link
         self.url_opener = url_opener or open_url
         self.folder_opener = folder_opener or open_folder
+        self.file_opener = file_opener or open_file
         self.program_starter = program_starter or start_command_line
         self.launcher = launcher or start_program
         self.closer = closer or close_program
@@ -88,6 +90,9 @@ class CommandRunner:
         elif action == "open_folder":
             if not self.folder_opener(target):
                 return "That folder is not on this PC any more"
+        elif action == "open_file":
+            if not self.file_opener(target):
+                return "That file is not on this PC any more"
         elif action == "app":
             if not self.app_action(target):
                 return None
@@ -115,6 +120,8 @@ def _valid_destination_command(entry):
         return isinstance(target, str) and voice_destinations.spoken_url(target) == target
     if action == "open_folder":
         return isinstance(target, str) and os.path.isdir(target)
+    if action == "open_file":
+        return isinstance(target, str) and os.path.isfile(target)
     return False
 
 
@@ -171,10 +178,22 @@ def open_url(url):
 
 
 def open_folder(path):
-    """Show a folder in File Explorer. Only a folder: a file or a program is never started this way."""
+    """Show a folder in File Explorer. Only a folder: a file is opened by `open_file` instead."""
     if not isinstance(path, str) or not os.path.isdir(path):
         return False
     os.startfile(os.path.abspath(path))  # noqa: S606 (a directory, checked just above)
+    return True
+
+
+def open_file(path):
+    """Open one file the way double-clicking it would, with the program Windows uses for it.
+
+    Only a file the user picked in the settings ever reaches here; a name that was said chooses
+    between those saved paths and can never spell one out.
+    """
+    if not isinstance(path, str) or not os.path.isfile(path):
+        return False
+    os.startfile(os.path.abspath(path))  # noqa: S606 (a file the user chose in the settings)
     return True
 
 

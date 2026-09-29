@@ -148,6 +148,18 @@ GO_WORDS = (
     "ไปที่",                                                                      # Thai
 )
 
+# "Play <name>" reaches the same list, because that is how one asks for a song rather than a place.
+# On its own, or with a name that is not on the list, it stays a media key: "play" still means play.
+PLAY_WORDS = (
+    "play", "open", "put on",                       # English
+    "شغل", "شغلي", "افتح", "حط",                     # Arabic
+    "joue", "lance", "reproduce", "pon",            # French / Spanish
+    "spiel", "spiele", "riproduci", "toca",         # German / Italian / Portuguese
+    "çal", "oynat", "включи", "поставь",            # Turkish / Russian
+    "پخش کن", "چلاو", "चलाओ", "बजाओ",                 # Persian / Urdu / Hindi
+    "播放", "打开", "再生", "재생", "เล่น",              # Chinese / Japanese / Korean / Thai
+)
+
 # The user's own Windows folders. The name is what you say; the path comes from Windows itself.
 FOLDER_WORDS = {
     "desktop": ("desktop", "the desktop", "سطح المكتب", "المكتب", "bureau", "escritorio",

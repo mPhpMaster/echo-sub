@@ -88,6 +88,68 @@ class FolderTest(unittest.TestCase):
         self.assertEqual(len(voice_destinations.valid_folders(many)), voice_destinations.MAX_FOLDERS)
 
 
+class FileTest(unittest.TestCase):
+    """A song, picked in the settings, opened with whatever program Windows uses for it."""
+
+    def setUp(self):
+        self.dir = tempfile.mkdtemp()
+        self.song = os.path.join(self.dir, "my song.mp3")
+        with open(self.song, "wb") as handle:
+            handle.write(b"not really audio")
+        self.addCleanup(lambda: (os.remove(self.song), os.rmdir(self.dir)))
+        self.places = [{"name": "my song", "path": self.song}]
+
+    def test_play_opens_the_file_you_chose(self):
+        found = voice_commands.find("alexa play my song", WAKE, folders=self.places)
+        self.assertEqual((found["action"], found["target"]), ("open_file", self.song))
+
+    def test_go_to_works_for_a_file_as_well(self):
+        found = voice_commands.find("alexa go to my song", WAKE, folders=self.places)
+        self.assertEqual(found["action"], "open_file")
+
+    def test_a_folder_is_still_a_folder(self):
+        places = [{"name": "tunes", "path": self.dir}]
+        found = voice_commands.find("alexa play tunes", WAKE, folders=places)
+        self.assertEqual(found["action"], "open_folder", "a folder must not be opened as a file")
+
+    def test_play_the_music_is_still_the_media_key(self):
+        found = voice_commands.find("alexa play the music", WAKE, folders=self.places)
+        self.assertEqual(found["action"], "media")
+
+    def test_play_music_does_not_open_the_music_folder(self):
+        # "Play music" means press play. Only "go to music" should open the folder.
+        self.assertEqual(voice_commands.find("alexa play music", WAKE, folders=self.places)["action"], "media")
+        self.assertEqual(voice_commands.find("alexa go to music", WAKE, folders=self.places)["action"],
+                         "open_folder")
+
+    def test_play_is_only_for_names_you_saved_yourself(self):
+        self.assertIsNone(voice_commands.find("alexa play www.a.com", WAKE, folders=self.places),
+                          "a web address is not something one plays")
+        self.assertIsNone(voice_commands.find("alexa play downloads", WAKE, folders=self.places))
+
+    def test_play_something_unknown_is_still_the_media_key(self):
+        found = voice_commands.find("alexa play the next song", WAKE, folders=self.places)
+        self.assertEqual(found["action"], "media", "only a name you saved should open a file")
+
+    def test_the_runner_opens_it_and_starts_no_program(self):
+        opened, started = [], []
+        runner = voice_commands.CommandRunner(file_opener=lambda path: opened.append(path) or True,
+                                              program_starter=started.append)
+        found = voice_commands.find("alexa play my song", WAKE, folders=self.places)
+        self.assertEqual(runner.run(found, now=0), found["label"])
+        self.assertEqual((opened, started), ([self.song], []))
+
+    def test_a_forged_file_that_is_not_there_is_refused(self):
+        runner = voice_commands.CommandRunner(file_opener=lambda path: True)
+        forged = {"key": "go_file:x", "action": "open_file", "target": "Z:\\nope.mp3", "label": "x"}
+        self.assertIsNone(runner.run(forged, now=0))
+
+    def test_a_file_that_was_deleted_is_reported_not_crashed(self):
+        runner = voice_commands.CommandRunner(file_opener=lambda path: False)
+        found = voice_commands.find("alexa play my song", WAKE, folders=self.places)
+        self.assertIn("not on this PC", runner.run(found, now=0))
+
+
 class RunnerTest(unittest.TestCase):
     def test_the_runner_only_hands_the_address_to_the_browser(self):
         opened, launched = [], []
