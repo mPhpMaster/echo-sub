@@ -16,6 +16,7 @@ from PySide6.QtWidgets import QSystemTrayIcon
 from PySide6.QtCore import QTimer
 
 from . import APP_NAME, screen_replies, voice_commands
+from .command_notice import CommandNotice
 
 log = logging.getLogger("echosub")
 
@@ -68,12 +69,16 @@ class VoiceCommandMixin:
             # An on-screen answer writes your own line in your own caption box and can do nothing
             # else, so it stands on its own switch and does not wait for the command one.
             return self._only_an_answer(text, pairs)
+        # Your own microphone does not wait for the wake word, unless you ask it to.
+        needs_wake = source != "mic" or self.cfg.get("mic_wake_word", False)
         command, heard = voice_commands.find_detail(
             text,
             self._wake_words(),
             self.cfg.get("voice_custom_commands", []),
             self.cfg.get("voice_key_presses", False),
             pairs,
+            self.cfg.get("voice_go_folders", []),
+            needs_wake,
         )
         if command is None:
             self._report_unknown_command(heard)
@@ -82,6 +87,35 @@ class VoiceCommandMixin:
             self.tray.showMessage(APP_NAME, voice_commands.help_text(self.cfg.get("voice_custom_commands", [])),
                                   QSystemTrayIcon.Information, 8000)
             return command
+        return self._start_command(command)
+
+    def _start_command(self, command):
+        """Say on screen what was understood, and carry it out unless the notice is clicked first."""
+        seconds = max(0, min(30, int(self.cfg.get("voice_command_delay", 3) or 0)))
+        if seconds <= 0 or command.get("action") == "reply":
+            return self._run_command(command)  # an answer only writes text; there is nothing to undo
+        notice = self._command_notice()
+        if notice is None:
+            return self._run_command(command)
+        notice.start(command.get("label") or command["key"], seconds, lambda: self._run_command(command))
+        return command
+
+    def _command_notice(self):
+        if getattr(self, "_notice", None) is None:
+            try:
+                self._notice = CommandNotice()
+            except Exception:  # a headless run, or no screen to put it on
+                log.exception("Could not show the command notice")
+                return None
+        return self._notice
+
+    def cancel_pending_command(self):
+        """Drop a command that is counting down. Clicking the notice does this too."""
+        notice = getattr(self, "_notice", None)
+        return bool(notice is not None and notice.cancel())
+
+    def _run_command(self, command):
+        """Actually carry out a command, once nobody has cancelled it."""
         if self._voice_runner is None:
             self._voice_runner = voice_commands.CommandRunner(app_action=self._run_app_command)
         try:

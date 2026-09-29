@@ -5,6 +5,11 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and 
 
 ## [Unreleased]
 
+### Added
+- **“Go to …”** (*Settings → Commands*). Say a web address — “go to www.example.com”, or dictated as “go to www dot example dot com” — and it opens in your own browser. Say the name of a folder and it opens in File Explorer: your own Windows folders (desktop, documents, downloads, music, pictures, videos, home) are known already, wherever Windows really keeps them, and you can add your own folders with the name you want to say for each. Only plain `http` and `https` addresses are opened; `file:`, `javascript:`, `data:`, a password in front of the host and anything else are refused. A spoken word never becomes a path — it can only pick one that is already written down.
+- **A moment to change your mind.** When a command is understood, what it will do appears at the top of the screen with a countdown, and one click on it calls the command off. Nothing runs until the countdown ends. Three seconds by default, adjustable from 0 (run at once) to 30 in *Settings → Commands*. On-screen answers skip the wait, since text on your own screen has nothing to undo.
+- **Your own microphone no longer needs the wake word.** Say “open the calculator” and it happens; the countdown above is what stands between a slip of the tongue and the command. To keep speech apart from orders, a command said this way has to *begin* the sentence: “open the calculator” is an order, “we could open the calculator later” is not. The PC’s own sound still needs the wake word, always. If you would rather keep it on the microphone too, there is a switch for that.
+
 ## [1.2.1] — 2026-09-28
 
 ### Changed

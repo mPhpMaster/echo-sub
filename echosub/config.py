@@ -120,6 +120,9 @@ DEFAULTS = {
     "voice_command_wake": "echo sub",     # a command only counts after this wake word
     "voice_custom_commands": [],           # user phrases mapped to an approved built-in action
     "voice_key_presses": False,            # allow short A-Z / 0-9 press commands after the wake word
+    "voice_command_delay": 3,              # seconds to show a command before it runs (0 = at once)
+    "mic_wake_word": False,                # your own microphone does not need the wake word
+    "voice_go_folders": [],                # folders "go to <name>" may open: {"name": ..., "path": ...}
     "screen_replies": False,               # answer chosen phrases with your own text in the caption box
     "screen_reply_pairs": [],              # [{"phrase": ..., "reply": ...}], written by you
     "screen_reply_seconds": 8,             # how long an answer stays on screen

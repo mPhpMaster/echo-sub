@@ -26,14 +26,14 @@ Safety rules, in order of importance:
 import logging
 import re
 
-from . import screen_replies, voice_vocabulary as vocabulary
+from . import screen_replies, voice_destinations, voice_vocabulary as vocabulary
 from .voice_actions import (  # noqa: F401 (kept where callers and tests expect them)
     AppNotInstalled, CommandRunner, REPEAT_COOLDOWN_SEC, close_program, open_link, press_keys,
     resolve_program, send_media_key, start_program,
 )
 from .voice_registry import (
     APPS, CLOSE_WORDS, LINKS, MAX_PRESS_KEYS, MEDIA_ACTIONS, MEDIA_NOUNS, OPEN_WORDS, SAFE_PRESS_KEY,
-)
+)  # noqa: F401 (MEDIA_ACTIONS is used by command_starters)
 
 log = logging.getLogger(__name__)
 
@@ -150,6 +150,31 @@ def _echosub_command(window):
     return command(best)
 
 
+def _spoken_tail(raw_text, words):
+    """What was said after one of `words`, taken from the text as spoken rather than normalized.
+
+    A web address has to come from the raw text: normalizing would turn "a.com" into "a com".
+    The earliest of those words wins, and at that spot the longest one ("go to" over "go").
+    """
+    lowered = str(raw_text).lower()
+    found = []
+    for word in words:
+        for match in re.finditer(rf"(?<!\w){re.escape(word.lower())}(?!\w)", lowered):
+            found.append((match.start(), -match.end()))
+    if not found:
+        return ""
+    start, negative_end = min(found)
+    return str(raw_text)[-negative_end:].strip()
+
+
+def _go_command(window, raw_text, folders):
+    """"Go to ..." — one of your folders, or a web address read out of what followed."""
+    if _first_position(window, vocabulary.GO_WORDS) < 0:
+        return None
+    said = _spoken_tail(raw_text, vocabulary.GO_WORDS)
+    return voice_destinations.destination_command(said, folders) if said else None
+
+
 def _link_command(window):
     """Opening one of the fixed websites: the name is recognized, the address is written in code."""
     if _first_position(window, OPEN_WORDS) < 0:
@@ -233,8 +258,30 @@ def find(text, wake_words=DEFAULT_WAKE_WORDS, **options):
     return find_detail(text, wake_words, **options)[0]
 
 
+def command_starters():
+    """Every word that may *begin* a spoken command: the doing words, in all the languages."""
+    words = set(OPEN_WORDS) | set(CLOSE_WORDS) | set(HELP_WORDS) | set(PRESS_WORDS)
+    words |= set(vocabulary.GO_WORDS)
+    for _key, action_words in vocabulary.CAPTION_ACTIONS:
+        words |= set(action_words)
+    for _key, _target, _label, action_words in MEDIA_ACTIONS:
+        words |= set(action_words)
+    return tuple(words)
+
+
+def _match(window, text, custom_commands, allow_key_presses, folders):
+    """The command in one window of speech, or None. The order decides what wins a tie."""
+    found = (_help_command(window) or _custom_command(window, custom_commands) or
+             _echosub_command(window) or _link_command(window) or
+             _go_command(window, text, folders) or _app_command(window) or
+             _media_command(window))
+    if found is None and allow_key_presses:
+        found = _press_command(window)
+    return found
+
+
 def find_detail(text, wake_words=DEFAULT_WAKE_WORDS, custom_commands=(), allow_key_presses=False,
-                reply_pairs=()):
+                reply_pairs=(), folders=(), require_wake=True):
     """(command, what was said after the wake word).
 
     The second value lets the app say "I heard you but that was not a command", which is very
@@ -265,13 +312,19 @@ def find_detail(text, wake_words=DEFAULT_WAKE_WORDS, custom_commands=(), allow_k
             if not tail:
                 continue
             window = " ".join(tail.split()[:MAX_WORDS_AFTER_WAKE])[:MAX_WINDOW_CHARS]
-            found = (_help_command(window) or _custom_command(window, custom_commands) or
-                     _echosub_command(window) or _link_command(window) or _app_command(window) or
-                     _media_command(window))
-            if found is None and allow_key_presses:
-                found = _press_command(window)
+            found = _match(window, text, custom_commands, allow_key_presses, folders)
             if found is not None:
                 return found, window
             heard = heard or window
             log.info("Heard the wake word but no command in %r", window)
+    if not require_wake and heard is None:
+        # Your own microphone, where the name is optional. Said without one, a command has to
+        # *begin* the sentence: "open the calculator" is an order, while "we could open the
+        # calculator later" is you talking, and telling those apart is the whole job here.
+        window = " ".join(spoken.split()[:MAX_WORDS_AFTER_WAKE])[:MAX_WINDOW_CHARS]
+        found = _custom_command(window, custom_commands)  # one of your own phrases, matched in full
+        if found is None and _first_position(window, command_starters()) == 0:
+            found = _match(window, text, custom_commands, allow_key_presses, folders)
+        # Nothing is reported as "heard but not understood": that would fire on every sentence.
+        return found, None
     return None, heard

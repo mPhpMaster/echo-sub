@@ -14,6 +14,7 @@ import time
 import webbrowser
 import winreg
 
+from . import voice_destinations
 from .voice_registry import (
     APPS, CREATE_NO_WINDOW, LINKS, MAX_PRESS_KEYS, MEDIA_VIRTUAL_KEYS, SAFE_PRESS_KEY, WM_CLOSE,
 )
@@ -39,10 +40,12 @@ class CommandRunner:
     """Runs a command from `COMMANDS`; anything else is refused."""
 
     def __init__(self, app_action=None, launcher=None, closer=None, key_presser=None, media_controller=None,
-                 link_opener=None):
+                 link_opener=None, url_opener=None, folder_opener=None):
         """`app_action(target)` handles EchoSub's own controls; the others exist for the tests."""
         self.app_action = app_action or (lambda target: False)
         self.link_opener = link_opener or open_link
+        self.url_opener = url_opener or open_url
+        self.folder_opener = folder_opener or open_folder
         self.launcher = launcher or start_program
         self.closer = closer or close_program
         self.key_presser = key_presser or press_keys
@@ -55,7 +58,8 @@ class CommandRunner:
         action_of = command_entry.get("action") if isinstance(command_entry, dict) else None
         is_press = action_of == "press_keys"
         if (command_entry not in allowed_commands() and not (is_press and _valid_press_command(command_entry))
-                and not (action_of == "reply" and isinstance(command_entry.get("target"), str))):
+                and not (action_of == "reply" and isinstance(command_entry.get("target"), str))
+                and not _valid_destination_command(command_entry)):
             log.warning("Refused a command that is not on the list: %r", command_entry)
             return None
         key, last_time = self._last
@@ -73,6 +77,11 @@ class CommandRunner:
                 return f"{target.title()} was not open"
         elif action == "open_link":
             self.link_opener(LINKS[target]["url"])
+        elif action == "open_url":
+            self.url_opener(target)
+        elif action == "open_folder":
+            if not self.folder_opener(target):
+                return "That folder is not on this PC any more"
         elif action == "app":
             if not self.app_action(target):
                 return None
@@ -91,6 +100,18 @@ class CommandRunner:
         return command_entry["label"]
 
 
+def _valid_destination_command(entry):
+    """A "go to" command is built while listening, so it is checked again here, not just trusted."""
+    if not isinstance(entry, dict):
+        return False
+    action, target = entry.get("action"), entry.get("target")
+    if action == "open_url":
+        return isinstance(target, str) and voice_destinations.spoken_url(target) == target
+    if action == "open_folder":
+        return isinstance(target, str) and os.path.isdir(target)
+    return False
+
+
 def _valid_press_command(entry):
     keys = entry.get("target")
     return (isinstance(keys, tuple) and 0 < len(keys) <= MAX_PRESS_KEYS and
@@ -102,6 +123,21 @@ def open_link(url):
     if url not in {link["url"] for link in LINKS.values()}:
         raise ValueError("that address is not on the list")
     webbrowser.open(url)
+
+
+def open_url(url):
+    """Open a web address in the user's own browser, and only if it is still a plain http/https site."""
+    if voice_destinations.spoken_url(url) != url:
+        raise ValueError("that is not a plain web address")
+    webbrowser.open(url)
+
+
+def open_folder(path):
+    """Show a folder in File Explorer. Only a folder: a file or a program is never started this way."""
+    if not isinstance(path, str) or not os.path.isdir(path):
+        return False
+    os.startfile(os.path.abspath(path))  # noqa: S606 (a directory, checked just above)
+    return True
 
 
 def press_keys(keys):

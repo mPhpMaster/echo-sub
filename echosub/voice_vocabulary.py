@@ -130,6 +130,43 @@ LINK_WORDS = {
     ),
 }
 
+# "go to ..." — the words that introduce a place to open. What follows is looked up in the folder
+# list or read as a web address; see `voice_destinations.py` for what may then be opened.
+GO_WORDS = (
+    "go to", "goto", "go", "navigate to", "take me to", "browse to", "visit",   # English
+    "اذهب الى", "اذهب", "روح", "روح الى", "انتقل الى", "انتقل", "وديني",           # Arabic
+    "va a", "vas a", "aller a", "aller à",                                       # French / Spanish
+    "geh zu", "gehe zu", "vai a", "ir para", "ve a",                             # German / Italian / Portuguese
+    "git", "gidin",                                                              # Turkish
+    "перейди", "перейти", "иди в", "открой сайт",                                # Russian
+    "برو به", "برو",                                                             # Persian
+    "جاؤ", "چلو",                                                                # Urdu
+    "जाओ", "पर जाओ",                                                             # Hindi
+    "去", "前往", "打开网址",                                                      # Chinese
+    "に行く", "へ移動",                                                            # Japanese
+    "로 이동", "이동",                                                             # Korean
+    "ไปที่",                                                                      # Thai
+)
+
+# The user's own Windows folders. The name is what you say; the path comes from Windows itself.
+FOLDER_WORDS = {
+    "desktop": ("desktop", "the desktop", "سطح المكتب", "المكتب", "bureau", "escritorio",
+                "schreibtisch", "рабочий стол", "डेस्कटॉप", "桌面", "デスクトップ", "바탕화면"),
+    "documents": ("documents", "document", "my documents", "المستندات", "الوثائق", "الملفات",
+                  "documentos", "dokumente", "документы", "दस्तावेज़", "文档", "書類", "문서"),
+    "downloads": ("downloads", "download", "my downloads", "التنزيلات", "التحميلات", "المحملات",
+                  "descargas", "telechargements", "téléchargements", "downloads ordner",
+                  "загрузки", "डाउनलोड", "下载", "ダウンロード", "다운로드"),
+    "music": ("music", "my music", "songs", "الموسيقى", "الموسيقا", "الاغاني", "musique", "musica",
+              "música", "musik", "музыка", "संगीत", "音乐", "音楽", "음악"),
+    "pictures": ("pictures", "picture", "photos", "images", "الصور", "صور", "fotos", "bilder",
+                 "изображения", "фото", "तस्वीरें", "图片", "画像", "사진"),
+    "videos": ("videos", "video", "movies", "الفيديو", "الفيديوهات", "الافلام", "videos ordner",
+               "vidéos", "видео", "वीडियो", "视频", "動画", "비디오"),
+    "home": ("home", "my folder", "user folder", "المجلد الرئيسي", "مجلدي", "الرئيسيه",
+             "accueil", "startseite", "домой", "домашняя папка", "होम", "主目录", "ホーム", "홈"),
+}
+
 CAPTION_WORDS = (
     "captions", "caption", "subtitles", "subtitle", "text", "box",  # English (the caption box)
     "الترجمه", "الترجمات", "النص", "الصندوق", "المربع",          # Arabic

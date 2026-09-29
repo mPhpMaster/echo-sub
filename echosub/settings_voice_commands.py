@@ -3,14 +3,15 @@
 """Settings tab for explicit, safe spoken-command mappings."""
 from PySide6.QtWidgets import (
     QCheckBox, QComboBox, QFormLayout, QGroupBox, QHBoxLayout, QLabel, QLineEdit,
-    QPushButton, QTableWidget, QTableWidgetItem, QVBoxLayout, QWidget,
+    QPushButton, QSpinBox, QTableWidget, QTableWidgetItem, QVBoxLayout, QWidget,
 )
 
-from . import config, voice_commands
+from . import config, voice_commands, voice_destinations
 from .settings_screen_replies import ScreenRepliesGroupMixin
+from .settings_voice_places import GoToGroupMixin
 
 
-class VoiceCommandsTabMixin(ScreenRepliesGroupMixin):
+class VoiceCommandsTabMixin(ScreenRepliesGroupMixin, GoToGroupMixin):
     """Keeps custom phrases constrained to the approved command registry."""
 
     def _commands_tab(self, cfg):
@@ -26,8 +27,24 @@ class VoiceCommandsTabMixin(ScreenRepliesGroupMixin):
         self.voice_wake.setMaximumWidth(280)
         self.voice_key_presses = QCheckBox("Allow short A-Z and 0-9 key presses after the wake word")
         self.voice_key_presses.setChecked(cfg.get("voice_key_presses", False))
+        self.mic_wake_word = QCheckBox("My own microphone must say the wake word too")
+        self.mic_wake_word.setChecked(cfg.get("mic_wake_word", False))
+        self.voice_command_delay = QSpinBox()
+        self.voice_command_delay.setRange(0, 30)
+        self.voice_command_delay.setSuffix(" s")
+        self.voice_command_delay.setSpecialValueText("run at once")
+        self.voice_command_delay.setMaximumWidth(140)
+        self.voice_command_delay.setValue(int(cfg.get("voice_command_delay", 3) or 0))
         form.addRow(self.voice_commands)
         form.addRow("Wake word:", self.voice_wake)
+        form.addRow(self.mic_wake_word)
+        form.addRow("Wait before running:", self.voice_command_delay)
+        wait_note = QLabel(
+            "What was understood is shown at the top of the screen for this long, and one click on it "
+            "cancels the command. Set it to zero to run commands straight away.")
+        wait_note.setWordWrap(True)
+        wait_note.setStyleSheet("color: gray;")
+        form.addRow(wait_note)
         form.addRow(self.voice_key_presses)
         info = QLabel(
             'Examples: “PC open calculator”, “PC افتح الحاسبة”, and “Alexa help”. '
@@ -63,6 +80,7 @@ class VoiceCommandsTabMixin(ScreenRepliesGroupMixin):
         buttons.addStretch(1)
         custom_layout.addLayout(buttons)
         layout.addWidget(custom)
+        layout.addWidget(self._go_to_group(cfg))
         layout.addWidget(self._screen_replies_group(cfg))
         layout.addStretch(1)
 
@@ -105,5 +123,8 @@ class VoiceCommandsTabMixin(ScreenRepliesGroupMixin):
             "voice_command_wake": self.voice_wake.text().strip() or config.DEFAULTS["voice_command_wake"],
             "voice_custom_commands": voice_commands.valid_custom_commands(entries),
             "voice_key_presses": self.voice_key_presses.isChecked(),
+            "voice_command_delay": self.voice_command_delay.value(),
+            "mic_wake_word": self.mic_wake_word.isChecked(),
+            "voice_go_folders": voice_destinations.valid_folders(self.go_folder_rows()),
             **self.screen_reply_values(),
         }

@@ -48,6 +48,9 @@ class FakeOverlay:
 class FakeApp(VoiceCommandMixin):
     def __init__(self, **overrides):
         self.cfg = dict(config.DEFAULTS)
+        # Most tests are about what a command does, not about the pause before it; the countdown
+        # has its own tests below, which ask for it by setting the delay themselves.
+        self.cfg["voice_command_delay"] = 0
         self.cfg.update(overrides)
         self.tray = FakeTray()
         self.overlay = FakeOverlay()

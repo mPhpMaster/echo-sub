@@ -108,6 +108,21 @@ difference, and neither do punctuation or the usual Arabic spelling differences.
 so they work whether or not spoken commands are enabled. The same phrase twice in a row is shown once. Everything
 else — opening apps, the media keys, the caption controls — still needs the wake word first.
 
+**“Go to a place”** covers two things. A web address — “go to www.example.com” — opens in your own browser; only
+plain `http`/`https` sites are accepted, and a `file:`, `javascript:` or `data:` address is refused outright. A name
+opens a folder in File Explorer: your own Windows folders are known already (desktop, documents, downloads, music,
+pictures, videos, home), and you can add any other folder in *Settings → Commands* with the name you want to say for
+it. What you say never becomes a path; it only picks a path that is already written down.
+
+**Before a command runs, you get a moment to stop it.** What EchoSub understood appears at the top of the screen
+with a countdown — three seconds by default — and clicking it calls the command off. Nothing happens until the
+countdown ends. Set the wait to zero in *Settings → Commands* if you would rather commands run straight away.
+
+**Your own microphone does not need the wake word.** Say “open the calculator” and it happens. So that ordinary
+talking is not mistaken for an order, a command said this way has to come at the start of the sentence: “open the
+calculator” counts, “I was thinking we could open the calculator later” does not. The sound your PC plays always
+needs the wake word, because EchoSub cannot tell a video from a person. You can require it on the microphone too.
+
 Commands are read from finished captions only, never from live text, and they are ignored while captions are paused. If EchoSub hears the wake word but the rest is not a command, it shows a short notification with what it heard, so you can see how it understood you — at most one such notice every few seconds.
 
 ## When the sound device disconnects
