@@ -5,6 +5,8 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and 
 
 ## [Unreleased]
 
+## [1.3.0] — 2026-09-29
+
 ### Added
 - **A custom command can start a program you wrote down** (*Settings → Commands*). Add a phrase, choose “Start a program…” and type the program and its arguments, the way you would in a shortcut — `notepad.exe "D:\my notes.txt"`. The line is started **directly, not through a command shell**, so pipes, redirection and `&&` are just characters in an argument and never a second command. Only the line typed in the settings is ever started: nothing that was said is added to it, so speech can pick one of your lines but can never compose one. Approved built-in actions still work in the same table.
 - **“Go to …”** (*Settings → Commands*). Say a web address — “go to www.example.com”, or dictated as “go to www dot example dot com” — and it opens in your own browser. Say the name of a folder and it opens in File Explorer: your own Windows folders (desktop, documents, downloads, music, pictures, videos, home) are known already, wherever Windows really keeps them, and you can add your own folders with the name you want to say for each. Only plain `http` and `https` addresses are opened; `file:`, `javascript:`, `data:`, a password in front of the host and anything else are refused. A spoken word never becomes a path — it can only pick one that is already written down.
