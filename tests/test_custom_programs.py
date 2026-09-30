@@ -43,6 +43,50 @@ class SplittingTest(unittest.TestCase):
             self.assertEqual(voice_actions.split_command_line(line), [], repr(line))
 
 
+class PlainFileTest(unittest.TestCase):
+    """The two shapes people actually type when they mean "open this file"."""
+
+    def setUp(self):
+        import tempfile
+
+        self.dir = tempfile.mkdtemp()
+        self.song = os.path.join(self.dir, "CHIO - PEW PEW [Music Video]-(1068p25).mp4")
+        with open(self.song, "wb") as handle:
+            handle.write(b"x")
+        self.addCleanup(lambda: (os.remove(self.song), os.rmdir(self.dir)))
+        self.opened, self.started = [], []
+        self._real_startfile = getattr(os, "startfile", None)
+        os.startfile = self.opened.append
+        self.addCleanup(lambda: setattr(os, "startfile", self._real_startfile))
+
+    def test_a_bare_path_opens_with_its_usual_program(self):
+        voice_actions.start_command_line(f'"{self.song}"')
+        self.assertEqual(self.opened, [self.song])
+
+    def test_a_leading_start_is_a_shell_word_and_is_dropped(self):
+        # This is what the user typed, and it used to fail with "cannot find the file specified".
+        voice_actions.start_command_line(f'start "{self.song}"')
+        self.assertEqual(self.opened, [self.song])
+
+    def test_a_program_with_arguments_is_still_started_directly(self):
+        calls = []
+        real = voice_actions.subprocess.Popen
+        voice_actions.subprocess.Popen = lambda parts, **kw: calls.append(parts)
+        self.addCleanup(lambda: setattr(voice_actions.subprocess, "Popen", real))
+        voice_actions.start_command_line('notepad.exe "D:\\notes.txt"')
+        self.assertEqual(calls, [["notepad.exe", "D:\\notes.txt"]])
+        self.assertEqual(self.opened, [], "a program with arguments is not opened as a document")
+
+    def test_start_with_nothing_after_it_is_refused(self):
+        with self.assertRaises(ValueError):
+            voice_actions.start_command_line("start")
+
+    def test_a_program_that_is_not_there_says_which_one(self):
+        with self.assertRaises(FileNotFoundError) as caught:
+            voice_actions.start_command_line("no-such-program-here --now")
+        self.assertIn("no-such-program-here", str(caught.exception))
+
+
 class MatchingTest(unittest.TestCase):
     def test_your_phrase_starts_your_program(self):
         found = voice_commands.find("alexa movie mode", WAKE, custom_commands=SAVED)

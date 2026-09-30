@@ -5,6 +5,12 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and 
 
 ## [Unreleased]
 
+## [1.3.2] — 2026-10-01
+
+### Fixed
+- A custom command whose line was just a path to a file, or began with `start`, failed with “the system cannot find the file specified”. `start` is a command-shell word rather than a program, and EchoSub runs these lines without a shell. Both shapes now open the file with the program Windows normally uses for it, the way double-clicking it would. A program that really is missing now says which one.
+
+
 ## [1.3.1] — 2026-10-01
 
 ### Added

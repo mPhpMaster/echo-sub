@@ -158,16 +158,31 @@ def split_command_line(command_line):
 
 
 def start_command_line(command_line):
-    """Start a program the user wrote into the settings, with the arguments they gave it.
+    """Start what the user wrote into the settings: a program with arguments, or just a file.
 
     Only ever a line from the settings file: nothing from a transcript is added to it, so speech
-    can pick one of these but can never build one. It is started directly, without a shell.
+    can pick one of these but can never build one. No shell is involved, which is why the two
+    everyday shapes are handled here instead:
+
+    - a line that is only a path to a file — a song, a document — is opened with the program
+      Windows normally uses for it, the way double-clicking it would;
+    - a leading `start`, which is a command-shell word rather than a program, is what people write
+      to mean exactly that, so it is taken off and the rest is opened the same way.
     """
     parts = split_command_line(command_line) if isinstance(command_line, str) else []
+    if parts and parts[0].lower() == "start":
+        parts = parts[1:]
     if not parts:
-        raise ValueError("there is no program to start")
+        raise ValueError("there is no program or file to start")
+    if len(parts) == 1 and os.path.isfile(parts[0]):
+        log.info("Opening a saved file with its usual program")
+        os.startfile(os.path.abspath(parts[0]))  # noqa: S606 (a file the user chose in the settings)
+        return
     log.info("Starting a saved program line")
-    subprocess.Popen(parts, shell=False, creationflags=CREATE_NO_WINDOW)
+    try:
+        subprocess.Popen(parts, shell=False, creationflags=CREATE_NO_WINDOW)
+    except FileNotFoundError:
+        raise FileNotFoundError(f"there is no program called {parts[0]!r} on this PC") from None
 
 
 def open_url(url):
