@@ -150,6 +150,54 @@ class FileTest(unittest.TestCase):
         self.assertIn("not on this PC", runner.run(found, now=0))
 
 
+class TypedRowTest(unittest.TestCase):
+    """Writing the word and the path by hand, without the file picker."""
+
+    def setUp(self):
+        from PySide6.QtWidgets import QApplication
+
+        from echosub import config
+        from echosub.settings_dialog import SettingsDialog
+
+        self.app = QApplication.instance() or QApplication([])
+        self.dialog = SettingsDialog(dict(config.DEFAULTS))
+        self.dir = tempfile.mkdtemp()
+        self.song = os.path.join(self.dir, "song.mp3")
+        with open(self.song, "wb") as handle:
+            handle.write(b"x")
+        self.addCleanup(lambda: (os.remove(self.song), os.rmdir(self.dir)))
+
+    def type_row(self, word, path):
+        from PySide6.QtWidgets import QTableWidgetItem
+
+        self.dialog._add_go_folder()
+        table = self.dialog.go_folder_table
+        table.setItem(table.rowCount() - 1, 0, QTableWidgetItem(word))
+        table.setItem(table.rowCount() - 1, 1, QTableWidgetItem(path))
+
+    def test_a_typed_word_and_path_are_saved_and_then_play_the_file(self):
+        self.type_row("my song", self.song)
+        saved = self.dialog.values()["voice_go_folders"]
+        self.assertEqual(saved, [{"name": "my song", "path": self.song}])
+        found = voice_commands.find("alexa play my song", WAKE, folders=saved)
+        self.assertEqual((found["action"], found["target"]), ("open_file", self.song))
+
+    def test_quotes_around_a_pasted_path_are_dropped(self):
+        self.type_row("my song", f'"{self.song}"')
+        self.assertEqual(self.dialog.values()["voice_go_folders"][0]["path"], self.song)
+
+    def test_a_path_that_is_not_there_is_shown_in_red(self):
+        self.type_row("typo", "Z:\\nope\\missing.mp3")
+        table = self.dialog.go_folder_table
+        self.assertEqual(table.item(0, 1).foreground().color().name().upper(), "#D45B5B")
+        self.type_row("real", self.song)
+        self.assertNotEqual(table.item(1, 1).foreground().color().name().upper(), "#D45B5B")
+
+    def test_an_empty_row_is_simply_dropped(self):
+        self.dialog._add_go_folder()
+        self.assertEqual(self.dialog.values()["voice_go_folders"], [])
+
+
 class RunnerTest(unittest.TestCase):
     def test_the_runner_only_hands_the_address_to_the_browser(self):
         opened, launched = [], []

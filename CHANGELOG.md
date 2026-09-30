@@ -5,7 +5,11 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and 
 
 ## [Unreleased]
 
+## [1.3.1] — 2026-10-01
+
 ### Added
+- The places table takes a row you type yourself: write the word to say and the path, with no file picker involved. A path that is not on this PC is shown in red as you type it. The pickers are still there as “Pick a folder…” and “Pick a file…”, and quotes around a pasted path are dropped.
+
 - **Play a file you picked.** In *Settings → Commands*, “Add file…” next to a name you choose: say that name after “play” or “go to” and the file opens with the program Windows normally uses for it, so a song plays in your own music player. “Play …” reaches only the names you added yourself — “play music” still presses play, while “go to music” opens your Music folder — and a web address is never something it will play.
 
 ## [1.3.0] — 2026-09-29

@@ -1,11 +1,16 @@
 # SPDX-License-Identifier: GPL-3.0-only
 # Copyright (C) 2026 Mohammad Al-Safadi
-"""The "go to ..." part of the Commands tab: your own folders, and the name you say for each."""
+"""The "go to ..." part of the Commands tab: your own places, and the word you say for each."""
+import os
+
+from PySide6.QtGui import QBrush, QColor
 from PySide6.QtWidgets import (
     QFileDialog, QGroupBox, QHBoxLayout, QLabel, QPushButton, QTableWidget, QTableWidgetItem, QVBoxLayout,
 )
 
 from . import voice_destinations
+
+PATH_OK = "#7FB77F"  # a path that is really there, so a typo stands out in red beside it
 
 
 class GoToGroupMixin:
@@ -16,12 +21,12 @@ class GoToGroupMixin:
         layout = QVBoxLayout(group)
         known = ", ".join(sorted(voice_destinations.windows_folders()))
         note = QLabel(
-            f'Say “go to …” with a web address (“go to www.example.com”) and it opens in your browser. '
-            f'Say it with the name of a folder and the folder opens in File Explorer; your Windows folders '
-            f'already work: {known}. Add your own folders and files below, each with the name you want to '
-            f'say for it — a file opens with the program Windows normally uses for it, so a song plays in '
-            f'your music player. For a file you can also say “play …”. A spoken word never becomes a path: '
-            f'it only picks one written here, and only plain http and https addresses are ever opened.')
+            f'Write the word you want to say and the path it stands for, one per row — type both in yourself, '
+            f'or use the buttons to pick. Say “play <word>” or “go to <word>” and a file opens with the program '
+            f'Windows normally uses for it, so a song plays in your music player, while a folder opens in File '
+            f'Explorer. A path shown in red is not on this PC. Your Windows folders already work without being '
+            f'added: {known}. “Go to …” also takes a web address (“go to www.example.com”). A spoken word never '
+            f'becomes a path: it only picks one written here, and only plain http and https addresses open.')
         note.setWordWrap(True)
         note.setStyleSheet("color: gray;")
         layout.addWidget(note)
@@ -32,16 +37,21 @@ class GoToGroupMixin:
         self.go_folder_table.setSelectionBehavior(QTableWidget.SelectRows)
         self.go_folder_table.setMinimumHeight(120)
         self.go_folder_table.horizontalHeader().setStretchLastSection(True)
+        self.go_folder_table.itemChanged.connect(self._check_go_paths)
         layout.addWidget(self.go_folder_table)
 
         buttons = QHBoxLayout()
-        add = QPushButton("Add folder…")
+        typed = QPushButton("Add a row")
+        typed.setToolTip("Type the word to say and the path yourself")
+        typed.clicked.connect(lambda: self._add_go_folder())
+        add = QPushButton("Pick a folder…")
         add.clicked.connect(self._choose_go_folder)
-        add_file = QPushButton("Add file…")
+        add_file = QPushButton("Pick a file…")
         add_file.setToolTip("A song, a playlist, a document — it opens with its usual program")
         add_file.clicked.connect(self._choose_go_file)
         remove = QPushButton("Remove selected")
         remove.clicked.connect(self._remove_go_folder)
+        buttons.addWidget(typed)
         buttons.addWidget(add)
         buttons.addWidget(add_file)
         buttons.addWidget(remove)
@@ -57,7 +67,26 @@ class GoToGroupMixin:
         self.go_folder_table.insertRow(row)
         self.go_folder_table.setItem(row, 0, QTableWidgetItem(str(name)))
         self.go_folder_table.setItem(row, 1, QTableWidgetItem(str(path)))
+        self._mark_missing_path(row)
         self.go_folder_table.setCurrentCell(row, 0)
+        if not name:  # a row to type into: start in the first cell straight away
+            self.go_folder_table.editItem(self.go_folder_table.item(row, 0))
+
+    def _mark_missing_path(self, row):
+        """Colour a path that is not on this PC, so a typo is visible before it is saved."""
+        item = self.go_folder_table.item(row, 1)
+        if item is None:
+            return
+        path = item.text().strip().strip('"')
+        missing = bool(path) and not os.path.exists(path)
+        item.setForeground(QBrush(QColor("#D45B5B")) if missing else QBrush(QColor(PATH_OK)))
+        item.setToolTip("There is nothing at this path yet" if missing else path)
+
+    def _check_go_paths(self, item):
+        if item is not None and item.column() == 1:
+            self.go_folder_table.blockSignals(True)
+            self._mark_missing_path(item.row())
+            self.go_folder_table.blockSignals(False)
 
     @staticmethod
     def _suggested_name(path):
