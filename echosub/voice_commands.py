@@ -214,6 +214,15 @@ def _go_command(window, raw_text, folders):
     return None
 
 
+def is_cancel(text):
+    """Did someone just say "no"? Only at the start of what was said, so a sentence that merely
+    contains the word does not call off a command that is waiting.
+    """
+    spoken = normalize(text)
+    return any(spoken == word or spoken.startswith(word + " ")
+               for word in (normalize(w) for w in vocabulary.CANCEL_WORDS) if word)
+
+
 def _mic_command(window):
     """"Mute my microphone", and the same words again to bring it back."""
     if _first_position(window, vocabulary.MIC_WORDS) < 0:

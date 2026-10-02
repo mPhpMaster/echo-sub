@@ -17,6 +17,7 @@ from PySide6.QtCore import QTimer
 
 from . import APP_NAME, screen_replies, voice_commands
 from .command_notice import CommandNotice
+from .help_window import HelpWindow
 
 log = logging.getLogger("echosub")
 
@@ -58,9 +59,28 @@ class VoiceCommandMixin:
                                             f'"open calculator", "close calculator" or "pause captions".',
                                   QSystemTrayIcon.Information, 5000)
 
+    def heard_a_refusal(self, text):
+        """"No" while a command is counting down calls it off. True when that just happened.
+
+        No wake word, and any sound will do: a command that does not run cannot do harm, so this
+        is deliberately the easiest thing in the app to trigger. It is also checked on live text,
+        so saying "no" stops the countdown without waiting for the sentence to finish.
+        """
+        notice = getattr(self, "_notice", None)
+        if notice is None or not notice.pending() or not text:
+            return False
+        if not voice_commands.is_cancel(text):
+            return False
+        notice.cancel()
+        self.tray.showMessage(APP_NAME, "Command cancelled", QSystemTrayIcon.Information, 2000)
+        log.info("A command was called off by voice")
+        return True
+
     def _handle_voice_command(self, text, source="system"):
         """Called for every finished caption; returns the command that ran, if any."""
         if not text or getattr(self, "_paused", False):
+            return None
+        if self.heard_a_refusal(text):
             return None
         if source == "mic" and not self.cfg.get("mic_commands", True):
             return None  # the user asked for their own voice to be captioned, not obeyed
@@ -89,8 +109,7 @@ class VoiceCommandMixin:
         if source == "mic" and self.mic_muted() and command["key"] != "toggle_mic":
             return None  # muted: the only thing left that your voice may do is unmute itself
         if command["action"] == "help":
-            self.tray.showMessage(APP_NAME, voice_commands.help_text(self.cfg.get("voice_custom_commands", [])),
-                                  QSystemTrayIcon.Information, 8000)
+            self.open_help_window()
             return command
         return self._start_command(command)
 
@@ -185,6 +204,21 @@ class VoiceCommandMixin:
         self._unknown_phrase = ""
         if phrase:
             self._open_settings(phrase)
+
+    def open_help_window(self):
+        """Show everything that can be said, in English and in the language being translated into."""
+        existing = getattr(self, "_help_window", None)
+        if existing is not None and existing.isVisible():
+            existing.raise_()
+            existing.activateWindow()
+            return existing
+        translator = getattr(self.engine, "translator", None) if getattr(self, "engine", None) else None
+        self._help_window = HelpWindow(self.cfg, translator)
+        self._help_window.finished.connect(lambda _result: setattr(self, "_help_window", None))
+        self._help_window.show()
+        self._help_window.raise_()
+        self._help_window.activateWindow()
+        return self._help_window
 
     def mic_muted(self):
         return bool(getattr(self, "_mic_muted", False))

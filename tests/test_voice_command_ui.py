@@ -10,8 +10,12 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 os.environ.setdefault("ECHOSUB_DATA_DIR", os.path.join(os.path.dirname(os.path.abspath(__file__)), "_data"))
 
+from PySide6.QtWidgets import QApplication  # noqa: E402
+
 from echosub import config, voice_commands  # noqa: E402
 from echosub.voice_command_ui import VoiceCommandMixin  # noqa: E402
+
+app = QApplication.instance() or QApplication([])  # the help window is a real dialog
 
 
 class FakeTray:
@@ -171,10 +175,15 @@ class VoiceCommandAppTest(unittest.TestCase):
         self.assertIsNone(app._handle_voice_command("open calculator"))
         self.assertEqual(app._wake_word(), "mama")
 
-    def test_help_shows_the_available_actions(self):
+    def test_help_opens_the_window_of_what_you_can_say(self):
         app = FakeApp(voice_commands=True, voice_command_wake="alexa").use_fake_runner()
         self.assertEqual(app._handle_voice_command("alexa help")["key"], "voice_help")
-        self.assertTrue(any("calculator" in message for message in app.tray.messages))
+        window = app._help_window
+        self.addCleanup(window.close)
+        said = "\n".join(f"{say} {does}" for say, does, _on in window.rows)
+        self.assertIn("calculator", said)
+        self.assertTrue(all(row[0].startswith("alexa") for row in window.rows if row[0] != "no"),
+                        "the rows should use the wake word this user actually set")
 
     def test_a_saved_custom_phrase_runs_its_approved_action(self):
         app = FakeApp(voice_commands=True, voice_custom_commands=[

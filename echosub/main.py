@@ -302,6 +302,8 @@ class App(TrayMenuMixin, UpdateCheckMixin, VoiceCommandMixin):
         threading.Thread(target=swap, name="engine-swap", daemon=True).start()
 
     def _on_partial(self, gen, original, translated, lang, source="system"):
+        if gen == self.generation:
+            self.heard_a_refusal(original)  # "no" should stop a countdown without waiting
         if gen == self.generation and not (source == "mic" and self.mic_muted()):
             self.overlay.set_partial(original, translated or None, lang, source)
 

@@ -51,6 +51,7 @@ class TrayMenuMixin:
         m.addAction("Caption size: back to 100%", self.overlay.reset_scale)
         m.addAction("Clear captions", self.overlay.clear)
         m.addSeparator()
+        m.addAction("What can I say?…", self.open_help_window)
         m.addAction("Caption history…", self._open_history)
         m.addAction("Settings…", self._open_settings)
         m.addAction("Open log file", self._open_log)

@@ -148,6 +148,16 @@ GO_WORDS = (
     "ไปที่",                                                                      # Thai
 )
 
+# Calling off a command while its countdown is running. No wake word is needed and it works from
+# any sound, because stopping something from happening can never itself do harm.
+CANCEL_WORDS = (
+    "no", "nope", "cancel", "stop", "dont", "don t", "wait", "nevermind", "never mind", "abort",
+    "لا", "لأ", "الغ", "ألغ", "الغي", "بطل", "وقف", "اوقف", "استنى", "خلاص",
+    "non", "annule", "nein", "halt", "no gracias", "cancela", "nao", "não", "hayır", "iptal",
+    "нет", "отмена", "отмени", "نه", "لغو", "نہیں", "नहीं", "रहने दो",
+    "不", "不要", "取消", "いいえ", "キャンセル", "아니", "취소", "ไม่",
+)
+
 # Muting your own microphone, said into that microphone. Both a name for it and a word for the
 # action are needed, so merely mentioning a microphone does not switch it.
 MIC_WORDS = (
