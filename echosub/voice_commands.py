@@ -26,7 +26,7 @@ Safety rules, in order of importance:
 import logging
 import re
 
-from . import screen_replies, voice_destinations, voice_vocabulary as vocabulary
+from . import screen_replies, voice_destinations, voice_typing, voice_vocabulary as vocabulary
 from .voice_actions import (  # noqa: F401 (kept where callers and tests expect them)
     AppNotInstalled, CommandRunner, REPEAT_COOLDOWN_SEC, close_program, open_link, press_keys,
     resolve_program, send_media_key, start_program,
@@ -52,6 +52,7 @@ PRESS_WORDS = ("press", "اضغط", "اكبس")
 CAPTION_COMMANDS = (
     {"key": "voice_help", "action": "help", "target": "help", "label": "Voice command help"},
     {"key": "toggle_captions", "action": "app", "target": "toggle", "label": "Captions switched"},
+    {"key": "press_enter", "action": "press_enter", "target": "enter", "label": "Pressed Enter"},
     {"key": "pause_captions", "action": "app", "target": "pause", "label": "Captions paused"},
     {"key": "resume_captions", "action": "app", "target": "resume", "label": "Captions resumed"},
     {"key": "hide_captions", "action": "app", "target": "hide", "label": "Caption box hidden"},
@@ -166,6 +167,23 @@ def _spoken_tail(raw_text, words):
         return ""
     start, negative_end = min(found)
     return str(raw_text)[-negative_end:].strip()
+
+
+def _typing_command(window, raw_text):
+    """"Type ..." — everything after that word becomes the text, exactly as it was heard."""
+    if _first_position(window, vocabulary.TYPE_WORDS) < 0:
+        return None
+    said = voice_typing.safe_text(_spoken_tail(raw_text, vocabulary.TYPE_WORDS))
+    if not said:
+        return None
+    return {"key": "type_text", "action": "type_text", "target": said, "label": f"Typed {said}"}
+
+
+def _enter_command(window):
+    """"Press enter" — the one key that typed text is never allowed to contain by itself."""
+    if _first_position(window, PRESS_WORDS) < 0 or _first_position(window, vocabulary.ENTER_WORDS) < 0:
+        return None
+    return command("press_enter")
 
 
 def _go_command(window, raw_text, folders):
@@ -285,7 +303,7 @@ def find(text, wake_words=DEFAULT_WAKE_WORDS, **options):
 def command_starters():
     """Every word that may *begin* a spoken command: the doing words, in all the languages."""
     words = set(OPEN_WORDS) | set(CLOSE_WORDS) | set(HELP_WORDS) | set(PRESS_WORDS)
-    words |= set(vocabulary.GO_WORDS)
+    words |= set(vocabulary.GO_WORDS) | set(vocabulary.TYPE_WORDS)
     for _key, action_words in vocabulary.CAPTION_ACTIONS:
         words |= set(action_words)
     for _key, _target, _label, action_words in MEDIA_ACTIONS:
@@ -293,10 +311,18 @@ def command_starters():
     return tuple(words)
 
 
-def _match(window, text, custom_commands, allow_key_presses, folders):
-    """The command in one window of speech, or None. The order decides what wins a tie."""
-    found = (_help_command(window) or _custom_command(window, custom_commands) or
-             _echosub_command(window) or _link_command(window) or
+def _match(window, text, custom_commands, allow_key_presses, folders, allow_typing=False):
+    """The command in one window of speech, or None. The order decides what wins a tie.
+
+    Typing comes early on purpose: "type open the calculator" is a sentence to write down, not a
+    program to start, so the word "type" claims everything after it.
+    """
+    found = _help_command(window) or _custom_command(window, custom_commands)
+    if found is None and allow_typing:
+        # Typing is tried first, so "type ... and press enter" writes that whole sentence out.
+        # Enter on its own is a separate thing to say, which is the point of it being separate.
+        found = _typing_command(window, text) or _enter_command(window)
+    found = (found or _echosub_command(window) or _link_command(window) or
              _go_command(window, text, folders) or _app_command(window) or
              _media_command(window))
     if found is None and allow_key_presses:
@@ -305,7 +331,7 @@ def _match(window, text, custom_commands, allow_key_presses, folders):
 
 
 def find_detail(text, wake_words=DEFAULT_WAKE_WORDS, custom_commands=(), allow_key_presses=False,
-                reply_pairs=(), folders=(), require_wake=True):
+                reply_pairs=(), folders=(), require_wake=True, allow_typing=False):
     """(command, what was said after the wake word).
 
     The second value lets the app say "I heard you but that was not a command", which is very
@@ -336,7 +362,7 @@ def find_detail(text, wake_words=DEFAULT_WAKE_WORDS, custom_commands=(), allow_k
             if not tail:
                 continue
             window = " ".join(tail.split()[:MAX_WORDS_AFTER_WAKE])[:MAX_WINDOW_CHARS]
-            found = _match(window, text, custom_commands, allow_key_presses, folders)
+            found = _match(window, text, custom_commands, allow_key_presses, folders, allow_typing)
             if found is not None:
                 return found, window
             heard = heard or window
@@ -348,7 +374,7 @@ def find_detail(text, wake_words=DEFAULT_WAKE_WORDS, custom_commands=(), allow_k
         window = " ".join(spoken.split()[:MAX_WORDS_AFTER_WAKE])[:MAX_WINDOW_CHARS]
         found = _custom_command(window, custom_commands)  # one of your own phrases, matched in full
         if found is None and _first_position(window, command_starters()) == 0:
-            found = _match(window, text, custom_commands, allow_key_presses, folders)
+            found = _match(window, text, custom_commands, allow_key_presses, folders, allow_typing)
         # Nothing is reported as "heard but not understood": that would fire on every sentence.
         return found, None
     return None, heard

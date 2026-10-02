@@ -148,7 +148,26 @@ GO_WORDS = (
     "ไปที่",                                                                      # Thai
 )
 
-# "Play <name>" reaches the same list, because that is how one asks for a song rather than a place.
+# "Type <words>" writes those words into whatever window has the keyboard. Everything after the
+# word here is taken as the text, exactly as it was heard, so nothing else is read out of it.
+TYPE_WORDS = (
+    "type", "write", "write down", "dictate",                   # English
+    "اكتب", "أكتب", "اطبع", "دون",                                # Arabic
+    "ecris", "écris", "tape", "escribe", "escribir",            # French / Spanish
+    "schreib", "schreibe", "scrivi", "escreva",                 # German / Italian / Portuguese
+    "yaz", "напиши", "печатай", "введи",                        # Turkish / Russian
+    "بنویس", "تایپ کن", "لکھو", "लिखो", "टाइप करो",                # Persian / Urdu / Hindi
+    "输入", "打字", "入力", "타이핑", "입력", "พิมพ์",                 # Chinese / Japanese / Korean / Thai
+)
+
+# "Press enter" is its own command: typed text can never contain a new line, so sending one has to
+# be asked for by name.
+ENTER_WORDS = (
+    "enter", "return", "send", "ادخال", "إدخال", "ارسل", "أرسل", "انتر", "entree", "entrée",
+    "intro", "eingabe", "invio", "ввод", "энтер", "enter tusu", "엔터", "回车", "エンター",
+)
+
+# "Play <name>" reaches the same list, because that is how one asks for a place rather than a song.
 # On its own, or with a name that is not on the list, it stays a media key: "play" still means play.
 PLAY_WORDS = (
     "play", "open", "put on",                       # English

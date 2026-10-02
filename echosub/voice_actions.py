@@ -16,7 +16,7 @@ import time
 import webbrowser
 import winreg
 
-from . import voice_destinations
+from . import voice_destinations, voice_typing
 from .voice_registry import (
     APPS, CREATE_NO_WINDOW, LINKS, MAX_PRESS_KEYS, MEDIA_VIRTUAL_KEYS, SAFE_PRESS_KEY, WM_CLOSE,
 )
@@ -43,7 +43,7 @@ class CommandRunner:
 
     def __init__(self, app_action=None, launcher=None, closer=None, key_presser=None, media_controller=None,
                  link_opener=None, url_opener=None, folder_opener=None, program_starter=None,
-                 file_opener=None):
+                 file_opener=None, typist=None, enter_presser=None):
         """`app_action(target)` handles EchoSub's own controls; the others exist for the tests."""
         self.app_action = app_action or (lambda target: False)
         self.link_opener = link_opener or open_link
@@ -51,6 +51,8 @@ class CommandRunner:
         self.folder_opener = folder_opener or open_folder
         self.file_opener = file_opener or open_file
         self.program_starter = program_starter or start_command_line
+        self.typist = typist or voice_typing.type_text
+        self.enter_presser = enter_presser or voice_typing.press_enter
         self.launcher = launcher or start_program
         self.closer = closer or close_program
         self.key_presser = key_presser or press_keys
@@ -65,7 +67,8 @@ class CommandRunner:
         if (command_entry not in allowed_commands() and not (is_press and _valid_press_command(command_entry))
                 and not (action_of == "reply" and isinstance(command_entry.get("target"), str))
                 and not _valid_destination_command(command_entry)
-                and not _valid_run_command(command_entry)):
+                and not _valid_run_command(command_entry)
+                and not _valid_typing_command(command_entry)):
             log.warning("Refused a command that is not on the list: %r", command_entry)
             return None
         key, last_time = self._last
@@ -83,6 +86,10 @@ class CommandRunner:
                 return f"{target.title()} was not open"
         elif action == "open_link":
             self.link_opener(LINKS[target]["url"])
+        elif action == "type_text":
+            self.typist(target)
+        elif action == "press_enter":
+            self.enter_presser()
         elif action == "run":
             self.program_starter(target)
         elif action == "open_url":
@@ -123,6 +130,13 @@ def _valid_destination_command(entry):
     if action == "open_file":
         return isinstance(target, str) and os.path.isfile(target)
     return False
+
+
+def _valid_typing_command(entry):
+    """Typed text is built while listening, so it is cleaned and checked again right here."""
+    return (isinstance(entry, dict) and entry.get("action") == "type_text" and
+            isinstance(entry.get("target"), str) and
+            voice_typing.safe_text(entry["target"]) == entry["target"] != "")
 
 
 def _valid_run_command(entry):

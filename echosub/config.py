@@ -120,6 +120,7 @@ DEFAULTS = {
     "voice_command_wake": "echo sub",     # a command only counts after this wake word
     "voice_custom_commands": [],           # user phrases mapped to an approved built-in action
     "voice_key_presses": False,            # allow short A-Z / 0-9 press commands after the wake word
+    "voice_typing": False,                 # "type ..." writes what was said into the active window
     "voice_command_delay": 3,              # seconds to show a command before it runs (0 = at once)
     "mic_wake_word": False,                # your own microphone does not need the wake word
     "voice_go_folders": [],                # folders "go to <name>" may open: {"name": ..., "path": ...}

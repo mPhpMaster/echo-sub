@@ -152,11 +152,21 @@ class HarmlessOnlyTest(unittest.TestCase):
                 self.assertIsNone(voice_commands.find(sentence))
 
     def test_the_list_holds_only_harmless_actions(self):
+        # "press_enter" is the one action here that reaches outside EchoSub, and it is deliberate:
+        # typed text may never contain a new line, so pressing Enter has to be asked for by name.
+        # It is unreachable unless typing is switched on, which the tests below hold it to.
         for command in voice_commands.COMMANDS:
             with self.subTest(command=command["key"]):
-                self.assertIn(command["action"], ("open_app", "close_app", "app", "help", "media", "open_link"))
+                self.assertIn(command["action"],
+                              ("open_app", "close_app", "app", "help", "media", "open_link", "press_enter"))
                 if command["action"] in ("open_app", "close_app"):
                     self.assertIn(command["target"], voice_commands.APPS)
+
+    def test_typing_and_enter_do_nothing_until_they_are_switched_on(self):
+        for sentence in ("echo sub type my password", "echo sub type hello there", "echo sub press enter"):
+            with self.subTest(sentence=sentence):
+                self.assertIsNone(voice_commands.find(sentence), "typing is off by default")
+                self.assertIsNotNone(voice_commands.find(sentence, allow_typing=True), sentence)
 
     def test_the_apps_are_everyday_ones_with_no_way_to_run_anything_else(self):
         """Opening an app is harmless; a terminal or a registry editor is not, and must stay out."""

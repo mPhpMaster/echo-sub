@@ -29,6 +29,8 @@ class VoiceCommandsTabMixin(ScreenRepliesGroupMixin, GoToGroupMixin):
         self.voice_wake.setMaximumWidth(280)
         self.voice_key_presses = QCheckBox("Allow short A-Z and 0-9 key presses after the wake word")
         self.voice_key_presses.setChecked(cfg.get("voice_key_presses", False))
+        self.voice_typing = QCheckBox("Let “type …” write what was said into the active window")
+        self.voice_typing.setChecked(cfg.get("voice_typing", False))
         self.mic_wake_word = QCheckBox("My own microphone must say the wake word too")
         self.mic_wake_word.setChecked(cfg.get("mic_wake_word", False))
         self.voice_command_delay = QSpinBox()
@@ -48,6 +50,15 @@ class VoiceCommandsTabMixin(ScreenRepliesGroupMixin, GoToGroupMixin):
         wait_note.setStyleSheet("color: gray;")
         form.addRow(wait_note)
         form.addRow(self.voice_key_presses)
+        form.addRow(self.voice_typing)
+        typing_note = QLabel(
+            "Off by default, and the most far-reaching command there is: the words are typed into whatever "
+            "window has the keyboard. Anything the PC plays must still say the wake word first, the text "
+            "always appears in the countdown before a key is pressed, and a typed line can never contain a "
+            "new line — “press enter” is a separate thing to say.")
+        typing_note.setWordWrap(True)
+        typing_note.setStyleSheet("color: gray;")
+        form.addRow(typing_note)
         info = QLabel(
             'Examples: “PC open calculator”, “PC افتح الحاسبة”, and “Alexa help”. '
             'Wake words can be separated with commas. Key presses are optional and only allow up to six '
@@ -148,6 +159,7 @@ class VoiceCommandsTabMixin(ScreenRepliesGroupMixin, GoToGroupMixin):
             "voice_custom_commands": voice_commands.valid_custom_commands(entries),
             "voice_key_presses": self.voice_key_presses.isChecked(),
             "voice_command_delay": self.voice_command_delay.value(),
+            "voice_typing": self.voice_typing.isChecked(),
             "mic_wake_word": self.mic_wake_word.isChecked(),
             "voice_go_folders": voice_destinations.valid_folders(self.go_folder_rows()),
             **self.screen_reply_values(),

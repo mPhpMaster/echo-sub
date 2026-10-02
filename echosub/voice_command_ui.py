@@ -79,6 +79,7 @@ class VoiceCommandMixin:
             pairs,
             self.cfg.get("voice_go_folders", []),
             needs_wake,
+            self.cfg.get("voice_typing", False),
         )
         if command is None:
             self._report_unknown_command(heard)

@@ -115,6 +115,16 @@ and `&&` are ordinary characters in an argument and never a second command; if y
 of your own and name that script here. Only the line you typed is ever started — nothing that was said is added to
 it.
 
+**Typing what you say** (*Settings → Commands*, off by default) is the one command that puts the spoken words
+themselves into another program: say “type” and everything after it is typed into whichever window has the
+keyboard. It works in any language EchoSub captions.
+
+Because it is the furthest-reaching thing here, it is fenced in. Anything your PC plays must say the wake word
+first, so a video or someone in a call cannot type on your PC by accident. The exact text appears in the countdown
+notice before a single key is pressed, and clicking it still cancels. The text is capped in length and stripped of
+every control character, so a typed line can never contain a new line and cannot send itself — **“press enter”**
+is a separate thing to say, and it too only works while typing is switched on.
+
 **To play a song**, add the file in *Settings → Commands* with “Add file…” and give it a name to say. Then “play
 <name>” — or “go to <name>” — opens it with the program Windows normally uses for that kind of file, exactly as
 double-clicking it would. “Play …” only reaches names you added yourself, so “play music” still works the media key

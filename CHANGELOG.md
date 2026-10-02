@@ -5,6 +5,13 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and 
 
 ## [Unreleased]
 
+## [1.4.0] — 2026-10-02
+
+### Added
+- **Say “type …” and the words are typed** into whatever window has the keyboard (*Settings → Commands*, **off by default**). Everything after “type” becomes the text, exactly as it was heard, in any language EchoSub captions. This is the only command that puts spoken words into another program, so it is fenced in: anything the PC plays must say the wake word first, the exact text appears in the countdown before a single key is pressed, one click still cancels it, and the text is capped and stripped of every control character — a typed line can never contain a new line, so it cannot submit itself.
+- **“Press enter”** as a separate thing to say, for when you do want the line sent. It is reachable only while typing is switched on.
+
+
 ## [1.3.3] — 2026-10-02
 
 ### Fixed
