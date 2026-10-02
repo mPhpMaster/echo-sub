@@ -117,8 +117,16 @@ class CaptionBoxTest(unittest.TestCase):
         badge = overlay.lines[0].original._badge
         self.assertIsNotNone(badge, "the microphone caption has no label")
         self.assertIn("Mohammad", badge.text)
-        self.assertEqual(badge.position, "above")
         self.assertTrue(badge.prominent)
+
+    def test_the_label_sits_where_the_settings_put_it(self):
+        """It used to be forced above the words; it now follows the label position like any other."""
+        for where in ("before", "after", "above"):
+            with self.subTest(where=where):
+                overlay, _ = self._overlay(mic_label="Mohammad", original_label_position=where)
+                overlay.add_final(1, "what I said", "ترجمة", "en", None, MICROPHONE)
+                app.processEvents()
+                self.assertEqual(overlay.lines[0].original._badge.position, where)
 
     def test_microphone_and_system_captions_are_not_merged_into_one_line(self):
         overlay, _ = self._overlay()

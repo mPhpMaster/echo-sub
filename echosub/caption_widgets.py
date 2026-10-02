@@ -434,9 +434,9 @@ class CaptionLine(QWidget):
                 return None
             if not text_lang and not label:
                 return None
-            # A microphone speaker label is always shown as its own, prominent heading.  It must
-            # not look joined to the transcript or translation beneath it.
-            position = "above" if from_mic and label else cfg[f"{which}_label_position"]
+            # Where the label sits is the user's choice, microphone or not: "before" puts the name
+            # on the same line as the words, which is what most people want from a speaker label.
+            position = cfg[f"{which}_label_position"]
             return Badge(text_lang, kind if kind != "none" else "none", position, font,
                          extra=label, prominent=True)
 
