@@ -5,6 +5,8 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and 
 
 ## [Unreleased]
 
+## [1.5.0] — 2026-10-02
+
 ### Added
 - **Keys by name, and combinations** (*Settings → Commands*, the same switch as before, still off by default). “Press windows” opens the Start menu, “press windows and r” opens Run, “press ctrl shift escape” opens Task Manager; Escape, Tab, the arrows and F1–F12 are all reachable, in English and Arabic. Only words naming a key are ever accepted, a held modifier is always released even if the press fails, and plain letters still work one after another as they did before. **This switch used to refuse every modifier and system key; it no longer does, which was the point of the change.**
 - **A microphone switch only you can use.** Say “mute my microphone” into your own microphone and nothing it hears is shown, written down or obeyed; say it again to bring it back. The PC’s own sound cannot work this switch, so nobody on a call can mute or unmute you. While muted the microphone is still listened to for that one phrase — otherwise nothing could hear you ask for it back; to stop listening to it altogether, switch the microphone off in the settings. There is a matching entry in the tray menu.
