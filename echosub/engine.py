@@ -434,9 +434,17 @@ class CaptionEngine(TranslationMixin):
                 and len(seg) / SR < 0.5 * len(text) / CHARS_PER_SEC):
             text = ""  # too little audio for that sentence: Whisper echoed its context
         if text and not languages.fits_script(text, lang):
-            log.info("Dropping a transcript written in the wrong alphabet for %s: %r", lang, text[:60])
-            text = ""
-            self._last_text, self._sticky_lang = "", None
+            repaired = languages.repaired_language(text, lang)
+            if repaired is not None:
+                # Plain English that Whisper labelled as something else, which happens on almost
+                # every short clip. The words are right, so keep them and correct the label.
+                log.info("Relabelling %s as %s: %r", lang, repaired, text[:60])
+                lang = repaired
+                self._sticky_lang, self._sticky_time = repaired, time.monotonic()
+            else:
+                log.info("Dropping a transcript written in the wrong alphabet for %s: %r", lang, text[:60])
+                text = ""
+                self._last_text, self._sticky_lang = "", None
         if not text:
             self._clear_pending_partial()
             self.on_partial("", "", lang, source)

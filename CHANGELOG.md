@@ -5,6 +5,12 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and 
 
 ## [Unreleased]
 
+## [1.3.3] — 2026-10-02
+
+### Fixed
+- **English captions are no longer thrown away when Whisper mislabels them.** On a short or noisy clip it often decides plain English is Hindi, Arabic, Russian or Korean; the caption was then dropped for being written in the wrong alphabet, and you saw nothing at all. Such a caption is now kept and its language corrected. Measured against a real session log: 34 of 59 lost captions come back, including “Good game.”, “but you can't do it” and “Can you show us again?”. Speech in another language merely written in Latin letters is still not called English, and text in an unexpected alphabet of its own is still dropped — there is no telling what it was meant to be.
+
+
 ## [1.3.2] — 2026-10-01
 
 ### Fixed

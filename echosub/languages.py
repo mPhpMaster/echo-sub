@@ -1,6 +1,7 @@
 # SPDX-License-Identifier: GPL-3.0-only
 # Copyright (C) 2026 Mohammad Al-Safadi
 import os
+import re
 
 # Whisper language code -> (Arabic name, NLLB-200 code); Arabic names are kept as search aliases
 LANGUAGES = {
@@ -262,3 +263,48 @@ def fits_script(text, lang):
         return True
     expected = LANGUAGE_SCRIPTS.get(lang, {"latin"} if lang in LANGUAGES else None)
     return expected is None or script in expected
+
+
+# The commonest English words. Enough of them in a sentence means it really is English, whatever
+# Whisper decided the language was — short clips are where it guesses worst.
+_ENGLISH_WORDS = frozenset("""
+a about after again all also am an and any are as at back be because been before being but by
+call can cant come could day did didnt do does dont down each even first for from get give go going
+good got had has have he hell her here hes him his how i id if ill im in into is isnt it its ive
+just know let like little look made make man many may me more most much must my never new no not
+now of off oh on one only or other our out over own people said same say see she should so some
+than that thats the their them then there these they thing think this those thought three time to
+too two up us use very want was way we well were what when where which while who why will with
+would yeah yes yet you your youre
+actually alright already also always another any around ask away best better big both chat come
+done every everything feel find gonna guy guys hear help keep last later lets long maybe mean name
+need next nothing ok okay once open play please pretty probably put really right show something
+sorry start still stop stuff sure take tell thank thanks try wait wanna watch work
+""".split())
+
+
+def looks_like_english(text):
+    """True when enough of `text` is made of everyday English words to trust it over the label.
+
+    This is deliberately blunt. It has to tell real English apart from speech in another language
+    written out in Latin letters ("Shingad Jhatra bhai"), where guessing English would be worse
+    than saying nothing, so it asks for actual English words rather than merely Latin ones.
+    """
+    words = [word for word in re.findall(r"[a-z']+", str(text).lower()) if word]
+    if not words:
+        return False
+    known = sum(1 for word in words if word.replace("'", "") in _ENGLISH_WORDS)
+    return known >= max(1, round(len(words) * 0.3))
+
+
+def repaired_language(text, lang):
+    """A better language for `text` when its label disagrees with the alphabet, else None.
+
+    Only one repair is made, because only one is safe: plain English wrongly labelled as a language
+    written in another alphabet. Whisper does this constantly on short clips — "Good game." comes
+    back as Hindi — and the caption used to be thrown away. Anything else keeps being dropped: when
+    the text is itself in an unexpected alphabet, there is no telling what it was meant to be.
+    """
+    if not text or fits_script(text, lang) or text_script(text) != "latin":
+        return None
+    return "en" if looks_like_english(text) else None
