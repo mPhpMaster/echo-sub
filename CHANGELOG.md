@@ -5,6 +5,8 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and 
 
 ## [Unreleased]
 
+## [1.7.0] — 2026-10-03
+
 ### Added
 - **Your own spellings** (*Settings → Words*). Speech recognition has no idea how your game, your guild or your friend is spelled, so it writes something that sounds close. Put what it writes on the left and what you want on the right. Whole words, any letter case, and it applies to the translation too.
 - **Words you want to be told about** (*Settings → Words*). One per line — your name, your guild — and a notification appears whenever anything says one. The caption itself is never changed.
