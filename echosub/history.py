@@ -12,7 +12,7 @@ from PySide6.QtWidgets import (
     QDialog, QDialogButtonBox, QFileDialog, QHBoxLayout, QLabel, QPushButton, QTextBrowser, QVBoxLayout,
 )
 
-from . import APP_NAME, config, languages
+from . import APP_NAME, config, languages, subtitles
 
 log = logging.getLogger(__name__)
 
@@ -168,12 +168,24 @@ class HistoryWindow(QDialog):
         QGuiApplication.clipboard().setText("\n".join(record_to_text(r) for r in self.history.records))
 
     def _save(self):
-        default = os.path.join(TRANSCRIPTS_DIR, datetime.datetime.now().strftime("captions_%Y-%m-%d_%H-%M.txt"))
+        stem = datetime.datetime.now().strftime("captions_%Y-%m-%d_%H-%M")
         os.makedirs(TRANSCRIPTS_DIR, exist_ok=True)
-        path, _ = QFileDialog.getSaveFileName(self, "Save captions", default, "Text files (*.txt)")
-        if path:
-            with open(path, "w", encoding="utf-8") as f:
-                f.write("\n".join(record_to_text(r) for r in self.history.records) + "\n")
+        path, chosen = QFileDialog.getSaveFileName(
+            self, "Save captions", os.path.join(TRANSCRIPTS_DIR, stem + ".txt"),
+            "Text files (*.txt);;Subtitles, both languages (*.srt);;"
+            "Subtitles, translation only (*.srt);;Subtitles, original only (*.srt)")
+        if not path:
+            return
+        if "Subtitles" in chosen or path.lower().endswith(".srt"):
+            which = ("translation" if "translation only" in chosen
+                     else "original" if "original only" in chosen else "both")
+            if not path.lower().endswith(".srt"):
+                path += ".srt"
+            text = subtitles.to_srt(self.history.records, which)
+        else:
+            text = "\n".join(record_to_text(r) for r in self.history.records) + "\n"
+        with open(path, "w", encoding="utf-8") as f:
+            f.write(text)
 
 
 def open_transcripts_folder():

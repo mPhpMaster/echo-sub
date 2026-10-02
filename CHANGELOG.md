@@ -5,6 +5,15 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and 
 
 ## [Unreleased]
 
+### Added
+- **Your own spellings** (*Settings → Words*). Speech recognition has no idea how your game, your guild or your friend is spelled, so it writes something that sounds close. Put what it writes on the left and what you want on the right. Whole words, any letter case, and it applies to the translation too.
+- **Words you want to be told about** (*Settings → Words*). One per line — your name, your guild — and a notification appears whenever anything says one. The caption itself is never changed.
+- **Save captions as subtitles.** *Caption history → Save* now offers `.srt` as well as text, in both languages or either one on its own. A caption is recorded when it was finished rather than as a span of audio, so each subtitle runs until the next one begins, capped at seven seconds: a faithful record of when each line appeared, not a frame-accurate track.
+- **Fewer missed commands.** A phrase of your own may be preceded by “open”, “run” or “play”, so “run music” finds a phrase saved as “music”; an app’s name on its own opens it when that is the whole of what was said. Replayed against a real session log, 35 of 248 missed attempts are understood now.
+- **“Heard but not understood”** (tray menu): what was heard after the wake word without a command following it, how often, and a button to turn one into a command of your own.
+- **A warning about a wake word that invites trouble.** EchoSub hears everything the PC plays, so a wake word common in ordinary speech is set off all day; the settings now say so as you type. “PC” is the one that catches people out, and in the log above it was most of the misses.
+
+
 ## [1.6.0] — 2026-10-02
 
 ### Added

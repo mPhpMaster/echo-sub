@@ -16,7 +16,7 @@ from PySide6.QtGui import QColor, QIcon, QPainter  # noqa: E402
 from PySide6.QtNetwork import QLocalServer, QLocalSocket  # noqa: E402
 from PySide6.QtWidgets import QApplication, QSystemTrayIcon  # noqa: E402
 
-from . import APP_NAME, AUTHOR, __version__, config, history, hotkeys  # noqa: E402
+from . import APP_NAME, AUTHOR, __version__, config, history, hotkeys, transcript_fixes  # noqa: E402
 from .overlay import CaptionOverlay  # noqa: E402
 from .tray_menu import TrayMenuMixin  # noqa: E402
 from .update_ui import UpdateCheckMixin  # noqa: E402
@@ -310,12 +310,23 @@ class App(TrayMenuMixin, UpdateCheckMixin, VoiceCommandMixin):
     def _on_final(self, gen, seg_id, original, translated, lang, speaker, source="system"):
         if gen != self.generation:
             return
+        original = transcript_fixes.apply_fixes(original, self.cfg.get("transcript_fixes"))
+        translated = transcript_fixes.apply_fixes(translated, self.cfg.get("transcript_fixes"))
         if not (source == "mic" and self.mic_muted()):
             spk = None if speaker < 0 else speaker
             self.overlay.add_final(seg_id, original, translated, lang, spk, source)
             self.history.add((gen, seg_id), original, translated, lang, spk)
+            self._report_alerts(original)
         # Still offered to the commands, so a muted microphone can hear itself being unmuted.
         self._handle_voice_command(original, source)
+
+    def _report_alerts(self, text):
+        """Say so when a caption contains one of the words being watched for."""
+        words = transcript_fixes.alerts_in(text, self.cfg.get("alert_words"))
+        if not words or not self.cfg.get("alert_sound", True):
+            return
+        message = "Heard: " + ", ".join(words) + "\n" + text[:120]
+        self.tray.showMessage(APP_NAME, message, QSystemTrayIcon.Information, 5000)
 
     def _on_translation(self, gen, seg_id, translated):
         if gen == self.generation:

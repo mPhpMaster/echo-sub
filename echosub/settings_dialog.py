@@ -11,6 +11,7 @@ from PySide6.QtWidgets import (
 from . import APP_NAME, audio, config, languages
 from .settings_microphone import MicrophoneGroupMixin
 from .settings_tabs import NUMBER_WIDTH, AdvancedTabMixin
+from .settings_transcript import TranscriptFixesMixin
 from .settings_voice_commands import VoiceCommandsTabMixin
 from .settings_widgets import (
     SEARCH_ALIAS_ROLE, ColorButton, SearchableComboBox, _scrollable, _sorted_languages, fit_to_screen,
@@ -19,7 +20,8 @@ from .settings_widgets import (
 from .overlay import SCALE_MAX, SCALE_MIN, SCALE_STEP
 
 
-class SettingsDialog(VoiceCommandsTabMixin, AdvancedTabMixin, MicrophoneGroupMixin, QDialog):
+class SettingsDialog(VoiceCommandsTabMixin, AdvancedTabMixin, MicrophoneGroupMixin,
+                     TranscriptFixesMixin, QDialog):
     preview = Signal(dict)  # emitted on every change so the overlay can show it live
 
     def __init__(self, cfg, parent=None, add_phrase=None):
@@ -39,6 +41,7 @@ class SettingsDialog(VoiceCommandsTabMixin, AdvancedTabMixin, MicrophoneGroupMix
         tabs.addTab(_scrollable(self._text_tab(cfg)), "Text && Colors")
         tabs.addTab(_scrollable(self._layout_tab(cfg)), "Position && Alignment")
         tabs.addTab(_scrollable(self._speakers_tab(cfg)), "Speakers")
+        tabs.addTab(_scrollable(self._words_tab(cfg)), "Words")
         tabs.addTab(_scrollable(self._commands_tab(cfg)), "Commands")
         tabs.addTab(_scrollable(self._advanced_tab(cfg)), "Advanced")
 
@@ -136,6 +139,15 @@ class SettingsDialog(VoiceCommandsTabMixin, AdvancedTabMixin, MicrophoneGroupMix
         f.addRow("Arabic diacritics (تشكيل):", self.arabic_diacritics)
         outer.addWidget(self._microphone_group(cfg))
         outer.addStretch(1)
+        return w
+
+    def _words_tab(self, cfg):
+        """Spellings EchoSub should use, and words it should tell you about."""
+        w = QWidget()
+        layout = QVBoxLayout(w)
+        layout.addWidget(self._transcript_fixes_group(cfg))
+        layout.addWidget(self._alert_words_group(cfg))
+        layout.addStretch(1)
         return w
 
     def _text_tab(self, cfg):
@@ -495,5 +507,6 @@ class SettingsDialog(VoiceCommandsTabMixin, AdvancedTabMixin, MicrophoneGroupMix
             "save_transcripts": self.save_transcripts.isChecked(),
             "update_checks": self.update_checks.isChecked(),
             **self.voice_command_values(),
+            **self.transcript_fix_values(),
             "global_hotkeys": self.global_hotkeys.isChecked(),
         }
