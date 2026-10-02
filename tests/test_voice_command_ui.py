@@ -44,6 +44,9 @@ class FakeOverlay:
     def remove_caption(self, seg_id):
         pass
 
+    def set_partial(self, original, translated, lang, source="system"):
+        pass
+
 
 class FakeApp(VoiceCommandMixin):
     def __init__(self, **overrides):

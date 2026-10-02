@@ -16,9 +16,9 @@ import time
 import webbrowser
 import winreg
 
-from . import voice_destinations, voice_typing
+from . import voice_destinations, voice_keys, voice_typing
 from .voice_registry import (
-    APPS, CREATE_NO_WINDOW, LINKS, MAX_PRESS_KEYS, MEDIA_VIRTUAL_KEYS, SAFE_PRESS_KEY, WM_CLOSE,
+    APPS, CREATE_NO_WINDOW, LINKS, MEDIA_VIRTUAL_KEYS, WM_CLOSE,
 )
 
 log = logging.getLogger(__name__)
@@ -146,9 +146,10 @@ def _valid_run_command(entry):
 
 
 def _valid_press_command(entry):
+    """Checked again here: every word has to name a key, and only modifiers may be held."""
     keys = entry.get("target")
-    return (isinstance(keys, tuple) and 0 < len(keys) <= MAX_PRESS_KEYS and
-            all(isinstance(key, str) and SAFE_PRESS_KEY.fullmatch(key.lower()) for key in keys))
+    return (isinstance(keys, (tuple, list)) and all(isinstance(key, str) for key in keys)
+            and voice_keys.resolve(keys) is not None)
 
 
 def open_link(url):
@@ -227,14 +228,10 @@ def open_file(path):
 
 
 def press_keys(keys):
-    """Press individual A-Z / 0-9 keys. No modifiers, navigation, or system shortcuts are accepted."""
+    """Press one key or a combination, by name. Only words naming a key are ever accepted."""
     if not _valid_press_command({"target": tuple(keys)}):
-        raise ValueError("Only short A-Z and 0-9 key presses are allowed")
-    user32 = ctypes.windll.user32
-    for key in keys:
-        code = ord(key.upper())
-        user32.keybd_event(code, 0, 0, 0)
-        user32.keybd_event(code, 0, 0x0002, 0)
+        raise ValueError("those are not keys I can press")
+    voice_keys.press(keys)
 
 
 def send_media_key(target):

@@ -12,19 +12,19 @@ cuda_setup.setup()
 LOG_PATH = logging_setup.setup()
 
 from PySide6.QtCore import QObject, QTimer, Signal  # noqa: E402
-from PySide6.QtGui import QAction, QActionGroup, QColor, QIcon, QPainter  # noqa: E402
+from PySide6.QtGui import QColor, QIcon, QPainter  # noqa: E402
 from PySide6.QtNetwork import QLocalServer, QLocalSocket  # noqa: E402
-from PySide6.QtWidgets import QApplication, QMenu, QSystemTrayIcon  # noqa: E402
+from PySide6.QtWidgets import QApplication, QSystemTrayIcon  # noqa: E402
 
-from . import APP_NAME, AUTHOR, __version__, config, history, hotkeys, languages  # noqa: E402
+from . import APP_NAME, AUTHOR, __version__, config, history, hotkeys  # noqa: E402
 from .overlay import CaptionOverlay  # noqa: E402
+from .tray_menu import TrayMenuMixin  # noqa: E402
 from .update_ui import UpdateCheckMixin  # noqa: E402
 from .voice_command_ui import VoiceCommandMixin  # noqa: E402
 from .settings_dialog import SettingsDialog  # noqa: E402
 
 log = logging.getLogger("echosub")
 
-QUICK_TARGETS = ["ar", "en", "fr", "de", "es", "it", "pt", "tr", "fa", "ur", "hi", "zh", "ja", "ko", "ru"]
 INSTANCE_KEY = "EchoSub-single-instance"
 MUTEX_NAME = "EchoSubAppMutex"  # the installer checks it to ask the user to close EchoSub first
 
@@ -77,7 +77,7 @@ def make_icon(color):
     return QIcon(pm)
 
 
-class App(UpdateCheckMixin, VoiceCommandMixin):
+class App(TrayMenuMixin, UpdateCheckMixin, VoiceCommandMixin):
     def __init__(self, qt):
         self.qt = qt
         self.qt.setQuitOnLastWindowClosed(False)
@@ -117,66 +117,13 @@ class App(UpdateCheckMixin, VoiceCommandMixin):
         self.tray.setToolTip(APP_NAME)
         self.tray.setContextMenu(self.menu)
         self.tray.activated.connect(self._tray_activated)
+        self.tray.messageClicked.connect(self._notice_clicked)
         self.tray.show()
         self._apply_hotkeys()
         self._start_engine()
         self._schedule_update_check()
 
     # ---- menu --------------------------------------------------------------
-    def _build_menu(self):
-        m = QMenu()
-        self.act_show = QAction("Show captions", m, checkable=True, checked=self.cfg["overlay_enabled"])
-        self.act_show.toggled.connect(self._set_overlay_enabled)
-        self.act_position = QAction("Adjust window position and size", m, checkable=True)
-        self.act_position.toggled.connect(self.overlay.set_positioning)
-        self.act_lock = QAction("Lock window (click-through)", m, checkable=True, checked=self.cfg["click_through"])
-        self.act_lock.toggled.connect(self._set_lock)
-        self.act_pause = QAction("Pause", m, checkable=True)
-        self.act_pause.toggled.connect(self._set_paused)
-        self.act_light = QAction("Light mode (faster on a busy PC)", m, checkable=True,
-                                 checked=self.cfg.get("light_mode", False))
-        self.act_light.toggled.connect(self._set_light_mode)
-
-        lang_menu = m.addMenu("Translation language")
-        group = QActionGroup(lang_menu)
-        self.lang_actions = {}
-        for code in QUICK_TARGETS:
-            a = QAction(languages.name(code), lang_menu, checkable=True, checked=self.cfg["target_lang"] == code)
-            a.triggered.connect(lambda _=False, c=code: self._apply({"target_lang": c}))
-            group.addAction(a)
-            lang_menu.addAction(a)
-            self.lang_actions[code] = a
-        lang_menu.addSeparator()
-        lang_menu.addAction("More languages…", self._open_settings)
-
-        m.addAction(self.act_show)
-        m.addAction(self.act_position)
-        m.addAction(self.act_lock)
-        m.addAction(self.act_pause)
-        m.addAction(self.act_light)
-        m.addAction(self._make_voice_command_action(m))
-        m.addAction("Caption size: back to 100%", self.overlay.reset_scale)
-        m.addAction("Clear captions", self.overlay.clear)
-        m.addSeparator()
-        m.addAction("Caption history…", self._open_history)
-        m.addAction("Settings…", self._open_settings)
-        m.addAction("Open log file", self._open_log)
-        m.addAction("Check for updates…", lambda: self._check_updates_async(manual=True))
-        m.addAction(f"About {APP_NAME}…", self._open_about)
-        m.addAction("Restart engine", self._start_engine)
-        m.addSeparator()
-        m.addAction("Exit", self._quit)
-        self._update_hotkey_labels()
-        return m
-
-    def _update_hotkey_labels(self):
-        enabled = self.cfg["global_hotkeys"]
-        for action, name, text in ((self.act_show, "toggle_captions", "Show captions"),
-                                   (self.act_pause, "pause", "Pause"),
-                                   (self.act_lock, "lock", "Lock window (click-through)")):
-            # Text after a tab is drawn in the menu's shortcut column
-            action.setText(f"{text}\t{hotkeys.label(name)}" if enabled else text)
-
     def _apply_hotkeys(self):
         if not self.cfg["global_hotkeys"]:
             self.hotkeys.disable()
@@ -224,13 +171,15 @@ class App(UpdateCheckMixin, VoiceCommandMixin):
         self.overlay.set_status("Paused" if paused else "", 0 if paused else 1)
         self._update_tray()
 
-    def _open_settings(self):
+    def _open_settings(self, add_phrase=None):
+        # Menu actions pass their checked state, which is not a phrase.
+        add_phrase = add_phrase if isinstance(add_phrase, str) else None
         if self.settings_dialog is not None:
             self.settings_dialog.raise_()
             self.settings_dialog.activateWindow()
             return
         backup = dict(self.cfg)
-        dlg = SettingsDialog(self.cfg)
+        dlg = SettingsDialog(self.cfg, add_phrase=add_phrase)
         self.settings_dialog = dlg
         self._placement_override = None
 
@@ -353,15 +302,17 @@ class App(UpdateCheckMixin, VoiceCommandMixin):
         threading.Thread(target=swap, name="engine-swap", daemon=True).start()
 
     def _on_partial(self, gen, original, translated, lang, source="system"):
-        if gen == self.generation:
+        if gen == self.generation and not (source == "mic" and self.mic_muted()):
             self.overlay.set_partial(original, translated or None, lang, source)
 
     def _on_final(self, gen, seg_id, original, translated, lang, speaker, source="system"):
         if gen != self.generation:
             return
-        spk = None if speaker < 0 else speaker
-        self.overlay.add_final(seg_id, original, translated, lang, spk, source)
-        self.history.add((gen, seg_id), original, translated, lang, spk)
+        if not (source == "mic" and self.mic_muted()):
+            spk = None if speaker < 0 else speaker
+            self.overlay.add_final(seg_id, original, translated, lang, spk, source)
+            self.history.add((gen, seg_id), original, translated, lang, spk)
+        # Still offered to the commands, so a muted microphone can hear itself being unmuted.
         self._handle_voice_command(original, source)
 
     def _on_translation(self, gen, seg_id, translated):

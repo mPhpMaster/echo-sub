@@ -7,11 +7,17 @@ Safety rules, in order of importance:
 1. **A closed list.** Only the actions in `COMMANDS` and the apps in `APPS` can ever run. Nothing
    from the transcript is passed to a shell, used as a file name, or turned into a command line:
    what is heard only ever *selects* one of the entries written in this file.
-2. **Nothing destructive.** The list holds only: opening or closing ordinary Windows apps and
-   EchoSub's own caption controls. An optional setting permits only up to six individual A-Z or
-   0-9 key presses; shortcuts, Enter, navigation, terminal access, and system keys remain absent.
-   Shutting down or restarting the PC, deleting or moving files, changing Windows settings, and
-   running any program by transcript are deliberately absent, and must stay absent.
+2. **Nothing destructive by itself.** The list holds only: opening or closing ordinary Windows
+   apps and EchoSub's own caption controls. Shutting down or restarting the PC, deleting or moving
+   files, changing Windows settings, and running any program named in a transcript are absent, and
+   must stay absent.
+
+   Three settings widen this, each off by default and each asked for deliberately: typing what was
+   said, starting a program line written in the settings, and pressing named keys, which does
+   include the Windows key, Escape and combinations such as Windows+R. Taken together those three
+   can reach a great deal of Windows, which is why each is its own switch, why the PC's own sound
+   must still say the wake word first, and why every command is shown with a countdown that one
+   click calls off.
 3. **Closing is as gentle as the app allows.** Notepad can hold text you have not saved, so it is
    asked to close the way the X button does, and it may still ask you to save. Calculator keeps
    nothing, and it ignores a polite request (it is a Store app), so it is closed outright.
@@ -26,13 +32,13 @@ Safety rules, in order of importance:
 import logging
 import re
 
-from . import screen_replies, voice_destinations, voice_typing, voice_vocabulary as vocabulary
+from . import screen_replies, voice_destinations, voice_keys, voice_typing, voice_vocabulary as vocabulary
 from .voice_actions import (  # noqa: F401 (kept where callers and tests expect them)
     AppNotInstalled, CommandRunner, REPEAT_COOLDOWN_SEC, close_program, open_link, press_keys,
     resolve_program, send_media_key, start_program,
 )
 from .voice_registry import (
-    APPS, CLOSE_WORDS, LINKS, MAX_PRESS_KEYS, MEDIA_ACTIONS, MEDIA_NOUNS, OPEN_WORDS, SAFE_PRESS_KEY,
+    APPS, CLOSE_WORDS, LINKS, MEDIA_ACTIONS, MEDIA_NOUNS, OPEN_WORDS,
 )  # noqa: F401 (MEDIA_ACTIONS is used by command_starters)
 
 log = logging.getLogger(__name__)
@@ -53,6 +59,8 @@ CAPTION_COMMANDS = (
     {"key": "voice_help", "action": "help", "target": "help", "label": "Voice command help"},
     {"key": "toggle_captions", "action": "app", "target": "toggle", "label": "Captions switched"},
     {"key": "press_enter", "action": "press_enter", "target": "enter", "label": "Pressed Enter"},
+    # Only your own microphone may say this, so nobody on a call can switch your microphone for you.
+    {"key": "toggle_mic", "action": "app", "target": "mic", "label": "Microphone switched", "mic_only": True},
     {"key": "pause_captions", "action": "app", "target": "pause", "label": "Captions paused"},
     {"key": "resume_captions", "action": "app", "target": "resume", "label": "Captions resumed"},
     {"key": "hide_captions", "action": "app", "target": "hide", "label": "Caption box hidden"},
@@ -206,6 +214,15 @@ def _go_command(window, raw_text, folders):
     return None
 
 
+def _mic_command(window):
+    """"Mute my microphone", and the same words again to bring it back."""
+    if _first_position(window, vocabulary.MIC_WORDS) < 0:
+        return None
+    if _first_position(window, vocabulary.MIC_ACTION_WORDS) < 0:
+        return None
+    return command("toggle_mic")
+
+
 def _link_command(window):
     """Opening one of the fixed websites: the name is recognized, the address is written in code."""
     if _first_position(window, OPEN_WORDS) < 0:
@@ -221,15 +238,15 @@ def _help_command(window):
 
 
 def _press_command(window):
-    """Return a short, explicitly safe key sequence, never a shortcut or system key."""
+    """"Press <keys>" — one key or a combination, and only words that name a key."""
     parts = window.split()
     if not parts or parts[0] not in PRESS_WORDS:
         return None
-    keys = tuple(part.upper() for part in parts[1:])
-    if not keys or len(keys) > MAX_PRESS_KEYS or not all(SAFE_PRESS_KEY.fullmatch(key.lower()) for key in keys):
-        return None
-    return {"key": f"press:{''.join(keys)}", "action": "press_keys", "target": keys,
-            "label": f"Pressed {' '.join(keys)}"}
+    words = tuple(parts[1:])
+    if voice_keys.resolve(words) is None:
+        return None  # something that is not a key was said; press nothing at all
+    return {"key": f"press:{'+'.join(words)}", "action": "press_keys", "target": words,
+            "label": f"Pressed {voice_keys.label(words)}"}
 
 
 def _media_command(window):
@@ -322,7 +339,7 @@ def _match(window, text, custom_commands, allow_key_presses, folders, allow_typi
         # Typing is tried first, so "type ... and press enter" writes that whole sentence out.
         # Enter on its own is a separate thing to say, which is the point of it being separate.
         found = _typing_command(window, text) or _enter_command(window)
-    found = (found or _echosub_command(window) or _link_command(window) or
+    found = (found or _mic_command(window) or _echosub_command(window) or _link_command(window) or
              _go_command(window, text, folders) or _app_command(window) or
              _media_command(window))
     if found is None and allow_key_presses:

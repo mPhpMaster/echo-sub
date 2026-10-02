@@ -84,6 +84,10 @@ class VoiceCommandMixin:
         if command is None:
             self._report_unknown_command(heard)
             return None
+        if command.get("mic_only") and source != "mic":
+            return None  # your microphone alone may switch your microphone
+        if source == "mic" and self.mic_muted() and command["key"] != "toggle_mic":
+            return None  # muted: the only thing left that your voice may do is unmute itself
         if command["action"] == "help":
             self.tray.showMessage(APP_NAME, voice_commands.help_text(self.cfg.get("voice_custom_commands", [])),
                                   QSystemTrayIcon.Information, 8000)
@@ -168,13 +172,44 @@ class VoiceCommandMixin:
         if now - self._unknown_command_at < UNKNOWN_COMMAND_COOLDOWN_SEC:
             return
         self._unknown_command_at = now
-        self.tray.showMessage(APP_NAME, f'Not a command: "{heard}"\nTry "open calculator" or "pause captions".',
-                              QSystemTrayIcon.Information, 4000)
+        self._unknown_phrase = heard
+        self.tray.showMessage(APP_NAME, f'Not a command: "{heard}"\nClick here to make it one.',
+                              QSystemTrayIcon.Information, 5000)
+
+    def _notice_clicked(self):
+        """Clicking the "not a command" notice offers to turn what was heard into a command.
+
+        The phrase is used once: a later click, with nothing newly misheard, opens nothing.
+        """
+        phrase = getattr(self, "_unknown_phrase", "")
+        self._unknown_phrase = ""
+        if phrase:
+            self._open_settings(phrase)
+
+    def mic_muted(self):
+        return bool(getattr(self, "_mic_muted", False))
+
+    def set_mic_muted(self, muted):
+        """Stop showing and obeying your own microphone, or start again.
+
+        The microphone keeps being listened to while muted, because otherwise nothing could hear
+        you ask for it back. Nothing it says is shown, written down, or acted on, apart from that
+        one phrase. To stop listening to it altogether, switch the microphone off in the settings.
+        """
+        self._mic_muted = bool(muted)
+        if getattr(self, "act_mic_mute", None) is not None and self.act_mic_mute.isChecked() != self._mic_muted:
+            self.act_mic_mute.setChecked(self._mic_muted)
+        self.overlay.set_partial("", None, self.cfg.get("target_lang", "en"), "mic")
+        self.tray.showMessage(APP_NAME,
+                              "Your microphone is muted — say it again to bring it back"
+                              if self._mic_muted else "Your microphone is back",
+                              QSystemTrayIcon.Information, 2500)
 
     def _run_app_command(self, target):
         """EchoSub's own controls, through the same actions as the menu entries."""
         actions = {
             "toggle": lambda: self.act_pause.setChecked(not self.act_pause.isChecked()),
+            "mic": lambda: self.set_mic_muted(not self.mic_muted()),
             "pause": lambda: self.act_pause.setChecked(True),
             "resume": lambda: self.act_pause.setChecked(False),
             "hide": lambda: self.act_show.setChecked(False),

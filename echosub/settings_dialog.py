@@ -22,7 +22,7 @@ from .overlay import SCALE_MAX, SCALE_MIN, SCALE_STEP
 class SettingsDialog(VoiceCommandsTabMixin, AdvancedTabMixin, MicrophoneGroupMixin, QDialog):
     preview = Signal(dict)  # emitted on every change so the overlay can show it live
 
-    def __init__(self, cfg, parent=None):
+    def __init__(self, cfg, parent=None, add_phrase=None):
         super().__init__(parent)
         self.cfg = cfg
         self.restore_requested = False
@@ -51,6 +51,13 @@ class SettingsDialog(VoiceCommandsTabMixin, AdvancedTabMixin, MicrophoneGroupMix
         buttons.accepted.connect(self.accept)
         buttons.rejected.connect(self.reject)
         root.addWidget(buttons)
+        if add_phrase:
+            # Opened from the "not a command" notice: start a row for what EchoSub actually heard,
+            # on the tab that holds it, so the phrase only needs an action chosen for it.
+            self._add_voice_custom_command(add_phrase)
+            for index in range(tabs.count()):
+                if "Command" in tabs.tabText(index):
+                    tabs.setCurrentIndex(index)
         self._connect_preview()
         fit_to_screen(self, 640, 760)
 

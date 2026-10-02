@@ -5,14 +5,11 @@
 Nothing here is ever built from what was said. Speech only ever picks one of these entries, and
 what is written here is the whole of what voice commands can do to this PC.
 """
-import re
 
 from . import voice_vocabulary as vocabulary
 
 CREATE_NO_WINDOW = 0x08000000
 WM_CLOSE = 0x0010
-SAFE_PRESS_KEY = re.compile(r"^[a-z0-9]$")
-MAX_PRESS_KEYS = 6
 
 # Only these programs may be started or closed. Both are ordinary Windows accessories.
 # "close": "polite" asks the window to close (unsaved work is safe); "force" ends the process,

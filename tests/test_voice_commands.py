@@ -73,8 +73,18 @@ class WakeWordTest(unittest.TestCase):
     def test_key_presses_are_disabled_unless_explicitly_allowed(self):
         self.assertIsNone(voice_commands.find_detail("echo sub press a b c")[0])
         found = voice_commands.find_detail("echo sub press a b c", allow_key_presses=True)[0]
-        self.assertEqual(found["target"], ("A", "B", "C"))
-        self.assertIsNone(voice_commands.find_detail("echo sub press ctrl c", allow_key_presses=True)[0])
+        self.assertEqual(found["target"], ("a", "b", "c"))
+
+    def test_combinations_are_allowed_once_key_presses_are_on(self):
+        """Asked for deliberately: this switch used to refuse every modifier and system key."""
+        self.assertIsNone(voice_commands.find_detail("echo sub press ctrl c")[0], "still off by default")
+        found = voice_commands.find_detail("echo sub press ctrl c", allow_key_presses=True)[0]
+        self.assertEqual(found["target"], ("ctrl", "c"))
+
+    def test_a_word_that_is_not_a_key_presses_nothing(self):
+        for said in ("echo sub press banana", "echo sub press the red button", "echo sub press"):
+            with self.subTest(said=said):
+                self.assertIsNone(voice_commands.find_detail(said, allow_key_presses=True)[0], said)
 
     def test_media_commands_accept_short_arabic_and_english_phrases(self):
         self.assertEqual(voice_commands.find("maya stop music", ("maya",))["key"], "media_stop")
@@ -264,7 +274,7 @@ class RunnerTest(unittest.TestCase):
         runner = voice_commands.CommandRunner(key_presser=lambda keys: pressed.extend(keys))
         command = voice_commands.find_detail("echo sub press a 2", allow_key_presses=True)[0]
         self.assertEqual(runner.run(command, now=0), "Pressed A 2")
-        self.assertEqual(pressed, ["A", "2"])
+        self.assertEqual(pressed, ["a", "2"])
 
     def test_media_commands_use_the_injected_media_controller(self):
         media = []

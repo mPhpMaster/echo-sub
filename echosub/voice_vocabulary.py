@@ -148,6 +148,20 @@ GO_WORDS = (
     "ไปที่",                                                                      # Thai
 )
 
+# Muting your own microphone, said into that microphone. Both a name for it and a word for the
+# action are needed, so merely mentioning a microphone does not switch it.
+MIC_WORDS = (
+    "microphone", "mic", "mike", "my mic", "my microphone",
+    "المايك", "مايك", "الميكروفون", "مايكي", "صوتي",
+    "micro", "microfono", "mikrofon", "микрофон", "माइक", "麦克风", "マイク", "마이크",
+)
+MIC_ACTION_WORDS = (
+    "mute", "unmute", "off", "on", "stop", "start", "pause", "resume", "toggle", "silence", "cut",
+    "اكتم", "كتم", "اسكت", "وقف", "اوقف", "طفي", "اطفي", "شغل", "افتح", "اقفل",
+    "coupe", "silencia", "stumm", "sessize", "выключи", "включи", "банд каро",
+    "بند کرو", "बंद", "静音", "ミュート", "음소거",
+)
+
 # "Type <words>" writes those words into whatever window has the keyboard. Everything after the
 # word here is taken as the text, exactly as it was heard, so nothing else is read out of it.
 TYPE_WORDS = (
