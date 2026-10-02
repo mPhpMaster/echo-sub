@@ -128,13 +128,19 @@ def _first_position(window, words):
 
 
 def _app_command(window):
-    """An app command is 'a word for open/close' plus 'a word for the app', in any order."""
+    """An app command is 'a word for open/close' plus 'a word for the app', in any order.
+
+    The name on its own opens it too — "echo sub, paint" — but only when that is the whole of what
+    was said after the wake word, so talking about Paint does not start it.
+    """
     for name, app in APPS.items():
         if _first_position(window, app["words"]) < 0:
             continue
         opening = _first_position(window, OPEN_WORDS)
         closing = _first_position(window, CLOSE_WORDS)
         if opening < 0 and closing < 0:
+            if any(window == normalize(word) for word in app["words"]):
+                return command(f"open_{name}")
             continue
         wants_close = closing >= 0 and (opening < 0 or closing < opening)
         return command(f"{'close' if wants_close else 'open'}_{name}")
@@ -212,6 +218,43 @@ def _go_command(window, raw_text, folders):
         if said:
             return voice_destinations.destination_command(said, folders, windows_too=False, allow_url=False)
     return None
+
+
+# Words common enough in ordinary speech that using one as a wake word means EchoSub will think
+# it is being spoken to all day long. "PC" is the one that catches people out: it is in every
+# other sentence of a technology video.
+RISKY_WAKE_WORDS = {
+    "pc", "computer", "laptop", "windows", "ok", "okay", "hey", "yes", "no", "now", "stop", "go",
+    "app", "game", "video", "sound", "audio", "music", "screen", "phone", "mic", "test", "one",
+    "بي سي", "بيسي", "كمبيوتر", "لاب توب", "نعم", "لا", "الان", "شاشه", "صوت",
+}
+WAKE_WORD_MIN_CHARS = 4
+
+
+def wake_word_warning(wake_words):
+    """Why a wake word is likely to be heard by accident, or None when it looks sound.
+
+    EchoSub listens to everything the PC plays, so a wake word that turns up in ordinary speech
+    costs far more here than it would on a phone: every stray match is a sentence it tries to obey.
+    """
+    risky, short = [], []
+    for raw in str(wake_words).split(","):
+        word = normalize(raw)
+        if not word:
+            continue
+        if word in RISKY_WAKE_WORDS:
+            risky.append(raw.strip())
+        elif len(word.replace(" ", "")) < WAKE_WORD_MIN_CHARS:
+            short.append(raw.strip())
+    if not risky and not short:
+        return None
+    parts = []
+    if risky:
+        parts.append("“" + "”, “".join(risky) +
+                     "” turns up in ordinary speech, so anything your PC plays will set it off often")
+    if short:
+        parts.append("“" + "”, “".join(short) + "” is very short, which is easily misheard")
+    return ". ".join(parts) + ". Something two words long and unusual is heard far less by accident."
 
 
 def is_cancel(text):
@@ -301,11 +344,29 @@ def run_command(entry):
 
 
 def _custom_command(window, entries):
-    """Exact phrase matching prevents ordinary speech from triggering a custom mapping."""
+    """Your own phrase, said anywhere after the wake word.
+
+    It used to have to be the whole sentence and nothing else, which meant "run music" missed a
+    phrase saved as "music" — the commonest way these were lost. Whole words still, so a phrase
+    saved as "music" is not found inside "musical".
+    """
     for entry in valid_custom_commands(entries):
-        if window == entry["phrase"]:
+        if window == entry["phrase"] or _without_a_starting_word(window) == entry["phrase"]:
             return run_command(entry) if "run" in entry else command(entry["command"])
     return None
+
+
+def _without_a_starting_word(window):
+    """The sentence with a leading "open", "run" or "play" taken off, if it has one.
+
+    Only those: "close music" and "go to music" mean something else entirely, and must not be
+    read as a request to start the thing again.
+    """
+    for word in sorted(set(OPEN_WORDS) | set(vocabulary.PLAY_WORDS), key=len, reverse=True):
+        start = normalize(word) + " "
+        if window.startswith(start):
+            return window[len(start):].strip()
+    return window
 
 
 def help_text(custom_commands=()):

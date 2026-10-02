@@ -18,6 +18,7 @@ from PySide6.QtCore import QTimer
 from . import APP_NAME, screen_replies, voice_commands
 from .command_notice import CommandNotice
 from .help_window import HelpWindow
+from .missed_window import MissedPhrases, MissedWindow
 
 log = logging.getLogger("echosub")
 
@@ -189,9 +190,11 @@ class VoiceCommandMixin:
             return
         now = time.monotonic()
         if now - self._unknown_command_at < UNKNOWN_COMMAND_COOLDOWN_SEC:
+            self.missed_phrases().add(heard)  # counted even when it is too soon to show a notice
             return
         self._unknown_command_at = now
         self._unknown_phrase = heard
+        self.missed_phrases().add(heard)
         self.tray.showMessage(APP_NAME, f'Not a command: "{heard}"\nClick here to make it one.',
                               QSystemTrayIcon.Information, 5000)
 
@@ -204,6 +207,25 @@ class VoiceCommandMixin:
         self._unknown_phrase = ""
         if phrase:
             self._open_settings(phrase)
+
+    def missed_phrases(self):
+        if getattr(self, "_missed", None) is None:
+            self._missed = MissedPhrases()
+        return self._missed
+
+    def open_missed_window(self, *_args):
+        """What was heard after the wake word but not understood, and how often."""
+        existing = getattr(self, "_missed_window", None)
+        if existing is not None and existing.isVisible():
+            existing.raise_()
+            existing.activateWindow()
+            return existing
+        self._missed_window = MissedWindow(self.missed_phrases(), self.cfg, self._open_settings)
+        self._missed_window.finished.connect(lambda _r: setattr(self, "_missed_window", None))
+        self._missed_window.show()
+        self._missed_window.raise_()
+        self._missed_window.activateWindow()
+        return self._missed_window
 
     def open_help_window(self):
         """Show everything that can be said, in English and in the language being translated into."""

@@ -41,6 +41,12 @@ class VoiceCommandsTabMixin(ScreenRepliesGroupMixin, GoToGroupMixin):
         self.voice_command_delay.setValue(int(cfg.get("voice_command_delay", 3) or 0))
         form.addRow(self.voice_commands)
         form.addRow("Wake word:", self.voice_wake)
+        self.wake_warning = QLabel()
+        self.wake_warning.setWordWrap(True)
+        self.wake_warning.setStyleSheet("color: #D4A03C;")
+        form.addRow(self.wake_warning)
+        self.voice_wake.textChanged.connect(self._check_wake_word)
+        self._check_wake_word(self.voice_wake.text())
         form.addRow(self.mic_wake_word)
         form.addRow("Wait before running:", self.voice_command_delay)
         wait_note = QLabel(
@@ -103,6 +109,12 @@ class VoiceCommandsTabMixin(ScreenRepliesGroupMixin, GoToGroupMixin):
         for item in voice_commands.valid_custom_commands(cfg.get("voice_custom_commands", [])):
             self._add_voice_custom_command(item["phrase"], item.get("command"), item.get("run", ""))
         return widget
+
+    def _check_wake_word(self, text):
+        """Say so at once when a wake word will be heard by accident all day."""
+        warning = voice_commands.wake_word_warning(text)
+        self.wake_warning.setText(warning or "")
+        self.wake_warning.setVisible(bool(warning))
 
     @staticmethod
     def _command_combo(selected=None):
