@@ -5,6 +5,8 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and 
 
 ## [Unreleased]
 
+## [1.6.0] — 2026-10-02
+
 ### Added
 - **Say “no” to stop a command.** While the countdown is running, “no”, “cancel”, “wait”, “لا”, “الغي” and their like call it off. No wake word, from any sound, and it is read from live text so it takes effect without waiting for the sentence to end — stopping something from happening cannot itself do harm. A sentence that merely contains the word (“there is no reason”) does not count.
 - **“Help” now opens a window** listing everything that can be said, what each one does, and a translation into the language you are translating into, beside it. Every row is built from the command tables themselves, so it cannot drift from what the app does; it uses your own wake word, lists the apps and folders it really knows, includes your own commands, and shows a command that is switched off in grey — which is usually the answer to “why did nothing happen”. Also in the tray menu as *What can I say?*
