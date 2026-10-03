@@ -6,6 +6,7 @@ Only finished captions are considered — never live text, which is a guess — 
 feature is switched on and the engine is not paused. The list of commands lives in
 `voice_commands.py`; this file only connects it to the app's own buttons.
 """
+import datetime
 import itertools
 import logging
 import time
@@ -18,6 +19,7 @@ from PySide6.QtCore import QTimer
 from . import APP_NAME, reminders, screen_replies, voice_commands
 from .command_notice import CommandNotice
 from .help_window import HelpWindow
+from .reminder_alert import ReminderAlert
 from .missed_window import MissedPhrases, MissedWindow
 
 log = logging.getLogger("echosub")
@@ -226,10 +228,31 @@ class VoiceCommandMixin:
         self.cfg["reminders"] = waiting
         self._save()
         for entry in ready:
-            what = entry["what"] or "Reminder"
-            self.tray.showMessage(APP_NAME, "⏰ " + what, QSystemTrayIcon.Information, 15000)
-            self._show_screen_reply("⏰ " + what)
+            self._raise_reminder(entry["what"] or "Reminder")
         return len(ready)
+
+    def _raise_reminder(self, what):
+        """Open the alert, and keep hold of it so it is not swept away mid-flash."""
+        if getattr(self, "_reminder_alerts", None) is None:
+            self._reminder_alerts = []
+        alert = ReminderAlert(what)
+        alert.snoozed.connect(lambda minutes, text=what: self._snooze_reminder(text, minutes))
+        alert.destroyed.connect(lambda *_a, a=alert: self._forget_alert(a))
+        self._reminder_alerts.append(alert)
+        self._show_screen_reply("⏰ " + what)
+        alert.show_on_screen()
+        return alert
+
+    def _forget_alert(self, alert):
+        alerts = getattr(self, "_reminder_alerts", None) or []
+        if alert in alerts:
+            alerts.remove(alert)
+
+    def _snooze_reminder(self, what, minutes):
+        when = datetime.datetime.now() + datetime.timedelta(minutes=minutes)
+        self.cfg["reminders"] = reminders.valid(
+            list(self.cfg.get("reminders", [])) + [{"when": when.isoformat(timespec="seconds"), "what": what}])
+        self._save()
 
     def missed_phrases(self):
         if getattr(self, "_missed", None) is None:
@@ -289,6 +312,7 @@ class VoiceCommandMixin:
         actions = {
             "toggle": lambda: self.act_pause.setChecked(not self.act_pause.isChecked()),
             "mic": lambda: self.set_mic_muted(not self.mic_muted()),
+            "reminders": lambda: self._open_settings(show_tab="Reminders"),
             "pause": lambda: self.act_pause.setChecked(True),
             "resume": lambda: self.act_pause.setChecked(False),
             "hide": lambda: self.act_show.setChecked(False),

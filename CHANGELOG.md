@@ -5,6 +5,17 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and 
 
 ## [Unreleased]
 
+## [1.9.0] — 2026-10-03
+
+### Added
+- **A reminders list** (*Settings → Reminders*), showing what is still to come and what has already been shown. A reminder can be added by hand, retimed, reworded or removed, so nothing set by speaking is stuck with whatever was understood at the time. Finished ones stay until you clear them.
+- **“Show my reminders”** opens that list, in English and Arabic.
+
+### Changed
+- **A reminder that comes round is now hard to miss.** It used to be a tray notification in the corner that lasted a few seconds — exactly what somebody busy enough to need a reminder will miss. It now opens in the middle of the screen, in large text, with a sound and a slowly pulsing border, and stays until answered. **Done** closes it; **Remind me again in 5 minutes** sets it afresh.
+- A reminder that has been shown is kept, marked done, instead of being thrown away.
+
+
 ## [1.8.0] — 2026-10-03
 
 ### Added

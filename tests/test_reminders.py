@@ -104,10 +104,23 @@ class StoreTest(unittest.TestCase):
         kept = reminders.valid([{"when": "not a time", "what": "x"}, "junk", None] + self.rows(5))
         self.assertEqual(len(kept), 1)
 
-    def test_due_splits_past_from_future(self):
-        ready, waiting = reminders.due(self.rows(-5, 10), NOW)
+    def test_due_reports_what_has_come_round_and_marks_it(self):
+        ready, kept = reminders.due(self.rows(-5, 10), NOW)
         self.assertEqual([r["what"] for r in ready], ["thing -5"])
-        self.assertEqual([r["what"] for r in waiting], ["thing 10"])
+        # The finished one is kept, with the time it was shown, so the list can still display it.
+        self.assertEqual([r["what"] for r in kept], ["thing -5", "thing 10"])
+        self.assertIn("done", [r for r in kept if r["what"] == "thing -5"][0])
+        self.assertEqual(reminders.waiting(kept), [r for r in kept if r["what"] == "thing 10"])
+
+    def test_one_already_shown_does_not_come_round_twice(self):
+        _ready, kept = reminders.due(self.rows(-5), NOW)
+        again, _kept = reminders.due(kept, NOW)
+        self.assertEqual(again, [], "a reminder already shown must not fire again")
+
+    def test_finished_and_waiting_can_be_told_apart(self):
+        _ready, kept = reminders.due(self.rows(-5, 10), NOW)
+        self.assertEqual(len(reminders.finished(kept)), 1)
+        self.assertEqual(len(reminders.waiting(kept)), 1)
 
     def test_the_list_is_capped(self):
         self.assertLessEqual(len(reminders.valid(self.rows(*range(200)))), reminders.MAX_REMINDERS)
@@ -147,12 +160,15 @@ class AppTest(unittest.TestCase):
         self.assertEqual(kept[0]["what"], "check the oven")
         self.assertTrue(app_.saved, "it must be written down, not only held in memory")
 
-    def test_it_comes_back_when_it_is_due_and_then_is_gone(self):
+    def test_it_comes_back_when_it_is_due_and_is_then_marked_done(self):
         app_ = self.app()
         app_.cfg["reminders"] = [{"when": (NOW - datetime.timedelta(minutes=1)).isoformat(), "what": "drink"}]
         self.assertEqual(app_.check_reminders(NOW), 1)
-        self.assertTrue(any("drink" in m for m in app_.tray.messages))
-        self.assertEqual(app_.cfg["reminders"], [], "a reminder shown must not come back again")
+        alert = app_._reminder_alerts[-1]
+        self.addCleanup(alert.close)
+        self.assertIn("drink", alert.message.text(), "the alert should say what it is about")
+        self.assertEqual(reminders.waiting(app_.cfg["reminders"]), [], "it must not fire again")
+        self.assertEqual(len(reminders.finished(app_.cfg["reminders"])), 1, "but it is kept in the list")
 
     def test_one_that_is_not_due_waits(self):
         app_ = self.app()

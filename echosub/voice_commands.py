@@ -63,6 +63,7 @@ CAPTION_COMMANDS = (
     {"key": "toggle_captions", "action": "app", "target": "toggle", "label": "Captions switched"},
     {"key": "press_enter", "action": "press_enter", "target": "enter", "label": "Pressed Enter"},
     # Only your own microphone may say this, so nobody on a call can switch your microphone for you.
+    {"key": "show_reminders", "action": "app", "target": "reminders", "label": "Reminders"},
     {"key": "toggle_mic", "action": "app", "target": "mic", "label": "Microphone switched", "mic_only": True},
     {"key": "pause_captions", "action": "app", "target": "pause", "label": "Captions paused"},
     {"key": "resume_captions", "action": "app", "target": "resume", "label": "Captions resumed"},
@@ -187,7 +188,12 @@ def _spoken_tail(raw_text, words):
 
 
 def _reminder_command(window, raw_text):
-    """"Remind me in five minutes to ..." — the time must be said, or nothing is set."""
+    """"Remind me in five minutes to ..." — the time must be said, or nothing is set.
+
+    "My reminders" opens the list instead, since that asks about them rather than setting one.
+    """
+    if _first_position(window, reminders.LIST_WORDS) >= 0:
+        return command("show_reminders")
     at = _first_position(window, reminders.REMIND_WORDS)
     if at < 0:
         return None

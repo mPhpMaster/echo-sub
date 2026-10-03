@@ -11,6 +11,7 @@ from PySide6.QtWidgets import (
 from . import APP_NAME, audio, config, gpu, languages
 from .settings_microphone import MicrophoneGroupMixin
 from .settings_tabs import NUMBER_WIDTH, AdvancedTabMixin
+from .settings_reminders import RemindersTabMixin
 from .settings_transcript import TranscriptFixesMixin
 from .settings_voice_commands import VoiceCommandsTabMixin
 from .settings_widgets import (
@@ -21,10 +22,10 @@ from .overlay import SCALE_MAX, SCALE_MIN, SCALE_STEP
 
 
 class SettingsDialog(VoiceCommandsTabMixin, AdvancedTabMixin, MicrophoneGroupMixin,
-                     TranscriptFixesMixin, QDialog):
+                     TranscriptFixesMixin, RemindersTabMixin, QDialog):
     preview = Signal(dict)  # emitted on every change so the overlay can show it live
 
-    def __init__(self, cfg, parent=None, add_phrase=None):
+    def __init__(self, cfg, parent=None, add_phrase=None, show_tab=None):
         super().__init__(parent)
         self.cfg = cfg
         self.restore_requested = False
@@ -43,6 +44,7 @@ class SettingsDialog(VoiceCommandsTabMixin, AdvancedTabMixin, MicrophoneGroupMix
         tabs.addTab(_scrollable(self._speakers_tab(cfg)), "Speakers")
         tabs.addTab(_scrollable(self._words_tab(cfg)), "Words")
         tabs.addTab(_scrollable(self._commands_tab(cfg)), "Commands")
+        tabs.addTab(_scrollable(self._reminders_tab(cfg)), "Reminders")
         tabs.addTab(_scrollable(self._advanced_tab(cfg)), "Advanced")
 
         buttons = QDialogButtonBox(
@@ -54,6 +56,10 @@ class SettingsDialog(VoiceCommandsTabMixin, AdvancedTabMixin, MicrophoneGroupMix
         buttons.accepted.connect(self.accept)
         buttons.rejected.connect(self.reject)
         root.addWidget(buttons)
+        if show_tab:
+            for index in range(tabs.count()):
+                if tabs.tabText(index) == show_tab:
+                    tabs.setCurrentIndex(index)
         if add_phrase:
             # Opened from the "not a command" notice: start a row for what EchoSub actually heard,
             # on the tab that holds it, so the phrase only needs an action chosen for it.
@@ -513,5 +519,6 @@ class SettingsDialog(VoiceCommandsTabMixin, AdvancedTabMixin, MicrophoneGroupMix
             "update_checks": self.update_checks.isChecked(),
             **self.voice_command_values(),
             **self.transcript_fix_values(),
+            **self.reminder_values(),
             "global_hotkeys": self.global_hotkeys.isChecked(),
         }

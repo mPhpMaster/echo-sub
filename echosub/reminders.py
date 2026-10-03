@@ -16,8 +16,15 @@ import datetime
 import re
 
 MAX_TEXT = 200
-MAX_REMINDERS = 50
+MAX_REMINDERS = 200
+MAX_FINISHED = 100
 MAX_DAYS = 365
+
+LIST_WORDS = (
+    "my reminders", "the reminders", "list reminders", "show reminders", "show my reminders",
+    "what are my reminders", "reminders list",
+    "تذكيراتي", "التذكيرات", "قائمة التذكيرات", "اعرض التذكيرات",
+)
 
 REMIND_WORDS = (
     "remind me", "remind", "reminder",
@@ -158,7 +165,11 @@ def parse(said, now=None):
 
 
 def valid(entries):
-    """Stored reminders, soonest first, with anything unreadable dropped."""
+    """Stored reminders, soonest first, with anything unreadable dropped.
+
+    One that has already been shown keeps a `done` time rather than being thrown away, so the list
+    in the settings can show what happened as well as what is still coming.
+    """
     out = []
     for entry in entries or ():
         if not isinstance(entry, dict):
@@ -168,16 +179,36 @@ def valid(entries):
             when = datetime.datetime.fromisoformat(str(entry.get("when", "")))
         except ValueError:
             continue
-        out.append({"when": when.isoformat(timespec="seconds"), "what": what})
+        kept = {"when": when.isoformat(timespec="seconds"), "what": what}
+        try:
+            kept["done"] = datetime.datetime.fromisoformat(str(entry["done"])).isoformat(timespec="seconds")
+        except (KeyError, TypeError, ValueError):
+            pass
+        out.append(kept)
     out.sort(key=lambda e: e["when"])
-    return out[:MAX_REMINDERS]
+    waiting = [e for e in out if "done" not in e]
+    finished = [e for e in out if "done" in e]
+    # Keep every reminder still to come; only the finished ones are forgotten once there are many.
+    return sorted(waiting + finished[-MAX_FINISHED:], key=lambda e: e["when"])[:MAX_REMINDERS]
+
+
+def waiting(entries):
+    """The ones still to come."""
+    return [e for e in valid(entries) if "done" not in e]
+
+
+def finished(entries):
+    """The ones already shown, newest last."""
+    return [e for e in valid(entries) if "done" in e]
 
 
 def due(entries, now=None):
-    """(the ones that have come round, the ones still waiting)."""
-    now = (now or datetime.datetime.now()).isoformat(timespec="seconds")
+    """(the ones that have just come round, every reminder with those marked done)."""
+    moment = (now or datetime.datetime.now()).isoformat(timespec="seconds")
     entries = valid(entries)
-    return [e for e in entries if e["when"] <= now], [e for e in entries if e["when"] > now]
+    ready = [e for e in entries if "done" not in e and e["when"] <= moment]
+    marked = [dict(e, done=moment) if e in ready else e for e in entries]
+    return ready, valid(marked)
 
 
 def describe(when, now=None):
