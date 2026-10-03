@@ -5,6 +5,8 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and 
 
 ## [Unreleased]
 
+## [1.8.0] — 2026-10-03
+
 ### Added
 - **Reminders you set by speaking.** “Remind me in five minutes to check the oven”, “remind me at 5 to leave”, “remind me tomorrow at 9 to wake up”, and the same in Arabic. A delay may be written out or spoken as digits, and “half an hour” and “a quarter of an hour” are understood; a bare “at 5” means the next five o’clock there is rather than tomorrow morning. If no time is named, nothing is set — the time is never guessed at. Reminders are written down, so one falling due while EchoSub is closed arrives when it opens again.
 
