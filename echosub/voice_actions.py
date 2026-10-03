@@ -7,6 +7,7 @@ Windows media key — or from something the user wrote in the settings: a folder
 of their own. Nothing is ever taken from the spoken text, and nothing goes through a shell.
 """
 import ctypes
+import datetime
 import logging
 import os
 import shlex
@@ -68,7 +69,8 @@ class CommandRunner:
                 and not (action_of == "reply" and isinstance(command_entry.get("target"), str))
                 and not _valid_destination_command(command_entry)
                 and not _valid_run_command(command_entry)
-                and not _valid_typing_command(command_entry)):
+                and not _valid_typing_command(command_entry)
+                and not _valid_reminder_command(command_entry)):
             log.warning("Refused a command that is not on the list: %r", command_entry)
             return None
         key, last_time = self._last
@@ -103,6 +105,8 @@ class CommandRunner:
         elif action == "app":
             if not self.app_action(target):
                 return None
+        elif action == "reminder":
+            return command_entry["label"]  # the app keeps it and comes back when it is due
         elif action == "reply":
             return command_entry["label"]  # the app writes it in the caption box
         elif action == "help":
@@ -130,6 +134,17 @@ def _valid_destination_command(entry):
     if action == "open_file":
         return isinstance(target, str) and os.path.isfile(target)
     return False
+
+
+def _valid_reminder_command(entry):
+    """A reminder carries a time and some words, and can do nothing else at all."""
+    if not isinstance(entry, dict) or entry.get("action") != "reminder":
+        return False
+    try:
+        datetime.datetime.fromisoformat(str(entry.get("target")))
+    except ValueError:
+        return False
+    return True
 
 
 def _valid_typing_command(entry):

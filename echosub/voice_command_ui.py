@@ -15,7 +15,7 @@ from PySide6.QtWidgets import QSystemTrayIcon
 
 from PySide6.QtCore import QTimer
 
-from . import APP_NAME, screen_replies, voice_commands
+from . import APP_NAME, reminders, screen_replies, voice_commands
 from .command_notice import CommandNotice
 from .help_window import HelpWindow
 from .missed_window import MissedPhrases, MissedWindow
@@ -149,6 +149,9 @@ class VoiceCommandMixin:
             log.exception("Voice command failed")
             self.tray.showMessage(APP_NAME, f"Could not run that command: {e}", QSystemTrayIcon.Warning, 4000)
             return None
+        if command.get("action") == "reminder":
+            self._keep_reminder(command)
+            return command
         if command.get("action") == "reply":
             self._show_screen_reply(command["target"])
             return command
@@ -207,6 +210,26 @@ class VoiceCommandMixin:
         self._unknown_phrase = ""
         if phrase:
             self._open_settings(phrase)
+
+    def _keep_reminder(self, command):
+        """Write the reminder down, so it survives EchoSub being closed and opened again."""
+        kept = list(self.cfg.get("reminders", [])) + [{"when": command["target"],
+                                                       "what": command.get("what", "")}]
+        self.cfg["reminders"] = reminders.valid(kept)
+        self._save()
+
+    def check_reminders(self, now=None):
+        """Show any reminder that has come round, and forget it. Returns how many were shown."""
+        ready, waiting = reminders.due(self.cfg.get("reminders", []), now)
+        if not ready:
+            return 0
+        self.cfg["reminders"] = waiting
+        self._save()
+        for entry in ready:
+            what = entry["what"] or "Reminder"
+            self.tray.showMessage(APP_NAME, "⏰ " + what, QSystemTrayIcon.Information, 15000)
+            self._show_screen_reply("⏰ " + what)
+        return len(ready)
 
     def missed_phrases(self):
         if getattr(self, "_missed", None) is None:

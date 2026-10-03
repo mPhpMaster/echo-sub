@@ -8,7 +8,7 @@ from PySide6.QtWidgets import (
     QVBoxLayout, QWidget,
 )
 
-from . import APP_NAME, audio, config, languages
+from . import APP_NAME, audio, config, gpu, languages
 from .settings_microphone import MicrophoneGroupMixin
 from .settings_tabs import NUMBER_WIDTH, AdvancedTabMixin
 from .settings_transcript import TranscriptFixesMixin
@@ -97,8 +97,8 @@ class SettingsDialog(VoiceCommandsTabMixin, AdvancedTabMixin, MicrophoneGroupMix
             self.translator.addItem(v, k)
         self._select(self.translator, cfg["translator"])
         self.device = SearchableComboBox()
-        self.device.addItem("GPU (CUDA) — faster", "cuda")
-        self.device.addItem("CPU", "cpu")
+        self.device.addItem("Graphics card (NVIDIA only) — faster", "cuda")
+        self.device.addItem("Processor", "cpu")
         self._select(self.device, cfg["device"])
         self.audio_dev = SearchableComboBox()
         self.audio_dev.addItem("Default output device (follows speaker changes)", "default")
@@ -127,6 +127,11 @@ class SettingsDialog(VoiceCommandsTabMixin, AdvancedTabMixin, MicrophoneGroupMix
         self.light_model.setEnabled(self.light_mode.isChecked())
         f.addRow("Translation engine:", self.translator)
         f.addRow("Run on:", self.device)
+        self.device_note = QLabel(gpu.note() or "")
+        self.device_note.setWordWrap(True)
+        self.device_note.setStyleSheet("color: #D4A03C;")
+        self.device_note.setVisible(bool(self.device_note.text()))
+        f.addRow(self.device_note)
         f.addRow("Audio source:", self.audio_dev)
         self.translate_same = QCheckBox("Translate even when speech is already in the caption language")
         self.translate_same.setToolTip("Rewrites dialect or casual speech into the standard language, "

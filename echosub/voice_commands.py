@@ -32,7 +32,10 @@ Safety rules, in order of importance:
 import logging
 import re
 
-from . import screen_replies, voice_destinations, voice_keys, voice_typing, voice_vocabulary as vocabulary
+from . import (
+    reminders, screen_replies, voice_destinations, voice_keys, voice_typing,
+    voice_vocabulary as vocabulary,
+)
 from .voice_actions import (  # noqa: F401 (kept where callers and tests expect them)
     AppNotInstalled, CommandRunner, REPEAT_COOLDOWN_SEC, close_program, open_link, press_keys,
     resolve_program, send_media_key, start_program,
@@ -181,6 +184,21 @@ def _spoken_tail(raw_text, words):
         return ""
     start, negative_end = min(found)
     return str(raw_text)[-negative_end:].strip()
+
+
+def _reminder_command(window, raw_text):
+    """"Remind me in five minutes to ..." — the time must be said, or nothing is set."""
+    at = _first_position(window, reminders.REMIND_WORDS)
+    if at < 0:
+        return None
+    said = _spoken_tail(raw_text, reminders.REMIND_WORDS)
+    parsed = reminders.parse(said) if said else None
+    if parsed is None:
+        return None
+    when, what = parsed
+    return {"key": "set_reminder", "action": "reminder", "target": when.isoformat(timespec="seconds"),
+            "label": f"Reminder {reminders.describe(when)}" + (f": {what}" if what else ""),
+            "what": what}
 
 
 def _typing_command(window, raw_text):
@@ -404,7 +422,8 @@ def _match(window, text, custom_commands, allow_key_presses, folders, allow_typi
     Typing comes early on purpose: "type open the calculator" is a sentence to write down, not a
     program to start, so the word "type" claims everything after it.
     """
-    found = _help_command(window) or _custom_command(window, custom_commands)
+    found = (_help_command(window) or _custom_command(window, custom_commands)
+             or _reminder_command(window, text))
     if found is None and allow_typing:
         # Typing is tried first, so "type ... and press enter" writes that whole sentence out.
         # Enter on its own is a separate thing to say, which is the point of it being separate.

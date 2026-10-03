@@ -118,6 +118,10 @@ class App(TrayMenuMixin, UpdateCheckMixin, VoiceCommandMixin):
         self.tray.setContextMenu(self.menu)
         self.tray.activated.connect(self._tray_activated)
         self.tray.messageClicked.connect(self._notice_clicked)
+        self.reminder_timer = QTimer()
+        self.reminder_timer.timeout.connect(self.check_reminders)
+        self.reminder_timer.start(10_000)  # a reminder is never more than ten seconds late
+        self.check_reminders()  # anything that fell due while EchoSub was closed
         self.tray.show()
         self._apply_hotkeys()
         self._start_engine()

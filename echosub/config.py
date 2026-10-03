@@ -120,6 +120,7 @@ DEFAULTS = {
     "voice_command_wake": "echo sub",     # a command only counts after this wake word
     "voice_custom_commands": [],           # user phrases mapped to an approved built-in action
     "voice_key_presses": False,            # allow short A-Z / 0-9 press commands after the wake word
+    "reminders": [],                       # set by voice: {"when": iso time, "what": ...}
     "transcript_fixes": [],                # your own spellings: {"heard": ..., "write": ...}
     "alert_words": [],                     # words to be told about when anything says them
     "alert_sound": True,                   # a notification when a watched word is heard
