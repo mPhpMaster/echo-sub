@@ -16,7 +16,7 @@ from PySide6.QtWidgets import QSystemTrayIcon
 
 from PySide6.QtCore import QTimer
 
-from . import APP_NAME, reminders, screen_replies, voice_commands
+from . import APP_NAME, ai_assistant, reminders, screen_replies, voice_commands
 from .command_notice import CommandNotice
 from .help_window import HelpWindow
 from .reminder_alert import ReminderAlert
@@ -79,8 +79,11 @@ class VoiceCommandMixin:
         log.info("A command was called off by voice")
         return True
 
-    def _handle_voice_command(self, text, source="system"):
-        """Called for every finished caption; returns the command that ran, if any."""
+    def _handle_voice_command(self, text, source="system", lang=None):
+        """Called for every finished caption; returns the command that ran, if any.
+
+        `lang` is the language the sentence was spoken in, which a question to the AI is answered in.
+        """
         if not text or getattr(self, "_paused", False):
             return None
         if self.heard_a_refusal(text):
@@ -103,7 +106,7 @@ class VoiceCommandMixin:
             self.cfg.get("voice_go_folders", []),
             needs_wake,
             self.cfg.get("voice_typing", False),
-            self.cfg.get("ai_enabled", False),
+            ai_assistant.trigger_words(self.cfg) if self.cfg.get("ai_enabled", False) else False,
         )
         if command is None:
             self._report_unknown_command(heard)
@@ -115,6 +118,8 @@ class VoiceCommandMixin:
         if command["action"] == "help":
             self.open_help_window()
             return command
+        if command["action"] == "ask_ai" and lang:
+            command = dict(command, lang=lang)  # answered in the language it was asked in
         return self._start_command(command)
 
     def _start_command(self, command):
@@ -156,7 +161,7 @@ class VoiceCommandMixin:
             self._keep_reminder(command)
             return command
         if command.get("action") == "ask_ai":
-            self.ask_ai(command["target"])
+            self.ask_ai(command["target"], command.get("lang"))
             return command
         if command.get("action") == "reply":
             self._show_screen_reply(command["target"])

@@ -17,6 +17,8 @@ from PySide6.QtWidgets import (
 )
 
 from . import ai_assistant, ai_providers, secrets_store
+from .caption_widgets import AI_COLOR, AI_LABEL
+from .settings_widgets import ColorButton
 
 CLOUD_NOTE = (
     "⚠️ When you ask a question, the recent captions set above are sent to {title} along with it. "
@@ -39,11 +41,40 @@ class AiTabMixin:
         self.ai_enabled = QCheckBox("Answer “ask …” with an AI (off until you switch it on)")
         self.ai_enabled.setChecked(cfg.get("ai_enabled", False))
         form.addRow(self.ai_enabled)
-        how = QLabel('Say your wake word and then "ask", for example: "echo sub, ask what was the price he '
-                     'said". The answer appears in the caption box.')
+        how = QLabel('Say your wake word and then the word below, for example: "echo sub, ask what was the '
+                     'price he said". The answer appears in the caption box, in its own colour, after "AI".')
         how.setWordWrap(True)
         how.setStyleSheet("color: gray;")
         form.addRow(how)
+
+        self.ai_trigger = QLineEdit(cfg.get("ai_trigger", ai_assistant.DEFAULT_TRIGGER))
+        self.ai_trigger.setPlaceholderText(ai_assistant.DEFAULT_TRIGGER)
+        self.ai_trigger.setToolTip("The word you say after your wake word to ask a question. "
+                                   "Several can be listed, separated by commas.")
+        self.ai_trigger.setMaximumWidth(280)
+        form.addRow("Word that asks:", self.ai_trigger)
+
+        self.ai_color = ColorButton(cfg.get("ai_color", AI_COLOR))
+        self.ai_label = QLineEdit(cfg.get("ai_label", AI_LABEL))
+        self.ai_label.setPlaceholderText(AI_LABEL)
+        self.ai_label.setToolTip("The word shown in front of every answer, so it is never mistaken for "
+                                 "something somebody said")
+        self.ai_label.setMaximumWidth(140)
+        self.ai_font_size = QSpinBox()
+        self.ai_font_size.setRange(0, 96)
+        self.ai_font_size.setSuffix(" pt")
+        self.ai_font_size.setSpecialValueText("same as captions")
+        self.ai_font_size.setMaximumWidth(160)
+        self.ai_font_size.setValue(int(cfg.get("ai_font_size", 0) or 0))
+        look_row = QHBoxLayout()
+        look_row.addWidget(QLabel("Word in front:"))
+        look_row.addWidget(self.ai_label)
+        look_row.addWidget(QLabel("Size:"))
+        look_row.addWidget(self.ai_font_size)
+        look_row.addWidget(QLabel("Colour:"))
+        look_row.addWidget(self.ai_color)
+        look_row.addStretch(1)
+        form.addRow("Answers look:", look_row)
 
         self.ai_provider = QComboBox()
         for key, spec in ai_providers.PROVIDERS.items():
@@ -197,4 +228,8 @@ class AiTabMixin:
             "ai_profiles": self._ai_profiles,
             "ai_context_lines": self.ai_context_lines.value(),
             "ai_context_who": self.ai_context_who.currentData(),
+            "ai_trigger": self.ai_trigger.text().strip() or ai_assistant.DEFAULT_TRIGGER,
+            "ai_color": self.ai_color.color,
+            "ai_label": self.ai_label.text().strip() or AI_LABEL,
+            "ai_font_size": self.ai_font_size.value(),
         }

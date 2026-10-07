@@ -13,6 +13,8 @@ from PySide6.QtWidgets import QSizePolicy, QToolTip, QVBoxLayout, QWidget
 from . import APP_NAME, languages
 
 REPLY_COLOR = "#B7F7C6"  # the app's own written answers, told apart from anything anyone said
+AI_COLOR = "#C9B6FF"     # an AI's answer: nobody said it, so it must not look like anyone did
+AI_LABEL = "AI"
 
 MERGE_WINDOW_SEC = 6.0
 MERGE_MAX_CHARS = 140
@@ -436,10 +438,13 @@ class CaptionLine(QWidget):
         source = entry.get("source", "system")
         from_mic = source == "mic"
         from_reply = source == "reply"
+        from_ai = source == "ai"
         if from_mic and cfg.get("mic_color"):
             trans_color = orig_color = cfg["mic_color"]
         elif from_reply:
             trans_color = orig_color = QColor(REPLY_COLOR)
+        elif from_ai:
+            trans_color = orig_color = QColor(cfg.get("ai_color") or AI_COLOR)
         spk = entry.get("speaker")
         if spk is not None and cfg["speaker_detection"] and cfg["speaker_colors"]:
             spk_color = cfg["speaker_colors"][spk % len(cfg["speaker_colors"])]
@@ -457,8 +462,18 @@ class CaptionLine(QWidget):
         of.setBold(cfg["original_bold"])
         tf = QFont(cfg["font_family"])
         tf.setPointSizeF(max(1.0, cfg["font_size"] * scale))
+        if from_ai and cfg.get("ai_font_size"):  # 0 means: the same size as the captions
+            of.setPointSizeF(max(1.0, cfg["ai_font_size"] * scale))
+            tf.setPointSizeF(max(1.0, cfg["ai_font_size"] * scale))
 
         def badge(font, text_lang, which):
+            if from_ai:
+                # Just "AI", always at the start: the language of an answer is not news, but who
+                # gave it is, and it must be read before the answer itself.
+                return Badge(text_lang, "none", "before", font,
+                             extra=(cfg.get("ai_label") or "").strip() or AI_LABEL, prominent=True,
+                             size=cfg.get(f"{which}_label_size", 100) / 100, rtl=text_lang in languages.RTL,
+                             separator=cfg.get("label_separator", True))
             kind = cfg[f"{which}_label"]
             label = cfg.get("mic_label", "") if from_mic else (APP_NAME if from_reply else "")
             if kind == "none" and not label:

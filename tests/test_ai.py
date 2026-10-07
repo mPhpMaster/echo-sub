@@ -349,5 +349,178 @@ class SettingsTest(unittest.TestCase):
         self.assertFalse(dialog.ai_key.isEnabled())
 
 
+class TriggerWordTest(unittest.TestCase):
+    def test_your_own_word_asks_instead(self):
+        found = voice_commands.find("echo sub jarvis what was the price", allow_ai=("jarvis",))
+        self.assertEqual((found["action"], found["target"]), ("ask_ai", "what was the price"))
+
+    def test_the_built_in_word_no_longer_asks_once_you_change_it(self):
+        self.assertIsNone(voice_commands.find("echo sub ask what was the price", allow_ai=("jarvis",)))
+
+    def test_several_words_can_be_listed(self):
+        cfg = {"ai_trigger": "jarvis, اسأل"}
+        self.assertEqual(ai_assistant.trigger_words(cfg), ("jarvis", "اسأل"))
+
+    def test_an_empty_setting_falls_back_to_the_built_in_words(self):
+        self.assertEqual(ai_assistant.trigger_words({"ai_trigger": "  ,  "}), ai_assistant.ASK_WORDS)
+
+    def test_your_own_word_works_from_your_microphone_without_the_name(self):
+        app_ = AiApp(voice_commands=True, ai_enabled=True, ai_trigger="jarvis",
+                     voice_command_delay=0).use_fake_runner()
+        asked = []
+        app_.ask_ai = lambda question, lang=None: asked.append(question)
+        app_._handle_voice_command("jarvis what time is the match", source="mic")
+        self.assertEqual(asked, ["what time is the match"])
+
+
+class AnswerLookTest(unittest.TestCase):
+    def test_the_answer_is_shown_as_the_ais_own_line(self):
+        app_ = AiApp(voice_commands=True, ai_enabled=True).use_fake_runner()
+        app_._ai_finished(0, "Fifty dollars.", "Fifty dollars.", "en", False)
+        self.assertIn(("Fifty dollars.", "ai"), app_.overlay.shown)
+
+    def test_a_failure_is_marked_but_still_the_ais_line(self):
+        app_ = AiApp(voice_commands=True, ai_enabled=True).use_fake_runner()
+        app_._ai_finished(0, "The service rejected the API key.", "The service rejected the API key.", "en", True)
+        text, source = app_.overlay.shown[-1]
+        self.assertEqual(source, "ai")
+        self.assertTrue(text.startswith("⚠"))
+
+    def test_in_the_box_it_has_its_own_colour_and_ai_first(self):
+        from echosub.caption_widgets import AI_COLOR, AI_LABEL
+        from echosub.overlay import CaptionOverlay
+
+        cfg = dict(config.DEFAULTS, caption_animation="none")
+        overlay = CaptionOverlay(cfg, lambda p: None, lambda g: None, lambda: None)
+        overlay.show()
+        self.addCleanup(overlay.close)
+        overlay.add_final(1, "someone talking", "someone talking", "en", 0, "system")
+        overlay.add_final(2, "Fifty dollars.", "Fifty dollars.", "en", None, "ai")
+        app.processEvents()
+        line = overlay.lines[-1].translated
+        self.assertEqual(line._color.name().upper(), AI_COLOR.upper())
+        self.assertEqual(line._badge.text, AI_LABEL)
+        self.assertEqual(line._badge.position, "before", "AI must come before the answer")
+        self.assertIsNone(line._badge.flag, "no flag: who answered matters, not which language")
+
+    def test_the_colour_can_be_changed(self):
+        from echosub.overlay import CaptionOverlay
+
+        cfg = dict(config.DEFAULTS, caption_animation="none", ai_color="#FF8800")
+        overlay = CaptionOverlay(cfg, lambda p: None, lambda g: None, lambda: None)
+        overlay.show()
+        self.addCleanup(overlay.close)
+        overlay.add_final(2, "Fifty dollars.", "Fifty dollars.", "en", None, "ai")
+        app.processEvents()
+        self.assertEqual(overlay.lines[-1].translated._color.name().upper(), "#FF8800")
+
+    def overlay_with(self, **cfg_changes):
+        from echosub.overlay import CaptionOverlay
+
+        cfg = dict(config.DEFAULTS, caption_animation="none", **cfg_changes)
+        overlay = CaptionOverlay(cfg, lambda p: None, lambda g: None, lambda: None)
+        overlay.show()
+        self.addCleanup(overlay.close)
+        overlay.add_final(1, "a caption", "a caption", "en", 0, "system")
+        overlay.add_final(2, "Fifty dollars.", "Fifty dollars.", "en", None, "ai")
+        app.processEvents()
+        return overlay
+
+    def test_the_word_in_front_can_be_changed(self):
+        overlay = self.overlay_with(ai_label="Claude")
+        self.assertEqual(overlay.lines[-1].translated._badge.text, "Claude")
+
+    def test_an_empty_word_falls_back_to_ai(self):
+        overlay = self.overlay_with(ai_label="   ")
+        self.assertEqual(overlay.lines[-1].translated._badge.text, "AI")
+
+    def test_the_size_can_be_set(self):
+        overlay = self.overlay_with(ai_font_size=40)
+        ai_size = overlay.lines[-1].translated._font.pointSizeF()
+        caption_size = overlay.lines[0].translated._font.pointSizeF()
+        self.assertGreater(ai_size, caption_size)
+
+    def test_zero_means_the_same_size_as_the_captions(self):
+        overlay = self.overlay_with(ai_font_size=0)
+        self.assertEqual(overlay.lines[-1].translated._font.pointSizeF(),
+                         overlay.lines[0].translated._font.pointSizeF())
+
+    def test_the_settings_keep_the_word_and_the_size(self):
+        dialog = SettingsDialog(dict(config.DEFAULTS, ai_label="Claude", ai_font_size=30))
+        self.addCleanup(dialog.close)
+        values = dialog.values()
+        self.assertEqual((values["ai_label"], values["ai_font_size"]), ("Claude", 30))
+
+    def test_the_settings_keep_the_word_and_the_colour(self):
+        dialog = SettingsDialog(dict(config.DEFAULTS, ai_trigger="jarvis", ai_color="#FF8800"))
+        self.addCleanup(dialog.close)
+        values = dialog.values()
+        self.assertEqual((values["ai_trigger"], values["ai_color"].upper()), ("jarvis", "#FF8800"))
+
+
+class AnswerLanguageTest(unittest.TestCase):
+    """The answer comes back in the language the question was asked in, then is translated."""
+
+    def setUp(self):
+        self.asked = []
+        self._real_ask = ai_providers.ask
+        self._real_thread = ai_assistant.threading.Thread
+
+        def fake_ask(provider, model, key, base_url, system, question):
+            self.asked.append(system)
+            return "the answer"
+
+        class Inline:
+            def __init__(self, target, **kw):
+                self.target = target
+
+            def start(self):
+                self.target()
+
+        ai_providers.ask = fake_ask
+        ai_assistant.threading.Thread = Inline
+        self.addCleanup(lambda: setattr(ai_providers, "ask", self._real_ask))
+        self.addCleanup(lambda: setattr(ai_assistant.threading, "Thread", self._real_thread))
+
+    def app(self, translated="la respuesta"):
+        app_ = AiApp(voice_commands=True, ai_enabled=True, target_lang="es", voice_command_delay=0)
+        app_.use_fake_runner()
+        self.translations = []
+
+        class Engine:
+            def translate_text(engine, text, lang):
+                self.translations.append((text, lang))
+                return translated
+
+        app_.engine = Engine()
+        return app_
+
+    def test_it_is_told_to_answer_in_the_language_of_the_question(self):
+        app_ = self.app()
+        app_._handle_voice_command("echo sub ask what was the price", "system", "ar")
+        self.assertIn("Arabic", self.asked[0])
+        self.assertNotIn("Spanish", self.asked[0], "the caption language is not the question's")
+
+    def test_the_answer_is_then_translated_like_a_caption(self):
+        app_ = self.app()
+        app_._handle_voice_command("echo sub ask what was the price", "system", "en")
+        self.assertEqual(self.translations, [("the answer", "en")])
+        self.assertIn(("la respuesta", "ai"), app_.overlay.shown)
+
+    def test_a_failure_is_not_sent_for_translation(self):
+        def broken(*args):
+            raise ai_providers.AiError("The service rejected the API key.")
+
+        ai_providers.ask = broken
+        app_ = self.app()
+        app_._handle_voice_command("echo sub ask anything", "system", "en")
+        self.assertEqual(self.translations, [])
+
+    def test_without_a_spoken_language_it_falls_back_to_the_caption_language(self):
+        app_ = self.app()
+        app_.ask_ai("what was the price")
+        self.assertIn("Spanish", self.asked[0])
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)

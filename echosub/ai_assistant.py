@@ -15,7 +15,7 @@ import logging
 import threading
 import time
 
-from PySide6.QtCore import QObject, Signal
+from PySide6.QtCore import QObject, QTimer, Signal
 
 from . import ai_providers, languages, secrets_store
 
@@ -25,6 +25,14 @@ MEMORY = 400          # captions kept in memory, far more than anyone sends
 MAX_CONTEXT = 200     # the most the settings allow to be sent with one question
 ASK_WORDS = ("ask", "question", "اسال", "اسأل", "سؤال",
              "frage", "demande", "pregunta", "спроси", "sor")
+DEFAULT_TRIGGER = "ask, اسأل"
+
+
+def trigger_words(cfg):
+    """The words that turn what follows into a question, from the settings, else the built-in ones."""
+    words = tuple(w.strip() for w in str(cfg.get("ai_trigger", "") or "").split(",") if w.strip())
+    return words or ASK_WORDS
+
 
 INSTRUCTIONS = (
     "You are the assistant built into EchoSub, a live-caption app on the user's Windows PC. The user is "
@@ -67,9 +75,13 @@ def who(line):
     return "Someone"
 
 
-def build_request(lines, question, target_lang):
-    """(the instructions, the message) for one question about these captions."""
-    system = INSTRUCTIONS.format(language=languages.name(target_lang) or "English")
+def build_request(lines, question, answer_lang):
+    """(the instructions, the message) for one question about these captions.
+
+    `answer_lang` is the language the question was asked in. The answer comes back in that one
+    language and is then translated like any caption, so both rows mean the same thing.
+    """
+    system = INSTRUCTIONS.format(language=languages.name(answer_lang) or "English")
     captions = "\n".join(f"[{who(line)}] {line['text']}" for line in lines) or "(nothing has been said yet)"
     return system, f"<captions>\n{captions}\n</captions>\n\nMy question: {question}"
 
@@ -86,7 +98,8 @@ def profile(cfg, provider=None):
 
 
 class _AiSignals(QObject):
-    done = Signal(int, str, bool)  # the "thinking" caption to replace, the answer, whether it failed
+    # the "thinking" caption to replace, the answer, its translation, the answer's language, a failure
+    done = Signal(int, str, str, str, bool)
 
 
 class AiAssistantMixin:
@@ -100,8 +113,11 @@ class AiAssistantMixin:
     def remember_for_ai(self, text, source="system", speaker=None):
         self.ai_memory().add(text, source, speaker)
 
-    def ask_ai(self, question):
-        """Send the question with the recent captions, without holding the app up while it waits."""
+    def ask_ai(self, question, lang=None):
+        """Send the question with the recent captions, without holding the app up while it waits.
+
+        `lang` is the language the question was spoken in; without it, the caption language.
+        """
         question = " ".join(str(question or "").split())
         if not question:
             return False
@@ -111,10 +127,12 @@ class AiAssistantMixin:
         chosen = profile(self.cfg)
         count = max(0, min(MAX_CONTEXT, int(self.cfg.get("ai_context_lines", 20))))
         lines = self.ai_memory().recent(count, mine_only=self.cfg.get("ai_context_who") == "me")
-        system, message = build_request(lines, question, self.cfg.get("target_lang", "en"))
+        answer_lang = lang or self.cfg.get("target_lang", "en")
+        system, message = build_request(lines, question, answer_lang)
         title = ai_providers.PROVIDERS.get(chosen["provider"], {}).get("title", "AI")
-        waiting = self._show_screen_reply(f"\U0001f916 {title}: thinking…", seconds=90)
+        waiting = self._show_ai_line(f"{title} is thinking…", seconds=90)
         log.info("Asking %s with %d recent captions", chosen["provider"], len(lines))
+        engine = getattr(self, "engine", None)
 
         def work():
             try:
@@ -125,15 +143,34 @@ class AiAssistantMixin:
             except Exception as e:  # never let a surprise take the app down with it
                 log.exception("The AI request failed")
                 answer, failed = f"The question could not be asked: {e}", True
-            self._ai_signals.done.emit(waiting, answer, failed)
+            # Translated here, off the screen's thread, exactly as a caption is: the same settings
+            # decide whether to translate at all, and a failed translation keeps the answer as it is.
+            translated = answer
+            if not failed and engine is not None and hasattr(engine, "translate_text"):
+                translated = engine.translate_text(answer, answer_lang) or answer
+            self._ai_signals.done.emit(waiting, answer, translated, answer_lang, failed)
 
         threading.Thread(target=work, name="ai-question", daemon=True).start()
         return True
 
-    def _ai_finished(self, waiting, answer, failed):
+    def _ai_finished(self, waiting, answer, translated, answer_lang, failed):
         self.overlay.remove_caption(waiting)
-        # Long enough to read: a few seconds plus a little for every word.
-        seconds = max(8, min(120, 4 + len(answer.split()) // 2))
-        self._show_screen_reply(("⚠️ " if failed else "\U0001f916 ") + answer, seconds=seconds)
+        # Long enough to read: a few seconds plus a little for every word of both rows.
+        words = len(answer.split()) + (len(translated.split()) if translated != answer else 0)
+        seconds = max(8, min(120, 4 + words // 2))
         if failed:
             log.info("AI question failed: %s", answer)
+            self._show_ai_line("⚠️ " + answer, seconds=seconds)
+            return
+        self._show_ai_line(answer, seconds=seconds, translated=translated, lang=answer_lang)
+
+    def _show_ai_line(self, text, seconds, translated=None, lang=None):
+        """An AI's line in the caption box: its own colour, "AI" in front, gone again after `seconds`.
+
+        With a translation it is shown like any caption, the answer above and its translation below.
+        """
+        line_id = next(self._reply_ids)
+        self.overlay.add_final(line_id, text, translated or text, lang or self.cfg.get("target_lang", "en"),
+                               None, "ai")
+        QTimer.singleShot(max(2, min(120, int(seconds))) * 1000, lambda: self.overlay.remove_caption(line_id))
+        return line_id

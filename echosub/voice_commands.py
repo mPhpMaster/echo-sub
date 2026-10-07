@@ -207,13 +207,11 @@ def _reminder_command(window, raw_text):
             "what": what}
 
 
-def _ask_command(window, raw_text):
-    """"Ask ..." — everything after that word is the question, exactly as it was heard."""
-    from .ai_assistant import ASK_WORDS
-
-    if _first_position(window, ASK_WORDS) < 0:
+def _ask_command(window, raw_text, words):
+    """"Ask ..." — everything after the trigger word is the question, exactly as it was heard."""
+    if _first_position(window, words) < 0:
         return None
-    question = " ".join(_spoken_tail(raw_text, ASK_WORDS).split())
+    question = " ".join(_spoken_tail(raw_text, words).split())
     if not question:
         return None
     return {"key": "ask_ai", "action": "ask_ai", "target": question[:500], "label": f"Ask AI: {question[:80]}"}
@@ -445,7 +443,12 @@ def _match(window, text, custom_commands, allow_key_presses, folders, allow_typi
     found = (_help_command(window) or _custom_command(window, custom_commands)
              or _reminder_command(window, text))
     if found is None and allow_ai:
-        found = _ask_command(window, text)  # like "type", the word claims everything after it
+        # Like "type", the trigger word claims everything after it. `allow_ai` may carry the user's
+        # own trigger words; True means the built-in ones.
+        from .ai_assistant import ASK_WORDS
+
+        words = tuple(allow_ai) if isinstance(allow_ai, (tuple, list)) and allow_ai else ASK_WORDS
+        found = _ask_command(window, text, words)
     if found is None and allow_typing:
         # Typing is tried first, so "type ... and press enter" writes that whole sentence out.
         # Enter on its own is a separate thing to say, which is the point of it being separate.
@@ -501,7 +504,10 @@ def find_detail(text, wake_words=DEFAULT_WAKE_WORDS, custom_commands=(), allow_k
         # calculator later" is you talking, and telling those apart is the whole job here.
         window = " ".join(spoken.split()[:MAX_WORDS_AFTER_WAKE])[:MAX_WINDOW_CHARS]
         found = _custom_command(window, custom_commands)  # one of your own phrases, matched in full
-        if found is None and _first_position(window, command_starters()) == 0:
+        starters = command_starters()
+        if isinstance(allow_ai, (tuple, list)):
+            starters += tuple(allow_ai)  # the user's own trigger words begin a command as well
+        if found is None and _first_position(window, starters) == 0:
             found = _match(window, text, custom_commands, allow_key_presses, folders, allow_typing, allow_ai)
         # Nothing is reported as "heard but not understood": that would fire on every sentence.
         return found, None

@@ -324,7 +324,7 @@ class App(TrayMenuMixin, UpdateCheckMixin, VoiceCommandMixin, AiAssistantMixin):
             self._report_alerts(original)
             self.remember_for_ai(original, source, spk)
         # Still offered to the commands, so a muted microphone can hear itself being unmuted.
-        self._handle_voice_command(original, source)
+        self._handle_voice_command(original, source, lang)
 
     def _report_alerts(self, text):
         """Say so when a caption contains one of the words being watched for."""

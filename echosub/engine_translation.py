@@ -81,6 +81,14 @@ class TranslationMixin:
         # Same language: translating still rewrites dialect/casual speech into the standard language
         return lang != self.cfg["target_lang"] or self.cfg["translate_same_language"]
 
+    def translate_text(self, text, lang):
+        """Translate one line of text the way a caption would be, for code outside the engine.
+
+        Follows the same settings as captions (including whether to translate at all) and takes the
+        same lock, so it can be called from another thread while captions are being translated.
+        """
+        return self._translate(text, lang)
+
     def _translate(self, text, lang):
         tgt = self.cfg["target_lang"]
         if not self._should_translate(lang):
