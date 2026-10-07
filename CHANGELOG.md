@@ -5,6 +5,8 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and 
 
 ## [Unreleased]
 
+## [1.11.0] — 2026-10-07
+
 ### Added
 - **The AI can answer questions on its own** (*Settings → AI → Answer questions on its own*, **off by default**, separate from “ask …”). When someone asks a question — anyone, other people only, or only you — an AI’s answer appears in the caption box without being asked for. Because this sends without asking, it is held back on every side: only a sentence ending in a question mark and at least three words long counts, at most one is sent every 20 seconds (adjustable), and nothing new is sent while an answer is still on its way. With a paid service each one costs money; LM Studio keeps it free and on your PC. The privacy policy says so.
 - **Get a key…** beside the API key opens that service’s own key page in your browser (for LM Studio, the program’s site).
