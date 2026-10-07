@@ -5,6 +5,11 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and 
 
 ## [Unreleased]
 
+### Fixed
+- **Gemini works.** Its model list names models “models/gemini-…”, but it only answers to “gemini-…”, so every question came back “Nothing answered at that address”. The prefix is now dropped, including from a model already saved with it.
+- When a service says a model does not exist, its own explanation is shown too.
+- AI error messages are laid out left to right, so the full stop no longer lands at the front.
+
 ## [1.11.1] — 2026-10-07
 
 ### Fixed

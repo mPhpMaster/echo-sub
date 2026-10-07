@@ -165,6 +165,23 @@ class OpenAiStyleTest(unittest.TestCase):
         self.answer_with({"data": [{"id": "b-model"}, {"id": "a-model"}]})
         self.assertEqual(ai_providers.list_models("lmstudio", "", ""), ["a-model", "b-model"])
 
+    def test_gemini_models_are_listed_and_asked_for_without_their_prefix(self):
+        self.answer_with({"data": [{"id": "models/gemini-2.5-flash"}, {"id": "models/gemini-2.5-pro"}]})
+        self.assertEqual(ai_providers.list_models("gemini", "k", ""), ["gemini-2.5-flash", "gemini-2.5-pro"])
+        self.answer_with({"choices": [{"message": {"content": "ok"}}]})
+        ai_providers.ask("gemini", "models/gemini-2.5-flash", "k", "", "s", "q")  # saved before the fix
+        self.assertEqual(json.loads(self.sent[-1].data)["model"], "gemini-2.5-flash")
+
+    def test_a_missing_model_passes_on_what_the_service_said(self):
+        def missing(request, timeout=None):
+            body = json.dumps({"error": {"message": "model xyz is not found"}}).encode("utf-8")
+            raise urllib.error.HTTPError(request.full_url, 404, "no", {}, FakeReply(body))
+
+        ai_providers.urllib.request.urlopen = missing
+        with self.assertRaises(ai_providers.AiError) as caught:
+            ai_providers.ask("gemini", "xyz", "k", "", "s", "q")
+        self.assertIn("model xyz is not found", str(caught.exception))
+
 
 class ClaudeTest(unittest.TestCase):
     """The SDK client is replaced, so these check what EchoSub asks of it and does with the reply."""

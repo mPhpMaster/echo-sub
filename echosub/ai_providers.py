@@ -62,7 +62,7 @@ def ask(provider, model, key, base_url, system, question):
         raise AiError(f"{spec['title']} needs an API key in Settings → AI.")
     if spec["kind"] == "anthropic":
         return _ask_claude(model, key, system, question)
-    return _ask_openai_style(base_url or spec["base_url"], model, key, system, question)
+    return _ask_openai_style(base_url or spec["base_url"], _model_name(model), key, system, question)
 
 
 def list_models(provider, key, base_url):
@@ -81,7 +81,13 @@ def list_models(provider, key, base_url):
         except anthropic.APIStatusError as e:
             raise AiError(f"Anthropic answered with an error ({e.status_code}).") from e
     data = _request("GET", (base_url or spec["base_url"]).rstrip("/") + "/models", key)
-    return sorted(str(item.get("id")) for item in data.get("data", []) if item.get("id"))
+    return sorted({_model_name(item.get("id")) for item in data.get("data", []) if item.get("id")})
+
+
+def _model_name(model):
+    """A model's name as the chat call wants it. Gemini lists "models/gemini-…" but answers only to "gemini-…"."""
+    model = str(model or "").strip()
+    return model[len("models/"):] if model.startswith("models/") else model
 
 
 # ---- Claude -----------------------------------------------------------------
@@ -145,13 +151,15 @@ def _request(method, url, key, payload=None):
     except urllib.error.HTTPError as e:
         detail = ""
         try:
-            detail = json.loads(e.read().decode("utf-8")).get("error", {}).get("message", "")
+            body = json.loads(e.read().decode("utf-8"))
+            body = body[0] if isinstance(body, list) and body else body  # Gemini wraps it in a list
+            detail = str(body.get("error", {}).get("message", ""))
         except (ValueError, AttributeError):
             pass
         if e.code in (401, 403):
             raise AiError("The service rejected the API key.") from e
         if e.code == 404:
-            raise AiError("Nothing answered at that address, or the model does not exist.") from e
+            raise AiError(f"Nothing answered at that address, or the model does not exist. {detail}".strip()) from e
         if e.code == 429:
             raise AiError("The service is rate-limiting this key; try again in a moment.") from e
         raise AiError(f"The service answered with an error ({e.code}). {detail}".strip()) from e

@@ -216,7 +216,7 @@ class AiAssistantMixin:
         seconds = max(8, min(120, 4 + words // 2))
         if failed:
             log.info("AI question failed: %s", answer)
-            self._show_ai_line("⚠️ " + answer, seconds=seconds)
+            self._show_ai_line("⚠️ " + answer, seconds=seconds, lang="en")  # the messages are English
             return
         self._show_ai_line(answer, seconds=seconds, translated=translated, lang=answer_lang)
 
