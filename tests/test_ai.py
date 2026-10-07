@@ -522,5 +522,95 @@ class AnswerLanguageTest(unittest.TestCase):
         self.assertIn("Spanish", self.asked[0])
 
 
+class QuestionTest(unittest.TestCase):
+    def test_a_real_question_is_recognized(self):
+        for text in ("What time does the match start?", "Is this the right server?",
+                     "كم سعر هذا الجهاز؟",
+                     'He asked "where are you going?"'):
+            with self.subTest(text=text):
+                self.assertTrue(ai_assistant.is_question(text), text)
+
+    def test_a_statement_is_not(self):
+        for text in ("The match starts at nine.", "what a game", "", None):
+            with self.subTest(text=text):
+                self.assertFalse(ai_assistant.is_question(text), text)
+
+    def test_a_one_word_question_is_not_worth_an_answer(self):
+        for text in ("What?", "Really?", "Huh?", "You sure?"):
+            with self.subTest(text=text):
+                self.assertFalse(ai_assistant.is_question(text), text)
+
+    def test_whose_questions_are_answered(self):
+        everyone = {"ai_auto_answer": True, "ai_auto_from": "everyone"}
+        others = {"ai_auto_answer": True, "ai_auto_from": "others"}
+        me = {"ai_auto_answer": True, "ai_auto_from": "me"}
+        self.assertTrue(ai_assistant.auto_answers(everyone, "mic"))
+        self.assertTrue(ai_assistant.auto_answers(everyone, "system"))
+        self.assertFalse(ai_assistant.auto_answers(others, "mic"))
+        self.assertTrue(ai_assistant.auto_answers(others, "system"))
+        self.assertTrue(ai_assistant.auto_answers(me, "mic"))
+        self.assertFalse(ai_assistant.auto_answers(me, "system"))
+
+    def test_it_is_off_until_switched_on(self):
+        self.assertFalse(config.DEFAULTS["ai_auto_answer"])
+        self.assertFalse(ai_assistant.auto_answers(dict(config.DEFAULTS), "system"))
+
+
+class AutoAnswerTest(unittest.TestCase):
+    def app(self, **overrides):
+        overrides.setdefault("ai_auto_answer", True)
+        app_ = AiApp(voice_commands=True, **overrides).use_fake_runner()
+        self.asked = []
+        app_.ask_ai = lambda question, lang=None: self.asked.append((question, lang)) or True
+        return app_
+
+    def test_a_question_heard_is_answered_without_being_asked(self):
+        app_ = self.app()
+        self.assertTrue(app_.maybe_answer_on_its_own("What time does the match start?", "system", "en", now=100))
+        self.assertEqual(self.asked, [("What time does the match start?", "en")])
+
+    def test_a_statement_is_left_alone(self):
+        app_ = self.app()
+        self.assertFalse(app_.maybe_answer_on_its_own("The match starts at nine.", "system", "en", now=100))
+        self.assertEqual(self.asked, [])
+
+    def test_questions_too_close_together_are_held_back(self):
+        app_ = self.app(ai_auto_cooldown=20)
+        app_.maybe_answer_on_its_own("What time does it start?", "system", "en", now=100)
+        app_.maybe_answer_on_its_own("Who is playing tonight?", "system", "en", now=110)
+        app_.maybe_answer_on_its_own("Where is it being held?", "system", "en", now=125)
+        self.assertEqual(len(self.asked), 2, "the one ten seconds later should have been held back")
+
+    def test_nothing_new_is_sent_while_an_answer_is_on_its_way(self):
+        app_ = self.app()
+        app_._ai_busy = True
+        self.assertFalse(app_.maybe_answer_on_its_own("What time does it start?", "system", "en", now=100))
+        self.assertEqual(self.asked, [])
+
+    def test_off_means_off(self):
+        app_ = self.app(ai_auto_answer=False)
+        self.assertFalse(app_.maybe_answer_on_its_own("What time does it start?", "system", "en", now=100))
+
+    def test_the_busy_flag_clears_when_the_answer_arrives(self):
+        app_ = AiApp(voice_commands=True).use_fake_runner()
+        app_._ai_busy = True
+        app_._ai_finished(0, "an answer", "an answer", "en", False)
+        self.assertFalse(app_._ai_busy)
+
+    def test_the_settings_keep_it(self):
+        dialog = SettingsDialog(dict(config.DEFAULTS, ai_auto_answer=True, ai_auto_from="others",
+                                     ai_auto_cooldown=45))
+        self.addCleanup(dialog.close)
+        values = dialog.values()
+        self.assertEqual((values["ai_auto_answer"], values["ai_auto_from"], values["ai_auto_cooldown"]),
+                         (True, "others", 45))
+
+    def test_its_warning_says_it_sends_without_asking(self):
+        dialog = SettingsDialog(dict(config.DEFAULTS))
+        self.addCleanup(dialog.close)
+        notes = " ".join(label.text() for label in dialog.findChildren(type(dialog.ai_privacy)))
+        self.assertIn("without you asking", notes)
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)

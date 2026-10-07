@@ -26,8 +26,13 @@ computer, and it is never uploaded.
 This is **off** unless you switch it on in *Settings → AI*, and it is the one feature that can send what was
 said on your PC to somebody else's computer.
 
-- Nothing happens until you ask: you say your wake word and then **“ask …”**. EchoSub never sends anything
-  on its own, in the background, or on a timer.
+- Normally nothing happens until you ask: you say your wake word and then **“ask …”**.
+- **The one exception is *Answer questions on its own***, a second switch in the same tab, also off by default.
+  With it on, EchoSub sends **without you asking**: every question it hears — from a call, a video or a game,
+  as you choose — goes to the service with the recent captions. It only counts a sentence ending in a question
+  mark and at least three words long, sends at most one every so often (20 seconds by default), and never sends a
+  new one while an answer is still on its way. With a paid service, each one costs money. LM Studio keeps all of it
+  on your computer.
 - When you ask, it sends your question together with the **most recent captions** — as many as you choose (20 by
   default, 0 to send none), from everyone or only from your microphone.
 - **Those captions can include other people's words** — people in a call, in a video or in a game. Please only
@@ -55,6 +60,7 @@ EchoSub connects to the internet only in these cases:
 | You click a link in the About window | The linked website | Whatever your browser normally sends. |
 | Once a day, and when you choose *Check for updates…* (can be switched off in *Settings → Advanced*) | GitHub (api.github.com) | A request for the latest release number. No audio or captions. |
 | You switch on *Settings → AI* **and** ask a question with a cloud service chosen | Anthropic, OpenAI, Google or DeepSeek — the one you chose | Your question and the recent captions you chose to send, with your API key. Never with LM Studio, which runs on your computer. |
+| You switch on *Answer questions on its own* **and** a question is heard, with a cloud service chosen | The same service | The question that was heard and the recent captions — sent without you asking, as described above. |
 
 With the default offline engines and the AI feature left off, no caption text or audio ever leaves your computer.
 

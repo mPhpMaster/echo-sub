@@ -130,6 +130,7 @@ class AiTabMixin:
         self.ai_privacy.setWordWrap(True)
         form.addRow(self.ai_privacy)
         layout.addWidget(group)
+        layout.addWidget(self._ai_auto_group(cfg))
         layout.addStretch(1)
 
         self._ai_profiles = {k: dict(v) for k, v in (cfg.get("ai_profiles") or {}).items()}
@@ -141,6 +142,43 @@ class AiTabMixin:
         self.ai_provider.setCurrentIndex(max(0, self.ai_provider.findData(cfg.get("ai_provider", "claude"))))
         self._show_ai_provider()
         return widget
+
+    def _ai_auto_group(self, cfg):
+        """Answering questions nobody asked EchoSub to answer — the same service, a separate switch."""
+        group = QGroupBox("Answer questions on its own")
+        form = QFormLayout(group)
+        self.ai_auto_answer = QCheckBox("When someone asks a question, show an AI's answer without being asked")
+        self.ai_auto_answer.setChecked(cfg.get("ai_auto_answer", False))
+        form.addRow(self.ai_auto_answer)
+        self.ai_auto_from = QComboBox()
+        self.ai_auto_from.addItem("anyone", "everyone")
+        self.ai_auto_from.addItem("other people, not me", "others")
+        self.ai_auto_from.addItem("only me", "me")
+        self.ai_auto_from.setCurrentIndex(max(0, self.ai_auto_from.findData(cfg.get("ai_auto_from"))))
+        self.ai_auto_cooldown = QSpinBox()
+        self.ai_auto_cooldown.setRange(5, 600)
+        self.ai_auto_cooldown.setSuffix(" s")
+        self.ai_auto_cooldown.setPrefix("at most one every ")
+        self.ai_auto_cooldown.setMaximumWidth(220)
+        self.ai_auto_cooldown.setValue(int(cfg.get("ai_auto_cooldown", ai_assistant.AUTO_COOLDOWN)))
+        row = QHBoxLayout()
+        row.addWidget(self.ai_auto_from)
+        row.addWidget(self.ai_auto_cooldown)
+        row.addStretch(1)
+        form.addRow("Questions from:", row)
+        note = QLabel(
+            "⚠️ Unlike “ask …”, this sends without you asking: every question it hears — from a call, "
+            "a video or a game — goes to the service above with the recent captions, and with a paid service "
+            "each one costs money. A question is a sentence ending in a question mark, at least three words long; "
+            "nothing new is sent while an answer is still on its way. LM Studio keeps all of it on this PC and free.")
+        note.setWordWrap(True)
+        note.setStyleSheet("color: #D4A03C;")
+        form.addRow(note)
+        self.ai_auto_answer.toggled.connect(self.ai_auto_from.setEnabled)
+        self.ai_auto_answer.toggled.connect(self.ai_auto_cooldown.setEnabled)
+        self.ai_auto_from.setEnabled(self.ai_auto_answer.isChecked())
+        self.ai_auto_cooldown.setEnabled(self.ai_auto_answer.isChecked())
+        return group
 
     # ---- one service at a time, each remembered -----------------------------
     def _keep_ai_fields(self):
@@ -232,4 +270,7 @@ class AiTabMixin:
             "ai_color": self.ai_color.color,
             "ai_label": self.ai_label.text().strip() or AI_LABEL,
             "ai_font_size": self.ai_font_size.value(),
+            "ai_auto_answer": self.ai_auto_answer.isChecked(),
+            "ai_auto_from": self.ai_auto_from.currentData(),
+            "ai_auto_cooldown": self.ai_auto_cooldown.value(),
         }

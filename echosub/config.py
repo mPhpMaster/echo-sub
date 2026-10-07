@@ -131,6 +131,9 @@ DEFAULTS = {
     "ai_trigger": "ask, اسأل",             # words after the wake word that start a question (comma-separated)
     "ai_color": "#C9B6FF",                 # the colour an AI's answer is shown in
     "ai_label": "AI",                      # the word shown in front of an AI's answer
+    "ai_auto_answer": False,               # answer questions heard in the captions without being asked
+    "ai_auto_from": "everyone",            # everyone | others | me: whose questions are answered that way
+    "ai_auto_cooldown": 20,                # seconds between answers given without being asked
     "ai_font_size": 0,                     # pt for an AI's answer; 0 = the same size as the captions
     "reminders": [],                       # set by voice: {"when": iso time, "what": ...}
     "transcript_fixes": [],                # your own spellings: {"heard": ..., "write": ...}

@@ -323,6 +323,7 @@ class App(TrayMenuMixin, UpdateCheckMixin, VoiceCommandMixin, AiAssistantMixin):
             self.history.add((gen, seg_id), original, translated, lang, spk)
             self._report_alerts(original)
             self.remember_for_ai(original, source, spk)
+            self.maybe_answer_on_its_own(original, source, lang)
         # Still offered to the commands, so a muted microphone can hear itself being unmuted.
         self._handle_voice_command(original, source, lang)
 

@@ -28,6 +28,29 @@ ASK_WORDS = ("ask", "question", "اسال", "اسأل", "سؤال",
 DEFAULT_TRIGGER = "ask, اسأل"
 
 
+AUTO_MIN_WORDS = 3            # "What?" and "Really?" are not worth an answer
+AUTO_COOLDOWN = 20            # seconds between automatic answers, so a video cannot run up a bill
+QUESTION_MARKS = ("?", "؟", "？")  # the Latin, Arabic and full-width question marks
+
+
+def is_question(text):
+    """A sentence that asks something: it ends with a question mark and has a few words in it."""
+    text = str(text or "").strip().rstrip("\"'”’)")
+    return text.endswith(QUESTION_MARKS) and len(text.split()) >= AUTO_MIN_WORDS
+
+
+def auto_answers(cfg, source):
+    """Whether a question heard from `source` should be answered without being asked to."""
+    if not cfg.get("ai_auto_answer", False):
+        return False
+    who_asks = cfg.get("ai_auto_from", "everyone")
+    if who_asks == "others":
+        return source != "mic"
+    if who_asks == "me":
+        return source == "mic"
+    return True
+
+
 def trigger_words(cfg):
     """The words that turn what follows into a question, from the settings, else the built-in ones."""
     words = tuple(w.strip() for w in str(cfg.get("ai_trigger", "") or "").split(",") if w.strip())
@@ -113,6 +136,23 @@ class AiAssistantMixin:
     def remember_for_ai(self, text, source="system", speaker=None):
         self.ai_memory().add(text, source, speaker)
 
+    def maybe_answer_on_its_own(self, text, source="system", lang=None, now=None):
+        """Answer a question nobody asked EchoSub to answer, if the settings allow it.
+
+        Unlike "ask …", this sends without being asked, so it is held back on every side: only a
+        real question, only from whom the settings say, never while an answer is still on its way,
+        and never more often than the cooldown.
+        """
+        if not auto_answers(self.cfg, source) or not is_question(text) or getattr(self, "_ai_busy", False):
+            return False
+        now = time.monotonic() if now is None else now
+        cooldown = max(0, int(self.cfg.get("ai_auto_cooldown", AUTO_COOLDOWN)))
+        if now - getattr(self, "_ai_auto_at", -1e9) < cooldown:
+            return False
+        self._ai_auto_at = now
+        log.info("Answering a question on its own (%s)", source)
+        return self.ask_ai(text, lang)
+
     def ask_ai(self, question, lang=None):
         """Send the question with the recent captions, without holding the app up while it waits.
 
@@ -133,6 +173,7 @@ class AiAssistantMixin:
         waiting = self._show_ai_line(f"{title} is thinking…", seconds=90)
         log.info("Asking %s with %d recent captions", chosen["provider"], len(lines))
         engine = getattr(self, "engine", None)
+        self._ai_busy = True
 
         def work():
             try:
@@ -154,6 +195,7 @@ class AiAssistantMixin:
         return True
 
     def _ai_finished(self, waiting, answer, translated, answer_lang, failed):
+        self._ai_busy = False
         self.overlay.remove_caption(waiting)
         # Long enough to read: a few seconds plus a little for every word of both rows.
         words = len(answer.split()) + (len(translated.split()) if translated != answer else 0)
