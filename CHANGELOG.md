@@ -5,6 +5,8 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and 
 
 ## [Unreleased]
 
+## [1.12.0] — 2026-10-08
+
 ### Added
 - **Answering on its own waits for one person to be talking.** *Settings → AI → Answer questions on its own* gains *Only when one person is talking* (on by default): if more than one voice — you included — spoke in the last half minute, a question heard is left alone. Voices are told apart by speaker detection.
 - **How long an answer stays** is now yours to set (*Settings → AI → Answer stays for*); 0 keeps the old behaviour, long enough to read it.
