@@ -77,12 +77,15 @@ DEFAULTS = {
     "translation_bold": True,
     "translation_label": "flag_code",     # same choices as original_label
     "translation_label_position": "before",
+    "label_separator": True,               # a dot between a language label and the words it labels
+    "translation_label_size": 100,         # % of the translation's own text size; flag scales with it
     # original-language text
     "original_font_size": 17,
     "original_color": "#FFD966",
     "original_bold": False,
     "original_label": "flag_code",        # none | code | name | flag | flag_code | flag_name
     "original_label_position": "before",  # before | after | above | below (before/after follow reading direction)
+    "original_label_size": 100,            # % of the original text's size
     # layout
     "text_align": "center",               # center | left | right | reading
     "box_position": "bottom-center",      # <top|middle|bottom>-<left|center|right>, or custom (dragged)

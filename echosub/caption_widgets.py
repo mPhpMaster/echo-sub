@@ -21,6 +21,8 @@ OUTLINE_OFFSETS = [(dx, dy) for dx in (-1, 0, 1) for dy in (-1, 0, 1) if dx or d
 PENDING_PLACEHOLDER = "…"
 ENTER_SHIFT_PX = 12  # how far a new line rises while it fades in (slide mode)
 SCALE_MIN, SCALE_MAX, SCALE_STEP = 50, 300, 10  # box size (zoom) in %; Shift + wheel changes it by one step
+LABEL_SIZE_MIN, LABEL_SIZE_MAX = 0.4, 2.5  # the language label, relative to the text beside it
+DOT = "·"  # between a label and the words it labels
 
 _flag_cache = {}
 _entry_keys = itertools.count(1)
@@ -70,7 +72,8 @@ def resolve_alignment(align, rtl):
 class Badge:
     """Language label drawn next to a caption: optional flag and optional text (code or name)."""
 
-    def __init__(self, lang, kind, position, font, extra="", prominent=False):
+    def __init__(self, lang, kind, position, font, extra="", prominent=False, size=1.0, rtl=False,
+                 separator=True):
         self.position = position
         self.prominent = prominent
         self.flag = _flag_pixmap(lang) if kind.startswith("flag") else None
@@ -83,8 +86,9 @@ class Badge:
         if extra:  # the microphone's label ("You"), so it is clear who is talking
             self.text = f"{extra} \u00b7 {self.text}".strip(" \u00b7")
         self.font = QFont(font)
-        scale = 1.0 if prominent else 0.8
-        self.font.setPointSizeF(max(7.0, font.pointSizeF() * scale))
+        # `size` is the user's own choice on top of that; the flag and the padding follow the font.
+        scale = (1.0 if prominent else 0.8) * max(LABEL_SIZE_MIN, min(LABEL_SIZE_MAX, size))
+        self.font.setPointSizeF(max(5.0, font.pointSizeF() * scale))
         self.font.setBold(True)
         fm = QFontMetricsF(self.font)
         self.gap = fm.averageCharWidth() * 0.6
@@ -93,12 +97,28 @@ class Badge:
         self.text_height = fm.height()
         self.flag_height = round(fm.height() * 0.8)
         self.flag_width = (round(self.flag.width() * self.flag_height / self.flag.height()) if self.flag else 0)
-        between = self.gap * 0.6 if self.flag and self.text else 0
-        self.width = self.flag_width + self.text_width + between + self.padding * 2
-        self.height = max(self.flag_height, self.text_height if self.text else 0) + self.padding * 2
+        # A dot between the label and the words it labels, on the side facing them, so the language
+        # name is not read as the first word of the caption — the same dot that already separates a
+        # speaker's name from the language. "Before" is the start of the reading direction, which is
+        # the right-hand side for Arabic, so there the dot goes on the left. Above or below needs none.
+        self.dot_side = None
+        if separator and position in ("before", "after") and (self.flag is not None or self.text):
+            self.dot_side = "right" if (position == "before") != rtl else "left"
+        self.dot_width = fm.horizontalAdvance(DOT) if self.dot_side else 0.0
+        self.pieces = [kind for kind, present in (("flag", self.flag is not None), ("text", bool(self.text)))
+                       if present]
+        if self.dot_side == "left":
+            self.pieces.insert(0, "dot")
+        elif self.dot_side == "right":
+            self.pieces.append("dot")
+        widths = {"flag": self.flag_width, "text": self.text_width, "dot": self.dot_width}
+        spacing = self.gap * 0.6 * max(0, len(self.pieces) - 1)
+        self.width = sum(widths[piece] for piece in self.pieces) + spacing + self.padding * 2
+        has_text = bool(self.text) or self.dot_side is not None
+        self.height = max(self.flag_height, self.text_height if has_text else 0) + self.padding * 2
 
     def key(self):
-        return (self.position, self.text, id(self.flag), self.font.toString(), self.prominent)
+        return (self.position, self.text, id(self.flag), self.font.toString(), self.prominent, self.dot_side)
 
     def draw(self, p, x, y, color):
         cy = y + self.height / 2
@@ -106,26 +126,37 @@ class Badge:
         p.setBrush(QColor(0, 0, 0, int(color.alpha() * (0.60 if self.prominent else 0.42))))
         p.drawRoundedRect(QRectF(x, y, self.width, self.height), self.height * 0.28, self.height * 0.28)
         x += self.padding
-        if self.flag is not None:
-            target = QRectF(x, cy - self.flag_height / 2, self.flag_width, self.flag_height)
-            p.setRenderHint(QPainter.SmoothPixmapTransform)
-            opacity = p.opacity()
-            p.setOpacity(opacity * color.alphaF())
-            p.drawPixmap(target, self.flag, QRectF(self.flag.rect()))
-            p.setOpacity(opacity)
-            p.setPen(QPen(QColor(0, 0, 0, int(color.alpha() * 0.6)), 1))
-            p.setBrush(Qt.NoBrush)
-            p.drawRect(target)
-            x += self.flag_width + (self.gap * 0.6 if self.text else 0)
-        if self.text:
-            p.setFont(self.font)
-            fm = QFontMetricsF(self.font)
-            baseline = cy - self.text_height / 2 + fm.ascent()
-            p.setPen(QColor(0, 0, 0, int(color.alpha() * 0.85)))
-            for dx, dy in OUTLINE_OFFSETS:
-                p.drawText(QPointF(x + dx, baseline + dy), self.text)
-            p.setPen(color)
-            p.drawText(QPointF(x, baseline), self.text)
+        for index, piece in enumerate(self.pieces):
+            if index:
+                x += self.gap * 0.6
+            if piece == "flag":
+                self._draw_flag(p, x, cy, color)
+                x += self.flag_width
+            else:
+                words = self.text if piece == "text" else DOT
+                self._draw_words(p, x, cy, color, words)
+                x += self.text_width if piece == "text" else self.dot_width
+
+    def _draw_flag(self, p, x, cy, color):
+        target = QRectF(x, cy - self.flag_height / 2, self.flag_width, self.flag_height)
+        p.setRenderHint(QPainter.SmoothPixmapTransform)
+        opacity = p.opacity()
+        p.setOpacity(opacity * color.alphaF())
+        p.drawPixmap(target, self.flag, QRectF(self.flag.rect()))
+        p.setOpacity(opacity)
+        p.setPen(QPen(QColor(0, 0, 0, int(color.alpha() * 0.6)), 1))
+        p.setBrush(Qt.NoBrush)
+        p.drawRect(target)
+
+    def _draw_words(self, p, x, cy, color, words):
+        p.setFont(self.font)
+        fm = QFontMetricsF(self.font)
+        baseline = cy - self.text_height / 2 + fm.ascent()
+        p.setPen(QColor(0, 0, 0, int(color.alpha() * 0.85)))
+        for dx, dy in OUTLINE_OFFSETS:
+            p.drawText(QPointF(x + dx, baseline + dy), words)
+        p.setPen(color)
+        p.drawText(QPointF(x, baseline), words)
 
 
 class CopyButton(QWidget):
@@ -437,8 +468,10 @@ class CaptionLine(QWidget):
             # Where the label sits is the user's choice, microphone or not: "before" puts the name
             # on the same line as the words, which is what most people want from a speaker label.
             position = cfg[f"{which}_label_position"]
+            size = cfg.get(f"{which}_label_size", 100) / 100
             return Badge(text_lang, kind if kind != "none" else "none", position, font,
-                         extra=label, prominent=True)
+                         extra=label, prominent=True, size=size, rtl=text_lang in languages.RTL,
+                         separator=cfg.get("label_separator", True))
 
         same_language = bool(translated) and original == translated and not pending
         if cfg["show_original"] and original and not same_language:

@@ -1,7 +1,7 @@
 # SPDX-License-Identifier: GPL-3.0-only
 # Copyright (C) 2026 Mohammad Al-Safadi
 from PySide6.QtCore import QSize, Qt, Signal
-from PySide6.QtGui import QFont, QGuiApplication
+from PySide6.QtGui import QGuiApplication
 from PySide6.QtWidgets import (
     QButtonGroup, QCheckBox, QComboBox, QDialog, QDialogButtonBox, QDoubleSpinBox, QFontComboBox, QFormLayout,
     QGridLayout, QGroupBox, QHBoxLayout, QLabel, QMessageBox, QPushButton, QSlider, QSpinBox, QTabWidget,
@@ -12,17 +12,18 @@ from . import APP_NAME, audio, config, gpu, languages
 from .settings_microphone import MicrophoneGroupMixin
 from .settings_tabs import NUMBER_WIDTH, AdvancedTabMixin
 from .settings_reminders import RemindersTabMixin
+from .settings_text import TextTabMixin
 from .settings_transcript import TranscriptFixesMixin
 from .settings_voice_commands import VoiceCommandsTabMixin
 from .settings_widgets import (
     SEARCH_ALIAS_ROLE, ColorButton, SearchableComboBox, _scrollable, _sorted_languages, fit_to_screen,
-    make_searchable, move_onto_screen, position_icon,
+    move_onto_screen, position_icon,
 )
 from .overlay import SCALE_MAX, SCALE_MIN, SCALE_STEP
 
 
 class SettingsDialog(VoiceCommandsTabMixin, AdvancedTabMixin, MicrophoneGroupMixin,
-                     TranscriptFixesMixin, RemindersTabMixin, QDialog):
+                     TranscriptFixesMixin, RemindersTabMixin, TextTabMixin, QDialog):
     preview = Signal(dict)  # emitted on every change so the overlay can show it live
 
     def __init__(self, cfg, parent=None, add_phrase=None, show_tab=None):
@@ -159,84 +160,6 @@ class SettingsDialog(VoiceCommandsTabMixin, AdvancedTabMixin, MicrophoneGroupMix
         layout.addWidget(self._transcript_fixes_group(cfg))
         layout.addWidget(self._alert_words_group(cfg))
         layout.addStretch(1)
-        return w
-
-    def _text_tab(self, cfg):
-        w = QWidget()
-        v = QVBoxLayout(w)
-
-        g = QGroupBox("General")
-        f = QFormLayout(g)
-        self.font_family = QFontComboBox()
-        self.font_family.setCurrentFont(QFont(cfg["font_family"]))
-        make_searchable(self.font_family)
-        self.show_original = QCheckBox("Show original text above the translation")
-        self.show_original.setChecked(cfg["show_original"])
-        self.show_partial = QCheckBox("Show text while speaking (before the sentence ends)")
-        self.show_partial.setChecked(cfg["show_partial"])
-        self.copy_buttons = QCheckBox("Show a copy button on each caption while the mouse is over the box")
-        self.copy_buttons.setToolTip("Click the button next to a caption to copy that text to the clipboard.")
-        self.copy_buttons.setChecked(cfg.get("copy_buttons", True))
-        f.addRow("Font:", self.font_family)
-        f.addRow(self.show_original)
-        f.addRow(self.show_partial)
-        f.addRow(self.copy_buttons)
-        v.addWidget(g)
-
-        g = QGroupBox("Translation")
-        f = QFormLayout(g)
-        self.font_size = self._spin(8, 96, cfg["font_size"], " pt")
-        self.text_color = ColorButton(cfg["text_color"])
-        self.translation_bold = QCheckBox("Bold")
-        self.translation_bold.setChecked(cfg["translation_bold"])
-        f.addRow("Font size:", self._row(self.font_size, self.translation_bold))
-        f.addRow("Color:", self.text_color)
-        self.translation_label = self._combo(config.ORIGINAL_LABELS, cfg["translation_label"])
-        self.translation_label_position = self._combo(config.LABEL_POSITIONS, cfg["translation_label_position"])
-        f.addRow("Language label:", self._row(self.translation_label, self.translation_label_position))
-        v.addWidget(g)
-
-        g = QGroupBox("Original text")
-        f = QFormLayout(g)
-        self.original_font_size = self._spin(8, 96, cfg["original_font_size"], " pt")
-        self.original_color = ColorButton(cfg["original_color"])
-        self.original_bold = QCheckBox("Bold")
-        self.original_bold.setChecked(cfg["original_bold"])
-        f.addRow("Font size:", self._row(self.original_font_size, self.original_bold))
-        f.addRow("Color:", self.original_color)
-        self.original_label = self._combo(config.ORIGINAL_LABELS, cfg["original_label"])
-        self.label_position = self._combo(config.LABEL_POSITIONS, cfg["original_label_position"])
-        f.addRow("Language label:", self._row(self.original_label, self.label_position))
-        v.addWidget(g)
-
-        g = QGroupBox("Spacing && background")
-        f = QFormLayout(g)
-        self.line_height = self._spin(80, 250, cfg["line_height"], " %")
-        self.line_height.setSingleStep(5)
-        self.entry_spacing = self._spin(0, 80, cfg["entry_spacing"], " px")
-        self.original_gap = self._spin(0, 60, cfg["original_gap"], " px")
-        self.bg_opacity = QSlider(Qt.Horizontal)
-        self.bg_opacity.setRange(0, 255)
-        self.bg_opacity.setMinimumWidth(220)
-        self.bg_opacity.setValue(cfg["bg_opacity"])
-        self.max_lines = self._spin(1, 8, cfg["max_lines"])
-        self.clear_after = self._spin(0, 120, cfg["clear_after_sec"], " s")
-        self.clear_after.setSpecialValueText("Never")
-        f.addRow("Line height (within text):", self.line_height)
-        f.addRow("Space between caption lines:", self.entry_spacing)
-        f.addRow("Space between original and translation:", self.original_gap)
-        f.addRow("Lines shown:", self.max_lines)
-        opacity_value = QLabel()
-        opacity_value.setMinimumWidth(52)
-
-        def show_opacity(value):
-            opacity_value.setText(f"{round(value / 255 * 100)} %")
-
-        self.bg_opacity.valueChanged.connect(show_opacity)
-        show_opacity(self.bg_opacity.value())
-        f.addRow("Background opacity:", self._row(self.bg_opacity, opacity_value))
-        f.addRow("Hide window after silence of:", self.clear_after)
-        v.addWidget(g)
         return w
 
     def _layout_tab(self, cfg):
@@ -428,6 +351,15 @@ class SettingsDialog(VoiceCommandsTabMixin, AdvancedTabMixin, MicrophoneGroupMix
         return s
 
     @staticmethod
+    def _label_size(value):
+        """How big the flag and name are, as a share of the text they sit beside."""
+        size = SettingsDialog._spin(40, 250, value, " %")
+        size.setSingleStep(10)
+        size.setPrefix("Size ")
+        size.setToolTip("The flag and the language name, as a share of the text beside them")
+        return size
+
+    @staticmethod
     def _row(*widgets):
         w = QWidget()
         h = QHBoxLayout(w)
@@ -481,6 +413,7 @@ class SettingsDialog(VoiceCommandsTabMixin, AdvancedTabMixin, MicrophoneGroupMix
             "translation_bold": self.translation_bold.isChecked(),
             "translation_label": self.translation_label.currentData(),
             "translation_label_position": self.translation_label_position.currentData(),
+            "translation_label_size": self.translation_label_size.value(),
             "translate_same_language": self.translate_same.isChecked(),
             "arabic_diacritics": self.arabic_diacritics.currentData(),
             "original_font_size": self.original_font_size.value(),
@@ -488,6 +421,8 @@ class SettingsDialog(VoiceCommandsTabMixin, AdvancedTabMixin, MicrophoneGroupMix
             "original_bold": self.original_bold.isChecked(),
             "original_label": self.original_label.currentData(),
             "original_label_position": self.label_position.currentData(),
+            "original_label_size": self.original_label_size.value(),
+            "label_separator": self.label_separator.isChecked(),
             "text_align": self.text_align.currentData(),
             "box_position": self._box_position(),
             "box_screen": self.box_screen.currentData(),

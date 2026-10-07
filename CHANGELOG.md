@@ -5,6 +5,14 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and 
 
 ## [Unreleased]
 
+### Added
+- **The language label has its own size** (*Settings → Text & Colors*), separately for the original and the translation, from 40% to 250% of the text beside it. The flag grows and shrinks with it.
+- **A dot between the label and the caption** (·), the same one that already separates a speaker’s name from the language, so the language name is not read as the first word of the sentence. It sits on the side facing the words, which for Arabic is the left. It can be switched off.
+
+### Changed
+- The Text & Colors tab moved into its own file, so no source file passes 500 lines.
+
+
 ## [1.9.0] — 2026-10-03
 
 ### Added
