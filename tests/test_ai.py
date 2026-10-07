@@ -5,6 +5,7 @@ import io
 import json
 import os
 import sys
+import time
 import unittest
 import urllib.error
 from types import SimpleNamespace
@@ -70,6 +71,16 @@ class RequestTest(unittest.TestCase):
     def test_it_answers_in_the_language_you_translate_into(self):
         system, _message = ai_assistant.build_request([], "q", "ar")
         self.assertIn("Arabic", system)
+
+    def test_it_knows_today_s_date_and_time(self):
+        when = time.mktime((2026, 10, 7, 21, 40, 0, 0, 0, -1))
+        system, _message = ai_assistant.build_request([], "what's the date today?", "en", now=when)
+        self.assertIn("Wednesday 7 October 2026, 21:40 (UTC", system)
+
+    def test_it_may_answer_beyond_the_captions(self):
+        system, _message = ai_assistant.build_request([], "q", "en")
+        self.assertIn("anything else at all", system)
+        self.assertIn("own knowledge", system)
 
     def test_with_nothing_said_yet_it_says_so(self):
         _system, message = ai_assistant.build_request([], "q", "en")

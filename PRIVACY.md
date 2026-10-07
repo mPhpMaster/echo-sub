@@ -34,7 +34,8 @@ said on your PC to somebody else's computer.
   new one while an answer is still on its way. With a paid service, each one costs money. LM Studio keeps all of it
   on your computer.
 - When you ask, it sends your question together with the **most recent captions** — as many as you choose (20 by
-  default, 0 to send none), from everyone or only from your microphone.
+  default, 0 to send none), from everyone or only from your microphone — and your PC's current date, time and time
+  zone, so it can answer questions such as "what's the date today?".
 - **Those captions can include other people's words** — people in a call, in a video or in a game. Please only
   switch this on if that is all right with you and with them.
 - The question waits for the same countdown as every spoken command, so saying “no” stops it before anything is
@@ -59,7 +60,7 @@ EchoSub connects to the internet only in these cases:
 | You select the **Google Translate** engine | Google's translation service | The text of each caption, so it can be translated. Google's privacy policy applies. |
 | You click a link in the About window | The linked website | Whatever your browser normally sends. |
 | Once a day, and when you choose *Check for updates…* (can be switched off in *Settings → Advanced*) | GitHub (api.github.com) | A request for the latest release number. No audio or captions. |
-| You switch on *Settings → AI* **and** ask a question with a cloud service chosen | Anthropic, OpenAI, Google or DeepSeek — the one you chose | Your question and the recent captions you chose to send, with your API key. Never with LM Studio, which runs on your computer. |
+| You switch on *Settings → AI* **and** ask a question with a cloud service chosen | Anthropic, OpenAI, Google or DeepSeek — the one you chose | Your question, the recent captions you chose to send and your PC's date, time and time zone, with your API key. Never with LM Studio, which runs on your computer. |
 | You switch on *Answer questions on its own* **and** a question is heard, with a cloud service chosen | The same service | The question that was heard and the recent captions — sent without you asking, as described above. |
 
 With the default offline engines and the AI feature left off, no caption text or audio ever leaves your computer.
