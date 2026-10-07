@@ -18,6 +18,7 @@ from PySide6.QtWidgets import QApplication, QSystemTrayIcon  # noqa: E402
 
 from . import APP_NAME, AUTHOR, __version__, config, history, hotkeys, transcript_fixes  # noqa: E402
 from .overlay import CaptionOverlay  # noqa: E402
+from .ai_assistant import AiAssistantMixin  # noqa: E402
 from .tray_menu import TrayMenuMixin  # noqa: E402
 from .update_ui import UpdateCheckMixin  # noqa: E402
 from .voice_command_ui import VoiceCommandMixin  # noqa: E402
@@ -77,7 +78,7 @@ def make_icon(color):
     return QIcon(pm)
 
 
-class App(TrayMenuMixin, UpdateCheckMixin, VoiceCommandMixin):
+class App(TrayMenuMixin, UpdateCheckMixin, VoiceCommandMixin, AiAssistantMixin):
     def __init__(self, qt):
         self.qt = qt
         self.qt.setQuitOnLastWindowClosed(False)
@@ -321,6 +322,7 @@ class App(TrayMenuMixin, UpdateCheckMixin, VoiceCommandMixin):
             self.overlay.add_final(seg_id, original, translated, lang, spk, source)
             self.history.add((gen, seg_id), original, translated, lang, spk)
             self._report_alerts(original)
+            self.remember_for_ai(original, source, spk)
         # Still offered to the commands, so a muted microphone can hear itself being unmuted.
         self._handle_voice_command(original, source)
 

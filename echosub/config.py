@@ -123,6 +123,11 @@ DEFAULTS = {
     "voice_command_wake": "echo sub",     # a command only counts after this wake word
     "voice_custom_commands": [],           # user phrases mapped to an approved built-in action
     "voice_key_presses": False,            # allow short A-Z / 0-9 press commands after the wake word
+    "ai_enabled": False,                   # "ask ..." sends recent captions and the question to an AI
+    "ai_provider": "claude",               # claude | openai | gemini | deepseek | lmstudio
+    "ai_profiles": {},                     # per service: {"model", "base_url", "key" (encrypted)}
+    "ai_context_lines": 20,                # how many recent captions go with a question
+    "ai_context_who": "everyone",          # everyone | me
     "reminders": [],                       # set by voice: {"when": iso time, "what": ...}
     "transcript_fixes": [],                # your own spellings: {"heard": ..., "write": ...}
     "alert_words": [],                     # words to be told about when anything says them

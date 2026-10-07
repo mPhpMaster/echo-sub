@@ -103,6 +103,7 @@ class VoiceCommandMixin:
             self.cfg.get("voice_go_folders", []),
             needs_wake,
             self.cfg.get("voice_typing", False),
+            self.cfg.get("ai_enabled", False),
         )
         if command is None:
             self._report_unknown_command(heard)
@@ -154,6 +155,9 @@ class VoiceCommandMixin:
         if command.get("action") == "reminder":
             self._keep_reminder(command)
             return command
+        if command.get("action") == "ask_ai":
+            self.ask_ai(command["target"])
+            return command
         if command.get("action") == "reply":
             self._show_screen_reply(command["target"])
             return command
@@ -182,12 +186,19 @@ class VoiceCommandMixin:
             return ()
         return screen_replies.valid_pairs(self.cfg.get("screen_reply_pairs", []))
 
-    def _show_screen_reply(self, text):
-        """Write one of your prepared answers in the caption box, and take it away again."""
+    def _show_screen_reply(self, text, seconds=None):
+        """Write a line of EchoSub's own in the caption box, and take it away again.
+
+        Returns the caption's id, so a "thinking…" line can be taken away early once the real
+        answer arrives.
+        """
         answer_id = next(self._reply_ids)
         self.overlay.add_final(answer_id, text, text, self.cfg.get("target_lang", "en"), None, "reply")
-        seconds = max(2, min(60, int(self.cfg.get("screen_reply_seconds", screen_replies.DEFAULT_SECONDS))))
+        if seconds is None:
+            seconds = self.cfg.get("screen_reply_seconds", screen_replies.DEFAULT_SECONDS)
+        seconds = max(2, min(120, int(seconds)))
         QTimer.singleShot(seconds * 1000, lambda: self.overlay.remove_caption(answer_id))
+        return answer_id
 
     def _report_unknown_command(self, heard):
         """Say so when the wake word was heard but the rest was not a command."""

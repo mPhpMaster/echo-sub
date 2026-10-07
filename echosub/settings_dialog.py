@@ -9,6 +9,7 @@ from PySide6.QtWidgets import (
 )
 
 from . import APP_NAME, audio, config, gpu, languages
+from .settings_ai import AiTabMixin
 from .settings_microphone import MicrophoneGroupMixin
 from .settings_tabs import NUMBER_WIDTH, AdvancedTabMixin
 from .settings_reminders import RemindersTabMixin
@@ -23,7 +24,7 @@ from .overlay import SCALE_MAX, SCALE_MIN, SCALE_STEP
 
 
 class SettingsDialog(VoiceCommandsTabMixin, AdvancedTabMixin, MicrophoneGroupMixin,
-                     TranscriptFixesMixin, RemindersTabMixin, TextTabMixin, QDialog):
+                     TranscriptFixesMixin, RemindersTabMixin, TextTabMixin, AiTabMixin, QDialog):
     preview = Signal(dict)  # emitted on every change so the overlay can show it live
 
     def __init__(self, cfg, parent=None, add_phrase=None, show_tab=None):
@@ -46,6 +47,7 @@ class SettingsDialog(VoiceCommandsTabMixin, AdvancedTabMixin, MicrophoneGroupMix
         tabs.addTab(_scrollable(self._words_tab(cfg)), "Words")
         tabs.addTab(_scrollable(self._commands_tab(cfg)), "Commands")
         tabs.addTab(_scrollable(self._reminders_tab(cfg)), "Reminders")
+        tabs.addTab(_scrollable(self._ai_tab(cfg)), "AI")
         tabs.addTab(_scrollable(self._advanced_tab(cfg)), "Advanced")
 
         buttons = QDialogButtonBox(
@@ -455,5 +457,6 @@ class SettingsDialog(VoiceCommandsTabMixin, AdvancedTabMixin, MicrophoneGroupMix
             **self.voice_command_values(),
             **self.transcript_fix_values(),
             **self.reminder_values(),
+            **self.ai_values(),
             "global_hotkeys": self.global_hotkeys.isChecked(),
         }

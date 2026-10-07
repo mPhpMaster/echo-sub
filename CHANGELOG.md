@@ -6,11 +6,15 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and 
 ## [Unreleased]
 
 ### Added
+- **Ask an AI about what was said** (*Settings → AI*, **off by default**). Say your wake word and “ask …” — “echo sub, ask what was the price he said” — and the answer appears in the caption box. The question goes with the most recent captions: as many as you choose, from everyone or only from your microphone. Choose **Claude**, **ChatGPT**, **Gemini**, **DeepSeek** or **LM Studio**, which runs on your own PC; *Load models* lists what each service offers and checks the key and address at the same time. Claude is called through Anthropic’s SDK, on `claude-opus-5-5` by default, with server-side fallbacks so a request a safety check declines is re-run on another model instead of failing. **Nothing is sent until you ask**, the question waits for the usual countdown so “no” stops it, and API keys are encrypted with Windows’ own data protection before they are saved. This is the first feature that can send captions off your PC, and those can include other people’s words, so the privacy policy now says so plainly.
+- **Box position from the right-click menu.** Right-click the caption box or the tray icon → *Box position*, and pick any of the nine spots, each with a little picture of where it is. The current one is ticked, including after you change it elsewhere.
 - **The language label has its own size** (*Settings → Text & Colors*), separately for the original and the translation, from 40% to 250% of the text beside it. The flag grows and shrinks with it.
 - **A dot between the label and the caption** (·), the same one that already separates a speaker’s name from the language, so the language name is not read as the first word of the sentence. It sits on the side facing the words, which for Arabic is the left. It can be switched off.
 
 ### Changed
 - The Text & Colors tab moved into its own file, so no source file passes 500 lines.
+- The privacy policy now lists the daily update check, which has run since 1.1.0 but was missing from its list
+  of everything EchoSub sends over the internet.
 
 
 ## [1.9.0] — 2026-10-03

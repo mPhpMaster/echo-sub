@@ -11,6 +11,8 @@ huggingface_hub==1.31.0
 sherpa-onnx==1.13.8
 pycaw==20251023
 comtypes==1.4.16
+# Only used when the AI feature asks Claude; imported on first use
+anthropic==1.11.0
 # NVIDIA CUDA runtime for the GPU (cuBLAS 12 + cuDNN 9)
 nvidia-cublas-cu12==12.9.2.10
 nvidia-cudnn-cu12==9.26.0.51

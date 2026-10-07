@@ -5,7 +5,10 @@ from PySide6.QtGui import QAction, QActionGroup
 from PySide6.QtWidgets import QMenu
 
 from . import APP_NAME, hotkeys, languages
+from .settings_widgets import position_icon
 
+ROWS = ("top", "middle", "bottom")
+COLUMNS = ("left", "center", "right")
 QUICK_TARGETS = ["ar", "en", "fr", "de", "es", "it", "pt", "tr", "fa", "ur", "hi", "zh", "ja", "ko", "ru"]
 
 
@@ -28,6 +31,8 @@ class TrayMenuMixin:
         self.act_mic_mute = QAction("Mute my microphone", m, checkable=True)
         self.act_mic_mute.setToolTip("Your microphone is still heard for the phrase that brings it back")
         self.act_mic_mute.toggled.connect(self.set_mic_muted)
+
+        self._build_position_menu(m)
 
         lang_menu = m.addMenu("Translation language")
         group = QActionGroup(lang_menu)
@@ -63,6 +68,39 @@ class TrayMenuMixin:
         m.addAction("Exit", self._quit)
         self._update_hotkey_labels()
         return m
+
+    def _build_position_menu(self, m):
+        """Where the caption box sits, one click away. The same menu opens from the box and the tray."""
+        menu = m.addMenu("Box position")
+        group = QActionGroup(menu)
+        self.position_actions = {}
+        for row in ROWS:
+            for col in COLUMNS:
+                key = f"{row}-{col}"
+                action = QAction(position_icon(row, col), f"{row.title()} {col}", menu, checkable=True)
+                action.triggered.connect(lambda _=False, k=key: self.set_box_position(k))
+                group.addAction(action)
+                menu.addAction(action)
+                self.position_actions[key] = action
+            menu.addSeparator()
+        custom = QAction("Where I dragged it", menu, checkable=True)
+        custom.setEnabled(False)  # reached by dragging the box, not by choosing it here
+        group.addAction(custom)
+        menu.addAction(custom)
+        self.position_actions["custom"] = custom
+        menu.aboutToShow.connect(self._tick_box_position)
+        self._tick_box_position()
+        return menu
+
+    def _tick_box_position(self):
+        """Mark the current spot each time the menu opens, since dragging the box changes it too."""
+        current = self.cfg.get("box_position", "custom")
+        action = self.position_actions.get(current) or self.position_actions["custom"]
+        action.setChecked(True)
+
+    def set_box_position(self, key):
+        if key in self.position_actions and key != "custom":
+            self._apply({"box_position": key})
 
     def _update_hotkey_labels(self):
         enabled = self.cfg["global_hotkeys"]

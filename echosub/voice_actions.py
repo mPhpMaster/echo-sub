@@ -70,7 +70,8 @@ class CommandRunner:
                 and not _valid_destination_command(command_entry)
                 and not _valid_run_command(command_entry)
                 and not _valid_typing_command(command_entry)
-                and not _valid_reminder_command(command_entry)):
+                and not _valid_reminder_command(command_entry)
+                and not _valid_ask_command(command_entry)):
             log.warning("Refused a command that is not on the list: %r", command_entry)
             return None
         key, last_time = self._last
@@ -105,6 +106,8 @@ class CommandRunner:
         elif action == "app":
             if not self.app_action(target):
                 return None
+        elif action == "ask_ai":
+            return command_entry["label"]  # the app sends the question and shows the answer
         elif action == "reminder":
             return command_entry["label"]  # the app keeps it and comes back when it is due
         elif action == "reply":
@@ -134,6 +137,12 @@ def _valid_destination_command(entry):
     if action == "open_file":
         return isinstance(target, str) and os.path.isfile(target)
     return False
+
+
+def _valid_ask_command(entry):
+    """A question for the AI is text, and can do nothing on this PC by itself."""
+    return (isinstance(entry, dict) and entry.get("action") == "ask_ai"
+            and isinstance(entry.get("target"), str) and entry["target"].strip() != "")
 
 
 def _valid_reminder_command(entry):

@@ -207,6 +207,18 @@ def _reminder_command(window, raw_text):
             "what": what}
 
 
+def _ask_command(window, raw_text):
+    """"Ask ..." — everything after that word is the question, exactly as it was heard."""
+    from .ai_assistant import ASK_WORDS
+
+    if _first_position(window, ASK_WORDS) < 0:
+        return None
+    question = " ".join(_spoken_tail(raw_text, ASK_WORDS).split())
+    if not question:
+        return None
+    return {"key": "ask_ai", "action": "ask_ai", "target": question[:500], "label": f"Ask AI: {question[:80]}"}
+
+
 def _typing_command(window, raw_text):
     """"Type ..." — everything after that word becomes the text, exactly as it was heard."""
     if _first_position(window, vocabulary.TYPE_WORDS) < 0:
@@ -414,7 +426,9 @@ def find(text, wake_words=DEFAULT_WAKE_WORDS, **options):
 def command_starters():
     """Every word that may *begin* a spoken command: the doing words, in all the languages."""
     words = set(OPEN_WORDS) | set(CLOSE_WORDS) | set(HELP_WORDS) | set(PRESS_WORDS)
-    words |= set(vocabulary.GO_WORDS) | set(vocabulary.TYPE_WORDS)
+    from .ai_assistant import ASK_WORDS
+
+    words |= set(vocabulary.GO_WORDS) | set(vocabulary.TYPE_WORDS) | set(ASK_WORDS)
     for _key, action_words in vocabulary.CAPTION_ACTIONS:
         words |= set(action_words)
     for _key, _target, _label, action_words in MEDIA_ACTIONS:
@@ -422,7 +436,7 @@ def command_starters():
     return tuple(words)
 
 
-def _match(window, text, custom_commands, allow_key_presses, folders, allow_typing=False):
+def _match(window, text, custom_commands, allow_key_presses, folders, allow_typing=False, allow_ai=False):
     """The command in one window of speech, or None. The order decides what wins a tie.
 
     Typing comes early on purpose: "type open the calculator" is a sentence to write down, not a
@@ -430,6 +444,8 @@ def _match(window, text, custom_commands, allow_key_presses, folders, allow_typi
     """
     found = (_help_command(window) or _custom_command(window, custom_commands)
              or _reminder_command(window, text))
+    if found is None and allow_ai:
+        found = _ask_command(window, text)  # like "type", the word claims everything after it
     if found is None and allow_typing:
         # Typing is tried first, so "type ... and press enter" writes that whole sentence out.
         # Enter on its own is a separate thing to say, which is the point of it being separate.
@@ -443,7 +459,7 @@ def _match(window, text, custom_commands, allow_key_presses, folders, allow_typi
 
 
 def find_detail(text, wake_words=DEFAULT_WAKE_WORDS, custom_commands=(), allow_key_presses=False,
-                reply_pairs=(), folders=(), require_wake=True, allow_typing=False):
+                reply_pairs=(), folders=(), require_wake=True, allow_typing=False, allow_ai=False):
     """(command, what was said after the wake word).
 
     The second value lets the app say "I heard you but that was not a command", which is very
@@ -474,7 +490,7 @@ def find_detail(text, wake_words=DEFAULT_WAKE_WORDS, custom_commands=(), allow_k
             if not tail:
                 continue
             window = " ".join(tail.split()[:MAX_WORDS_AFTER_WAKE])[:MAX_WINDOW_CHARS]
-            found = _match(window, text, custom_commands, allow_key_presses, folders, allow_typing)
+            found = _match(window, text, custom_commands, allow_key_presses, folders, allow_typing, allow_ai)
             if found is not None:
                 return found, window
             heard = heard or window
@@ -486,7 +502,7 @@ def find_detail(text, wake_words=DEFAULT_WAKE_WORDS, custom_commands=(), allow_k
         window = " ".join(spoken.split()[:MAX_WORDS_AFTER_WAKE])[:MAX_WINDOW_CHARS]
         found = _custom_command(window, custom_commands)  # one of your own phrases, matched in full
         if found is None and _first_position(window, command_starters()) == 0:
-            found = _match(window, text, custom_commands, allow_key_presses, folders, allow_typing)
+            found = _match(window, text, custom_commands, allow_key_presses, folders, allow_typing, allow_ai)
         # Nothing is reported as "heard but not understood": that would fire on every sentence.
         return found, None
     return None, heard

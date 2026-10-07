@@ -1,6 +1,6 @@
 # Privacy Policy
 
-_Last updated: 17 September 2026_
+_Last updated: 7 October 2026_
 
 EchoSub is designed to work on your computer, not in the cloud. This page explains exactly what it does with your data.
 
@@ -21,6 +21,25 @@ EchoSub does not touch your microphone unless you switch it on in *Settings → 
 When it is on, the microphone is captured, recognized and translated exactly like the rest of the audio, on your
 computer, and it is never uploaded.
 
+## Questions to an AI
+
+This is **off** unless you switch it on in *Settings → AI*, and it is the one feature that can send what was
+said on your PC to somebody else's computer.
+
+- Nothing happens until you ask: you say your wake word and then **“ask …”**. EchoSub never sends anything
+  on its own, in the background, or on a timer.
+- When you ask, it sends your question together with the **most recent captions** — as many as you choose (20 by
+  default, 0 to send none), from everyone or only from your microphone.
+- **Those captions can include other people's words** — people in a call, in a video or in a game. Please only
+  switch this on if that is all right with you and with them.
+- The question waits for the same countdown as every spoken command, so saying “no” stops it before anything is
+  sent.
+- Where it goes is your choice: **Claude** (Anthropic), **ChatGPT** (OpenAI), **Gemini** (Google) or **DeepSeek**,
+  whose own privacy policies then apply — or **LM Studio**, which runs on your own computer, so nothing leaves it.
+- Your API key is encrypted with Windows' own data protection before it is saved, so the settings file alone is no
+  use to anyone else. It is sent only to the service it belongs to.
+- Answers are shown in the caption box and are not saved.
+
 ## Voices
 
 - To tell speakers apart, EchoSub computes a short numeric "voice fingerprint" for each voice it hears. These exist only in memory while the app runs and are discarded when it closes.
@@ -34,8 +53,10 @@ EchoSub connects to the internet only in these cases:
 | First use of a model (including the Arabic diacritics model, if you turn that option on) | Hugging Face (huggingface.co) and GitHub (github.com) | A normal download request for the model files. No audio or captions. |
 | You select the **Google Translate** engine | Google's translation service | The text of each caption, so it can be translated. Google's privacy policy applies. |
 | You click a link in the About window | The linked website | Whatever your browser normally sends. |
+| Once a day, and when you choose *Check for updates…* (can be switched off in *Settings → Advanced*) | GitHub (api.github.com) | A request for the latest release number. No audio or captions. |
+| You switch on *Settings → AI* **and** ask a question with a cloud service chosen | Anthropic, OpenAI, Google or DeepSeek — the one you chose | Your question and the recent captions you chose to send, with your API key. Never with LM Studio, which runs on your computer. |
 
-With the default offline engines, no caption text or audio ever leaves your computer.
+With the default offline engines and the AI feature left off, no caption text or audio ever leaves your computer.
 
 ## Settings and logs
 
