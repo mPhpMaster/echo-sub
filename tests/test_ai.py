@@ -88,7 +88,11 @@ class RequestTest(unittest.TestCase):
 
 
 class ProviderTest(unittest.TestCase):
-    def test_a_model_has_to_be_chosen(self):
+    def test_a_model_has_to_be_chosen_when_none_can_be_found(self):
+        real = ai_providers.list_models
+        ai_providers.list_models = lambda *a: []
+        self.addCleanup(lambda: setattr(ai_providers, "list_models", real))
+        self.addCleanup(ai_providers._picked.clear)
         with self.assertRaises(ai_providers.AiError):
             ai_providers.ask("openai", "", "key", "", "s", "q")
 

@@ -16,7 +16,7 @@ from PySide6.QtWidgets import (
     QVBoxLayout, QWidget,
 )
 
-from . import ai_assistant, ai_providers, secrets_store
+from . import ai_assistant, ai_models, ai_providers, secrets_store
 from .caption_widgets import AI_COLOR, AI_LABEL
 from .settings_widgets import ColorButton
 
@@ -93,6 +93,7 @@ class AiTabMixin:
         self.ai_model = QComboBox()
         self.ai_model.setEditable(True)
         self.ai_model.setMinimumWidth(260)
+        self.ai_model.lineEdit().setPlaceholderText("empty = the newest fast model, chosen for you")
         load = QPushButton("Load models")
         load.setToolTip("Ask the service which models it has — this also checks the key and the address")
         load.clicked.connect(self._load_ai_models)
@@ -269,7 +270,7 @@ class AiTabMixin:
             current = self.ai_model.currentText()
             self.ai_model.clear()
             self.ai_model.addItems(value)
-            self.ai_model.setEditText(current if current in value or not value else value[0])
+            self.ai_model.setEditText(current if current in value or not value else ai_models.best(value))
             self.ai_status.setText(f"✔ Connected — {len(value)} models available.")
 
     def ai_values(self):

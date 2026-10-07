@@ -261,6 +261,12 @@ RISKY_WAKE_WORDS = {
     "pc", "computer", "laptop", "windows", "ok", "okay", "hey", "yes", "no", "now", "stop", "go",
     "app", "game", "video", "sound", "audio", "music", "screen", "phone", "mic", "test", "one",
     "بي سي", "بيسي", "كمبيوتر", "لاب توب", "نعم", "لا", "الان", "شاشه", "صوت",
+    # other assistants: videos and calls name them all the time
+    "alexa", "siri", "google", "hey google", "ok google", "cortana", "copilot", "chatgpt", "gemini",
+    "اليكسا", "سيري", "جوجل",
+    # what people call each other in a call or a game
+    "daddy", "dad", "mom", "mommy", "baby", "bro", "dude", "man", "guys", "buddy", "sir",
+    "بابا", "ماما", "اخوي", "حبيبي", "يا رجال",
 }
 WAKE_WORD_MIN_CHARS = 4
 
@@ -284,8 +290,8 @@ def wake_word_warning(wake_words):
         return None
     parts = []
     if risky:
-        parts.append("“" + "”, “".join(risky) +
-                     "” turns up in ordinary speech, so anything your PC plays will set it off often")
+        parts.append("“" + "”, “".join(risky) + ("” turn up" if len(risky) > 1 else "” turns up") +
+                     " in ordinary speech, so anything your PC plays will set it off often")
     if short:
         parts.append("“" + "”, “".join(short) + "” is very short, which is easily misheard")
     return ". ".join(parts) + ". Something two words long and unusual is heard far less by accident."

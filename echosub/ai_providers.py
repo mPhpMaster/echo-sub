@@ -13,6 +13,8 @@ import logging
 import urllib.error
 import urllib.request
 
+from . import ai_models
+
 log = logging.getLogger(__name__)
 
 TIMEOUT = 60
@@ -67,14 +69,35 @@ def ask(provider, model, key, base_url, system, question):
     spec = PROVIDERS.get(provider)
     if spec is None:
         raise AiError(f"Unknown AI service: {provider}")
-    model = (model or spec["model"] or "").strip()
-    if not model:
-        raise AiError("Choose a model in Settings → AI first (Load models lists them).")
     if not spec["local"] and not key:
         raise AiError(f"{spec['title']} needs an API key in Settings → AI.")
-    if spec["kind"] == "anthropic":
-        return _ask_claude(model, key, system, question)
-    return _ask_openai_style(base_url or spec["base_url"], _model_name(model), key, system, question)
+    model = (model or spec["model"] or "").strip()
+    picked = not model
+    if picked:
+        model = _chosen_for_you(provider, key, base_url)
+    try:
+        if spec["kind"] == "anthropic":
+            return _ask_claude(model, key, system, question)
+        return _ask_openai_style(base_url or spec["base_url"], _model_name(model), key, system, question)
+    except AiError:
+        if picked:  # it may have been withdrawn since: choose again next time
+            _picked.pop((provider, base_url or spec["base_url"]), None)
+        raise
+
+
+_picked = {}  # (service, address) → the model chosen when the user had not picked one
+
+
+def _chosen_for_you(provider, key, base_url):
+    """With no model chosen, the service's best current one — asked for once, then remembered."""
+    where = (provider, base_url or PROVIDERS[provider]["base_url"])
+    if where not in _picked:
+        picked = ai_models.best(list_models(provider, key, base_url))
+        if not picked:
+            raise AiError("Choose a model in Settings → AI first (Load models lists them).")
+        log.info("No model chosen for %s; using %s", provider, picked)
+        _picked[where] = picked
+    return _picked[where]
 
 
 def list_models(provider, key, base_url):
@@ -85,14 +108,14 @@ def list_models(provider, key, base_url):
     if spec["kind"] == "anthropic":
         anthropic = _anthropic()
         try:
-            return sorted(model.id for model in _claude_client(key).models.list())
+            return ai_models.newest_first(model.id for model in _claude_client(key).models.list())
         except anthropic.APIStatusError as e:
             log.info("Claude answered %s: %s", e.status_code, e.message)
             raise AiError(_claude_error(e, anthropic)) from e
         except anthropic.APIConnectionError as e:
             raise AiError("Can't reach Claude — check the internet.") from e
     data = _request("GET", (base_url or spec["base_url"]).rstrip("/") + "/models", key)
-    return sorted({_model_name(item.get("id")) for item in data.get("data", []) if item.get("id")})
+    return ai_models.newest_first({_model_name(item.get("id")) for item in data.get("data", []) if item.get("id")})
 
 
 def _model_name(model):

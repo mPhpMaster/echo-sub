@@ -25,11 +25,20 @@ class WakeWordTest(unittest.TestCase):
             with self.subTest(wake=wake):
                 self.assertIsNotNone(voice_commands.wake_word_warning(wake), wake)
 
+    def test_other_assistants_and_what_people_call_each_other_are_called_out(self):
+        for wake in ("alexa", "hey google", "siri", "daddy", "bro", "حبيبي"):
+            with self.subTest(wake=wake):
+                self.assertIsNotNone(voice_commands.wake_word_warning(wake), wake)
+
+    def test_several_bad_words_read_as_several(self):
+        self.assertIn("turn up in ordinary speech", voice_commands.wake_word_warning("PC,بيسي,alexa,daddy"))
+        self.assertIn("turns up in ordinary speech", voice_commands.wake_word_warning("PC"))
+
     def test_a_short_word_is_called_out(self):
         self.assertIn("short", voice_commands.wake_word_warning("da"))
 
     def test_a_sound_wake_word_says_nothing(self):
-        for wake in ("echo sub", "maya", "alexa", "jarvis", "إيكو صب"):
+        for wake in ("echo sub", "maya", "jarvis", "إيكو صب"):
             with self.subTest(wake=wake):
                 self.assertIsNone(voice_commands.wake_word_warning(wake), wake)
 
