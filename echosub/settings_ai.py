@@ -9,7 +9,8 @@ box stays empty afterwards: the key is never shown again, only replaced or forgo
 import collections
 import threading
 
-from PySide6.QtCore import QTimer
+from PySide6.QtCore import QTimer, QUrl
+from PySide6.QtGui import QDesktopServices
 from PySide6.QtWidgets import (
     QCheckBox, QComboBox, QFormLayout, QGroupBox, QHBoxLayout, QLabel, QLineEdit, QPushButton, QSpinBox,
     QVBoxLayout, QWidget,
@@ -67,8 +68,11 @@ class AiTabMixin:
         self.ai_key.setEchoMode(QLineEdit.Password)
         forget = QPushButton("Forget key")
         forget.clicked.connect(self._forget_ai_key)
+        self.ai_get_key = QPushButton("Get a key…")
+        self.ai_get_key.clicked.connect(self._open_key_page)
         key_row = QHBoxLayout()
         key_row.addWidget(self.ai_key, 1)
+        key_row.addWidget(self.ai_get_key)
         key_row.addWidget(forget)
         form.addRow("API key:", key_row)
 
@@ -133,11 +137,19 @@ class AiTabMixin:
         self.ai_key.setEnabled(not spec["local"])
         self.ai_key.setPlaceholderText("not needed" if spec["local"]
                                        else "saved — type to replace" if has_key else "paste your API key")
+        self.ai_get_key.setText("Get LM Studio…" if spec["local"] else "Get a key…")
+        self.ai_get_key.setToolTip(f"Opens {spec['key_url']} in your browser")
         note = LOCAL_NOTE if spec["local"] else CLOUD_NOTE.format(title=spec["title"])
         self.ai_privacy.setText(note)
         self.ai_privacy.setStyleSheet("color: gray;" if spec["local"] else "color: #D4A03C;")
         self.ai_status.setText("")
         self._ai_shown = provider
+
+    def _open_key_page(self):
+        """Open the chosen service's API-key page — or LM Studio's site — in the user's own browser."""
+        url = ai_providers.PROVIDERS[self.ai_provider.currentData()]["key_url"]
+        QDesktopServices.openUrl(QUrl(url))
+        return url
 
     def _forget_ai_key(self):
         self.ai_key.clear()

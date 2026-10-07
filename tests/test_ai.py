@@ -320,6 +320,29 @@ class SettingsTest(unittest.TestCase):
         dialog = self.dialog(ai_provider="openai")
         self.assertIn("sent to", dialog.ai_privacy.text())
 
+    def test_get_a_key_opens_that_services_own_page(self):
+        opened = []
+        from echosub import settings_ai
+
+        real = settings_ai.QDesktopServices.openUrl
+        settings_ai.QDesktopServices.openUrl = lambda url: opened.append(url.toString())
+        self.addCleanup(lambda: setattr(settings_ai.QDesktopServices, "openUrl", real))
+        dialog = self.dialog(ai_provider="claude")
+        dialog._open_key_page()
+        dialog.ai_provider.setCurrentIndex(dialog.ai_provider.findData("gemini"))
+        dialog._open_key_page()
+        self.assertEqual(opened, ["https://platform.claude.com/settings/keys",
+                                  "https://aistudio.google.com/app/apikey"])
+
+    def test_every_service_has_a_page_and_it_is_https(self):
+        for key, spec in ai_providers.PROVIDERS.items():
+            with self.subTest(service=key):
+                self.assertTrue(spec["key_url"].startswith("https://"), spec["key_url"])
+
+    def test_lm_studio_offers_the_program_instead_of_a_key(self):
+        dialog = self.dialog(ai_provider="lmstudio")
+        self.assertIn("LM Studio", dialog.ai_get_key.text())
+
     def test_lm_studio_says_nothing_leaves(self):
         dialog = self.dialog(ai_provider="lmstudio")
         self.assertIn("never leave", dialog.ai_privacy.text())

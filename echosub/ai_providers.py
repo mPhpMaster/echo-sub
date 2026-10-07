@@ -18,17 +18,21 @@ log = logging.getLogger(__name__)
 TIMEOUT = 60
 MAX_TOKENS = 16000
 
+# `key_url` is where each service hands out API keys (for LM Studio, where to get the program).
+# They are written here and never taken from anything typed or said.
 PROVIDERS = {
     "claude": {"title": "Claude (Anthropic)", "kind": "anthropic", "base_url": "",
-               "model": "claude-opus-5-5", "local": False},
+               "model": "claude-opus-5-5", "local": False,
+               "key_url": "https://platform.claude.com/settings/keys"},
     "openai": {"title": "ChatGPT (OpenAI)", "kind": "openai", "base_url": "https://api.openai.com/v1",
-               "model": "", "local": False},
+               "model": "", "local": False, "key_url": "https://platform.openai.com/api-keys"},
     "gemini": {"title": "Gemini (Google)", "kind": "openai",
-               "base_url": "https://generativelanguage.googleapis.com/v1beta/openai", "model": "", "local": False},
+               "base_url": "https://generativelanguage.googleapis.com/v1beta/openai", "model": "", "local": False,
+               "key_url": "https://aistudio.google.com/app/apikey"},
     "deepseek": {"title": "DeepSeek", "kind": "openai", "base_url": "https://api.deepseek.com/v1",
-                 "model": "deepseek-chat", "local": False},
+                 "model": "deepseek-chat", "local": False, "key_url": "https://platform.deepseek.com/api_keys"},
     "lmstudio": {"title": "LM Studio (on this PC)", "kind": "openai", "base_url": "http://localhost:1234/v1",
-                 "model": "", "local": True},
+                 "model": "", "local": True, "key_url": "https://lmstudio.ai/"},
 }
 
 # Claude models that accept an effort level, and those that can hand a declined request to another
