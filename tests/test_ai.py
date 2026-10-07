@@ -172,15 +172,30 @@ class OpenAiStyleTest(unittest.TestCase):
         ai_providers.ask("gemini", "models/gemini-2.5-flash", "k", "", "s", "q")  # saved before the fix
         self.assertEqual(json.loads(self.sent[-1].data)["model"], "gemini-2.5-flash")
 
-    def test_a_missing_model_passes_on_what_the_service_said(self):
-        def missing(request, timeout=None):
-            body = json.dumps({"error": {"message": "model xyz is not found"}}).encode("utf-8")
-            raise urllib.error.HTTPError(request.full_url, 404, "no", {}, FakeReply(body))
+    def failing_with(self, code, body):
+        def fail(request, timeout=None):
+            raise urllib.error.HTTPError(request.full_url, code, "no", {}, FakeReply(json.dumps(body).encode()))
 
-        ai_providers.urllib.request.urlopen = missing
-        with self.assertRaises(ai_providers.AiError) as caught:
+        ai_providers.urllib.request.urlopen = fail
+
+    def test_a_missing_model_is_told_briefly_and_the_reason_is_logged(self):
+        self.failing_with(404, {"error": {"message": "model xyz is not found"}})
+        with self.assertLogs(ai_providers.log, "INFO") as logged, self.assertRaises(ai_providers.AiError) as caught:
             ai_providers.ask("gemini", "xyz", "k", "", "s", "q")
-        self.assertIn("model xyz is not found", str(caught.exception))
+        self.assertEqual(str(caught.exception), ai_providers.SHORT[404])
+        self.assertIn("model xyz is not found", " ".join(logged.output))
+
+    def test_a_busy_service_is_a_short_line(self):
+        long_reason = "This model is currently experiencing high demand. Spikes in demand are usually temporary."
+        self.failing_with(503, [{"error": {"message": long_reason}}])  # Gemini wraps it in a list
+        with self.assertLogs(ai_providers.log, "INFO") as logged, self.assertRaises(ai_providers.AiError) as caught:
+            ai_providers.ask("gemini", "m", "k", "", "s", "q")
+        self.assertEqual(str(caught.exception), "The AI is busy — try again shortly.")
+        self.assertIn("high demand", " ".join(logged.output))
+
+    def test_every_short_message_is_short(self):
+        for message in ai_providers.SHORT.values():
+            self.assertLessEqual(len(message.split()), 12, message)
 
 
 class ClaudeTest(unittest.TestCase):
@@ -279,9 +294,9 @@ class AppTest(unittest.TestCase):
     def test_the_answer_appears_in_the_caption_box(self):
         app_ = self.app()
         app_.remember_for_ai("the price is fifty dollars", "system", 0)
-        app_._handle_voice_command("echo sub ask what was the price")
+        app_._handle_voice_command("echo sub ask what was the price", "system", "en")
         shown = [text for text, _source in app_.overlay.shown]
-        self.assertTrue(any("thinking" in text for text in shown), "it should say it is working on it")
+        self.assertIn("Asking the AI…", shown, "it should say it is working on it")
         self.assertTrue(any("Fifty dollars." in text for text in shown))
         self.assertIn("the price is fifty dollars", self.asked[0][1])
 
@@ -523,6 +538,26 @@ class AnswerLanguageTest(unittest.TestCase):
         app_.engine = Engine()
         return app_
 
+    def test_while_it_waits_it_says_so_in_the_language_of_the_question(self):
+        app_ = self.app()
+        app_._handle_voice_command("echo sub ask what was the price", "system", "ar")
+        shown = [text for text, _source in app_.overlay.shown]
+        self.assertIn("جارٍ سؤال الذكاء الاصطناعي…", shown)
+        self.assertEqual(ai_assistant.asking_text("xx"), "Asking the AI…", "unknown languages fall back to English")
+
+    def test_the_answer_stays_as_long_as_the_settings_say(self):
+        timers = []
+        real = ai_assistant.QTimer.singleShot
+        ai_assistant.QTimer.singleShot = lambda ms, _fn: timers.append(ms)
+        self.addCleanup(lambda: setattr(ai_assistant.QTimer, "singleShot", real))
+        app_ = self.app()
+        app_.cfg["ai_answer_seconds"] = 45
+        app_._ai_finished(0, "the answer", "la respuesta", "en", False)
+        self.assertEqual(timers[-1], 45000)
+        app_.cfg["ai_answer_seconds"] = 0
+        app_._ai_finished(0, "the answer", "la respuesta", "en", False)
+        self.assertEqual(timers[-1], 8000, "0 means long enough to read it")
+
     def test_it_is_told_to_answer_in_the_language_of_the_question(self):
         app_ = self.app()
         app_._handle_voice_command("echo sub ask what was the price", "system", "ar")
@@ -619,6 +654,37 @@ class AutoAnswerTest(unittest.TestCase):
         app_ = self.app(ai_auto_answer=False)
         self.assertFalse(app_.maybe_answer_on_its_own("What time does it start?", "system", "en", now=100))
 
+    def test_not_while_several_people_are_talking(self):
+        app_ = self.app()
+        app_.remember_for_ai("I think it starts at nine", "system", 0)
+        app_.remember_for_ai("What time does the match start?", "system", 1)
+        self.assertFalse(app_.maybe_answer_on_its_own("What time does the match start?", "system", "en", now=100))
+        self.assertEqual(self.asked, [])
+
+    def test_one_person_talking_is_answered(self):
+        app_ = self.app()
+        app_.remember_for_ai("Let me think", "system", 1)
+        app_.remember_for_ai("What time does the match start?", "system", 1)
+        self.assertTrue(app_.maybe_answer_on_its_own("What time does the match start?", "system", "en", now=100))
+
+    def test_someone_who_spoke_long_ago_does_not_count(self):
+        app_ = self.app()
+        app_.ai_memory().add("hello", "system", 0, when=time.time() - ai_assistant.SOLO_WINDOW - 5)
+        app_.remember_for_ai("What time does the match start?", "system", 1)
+        self.assertTrue(app_.maybe_answer_on_its_own("What time does the match start?", "system", "en", now=100))
+
+    def test_you_count_as_a_second_person(self):
+        app_ = self.app()
+        app_.remember_for_ai("no idea", "mic")
+        app_.remember_for_ai("What time does the match start?", "system", 1)
+        self.assertFalse(app_.maybe_answer_on_its_own("What time does the match start?", "system", "en", now=100))
+
+    def test_a_group_can_be_allowed(self):
+        app_ = self.app(ai_auto_solo=False)
+        app_.remember_for_ai("I think it starts at nine", "system", 0)
+        app_.remember_for_ai("What time does the match start?", "system", 1)
+        self.assertTrue(app_.maybe_answer_on_its_own("What time does the match start?", "system", "en", now=100))
+
     def test_the_busy_flag_clears_when_the_answer_arrives(self):
         app_ = AiApp(voice_commands=True).use_fake_runner()
         app_._ai_busy = True
@@ -627,11 +693,11 @@ class AutoAnswerTest(unittest.TestCase):
 
     def test_the_settings_keep_it(self):
         dialog = SettingsDialog(dict(config.DEFAULTS, ai_auto_answer=True, ai_auto_from="others",
-                                     ai_auto_cooldown=45))
+                                     ai_auto_cooldown=45, ai_auto_solo=False, ai_answer_seconds=30))
         self.addCleanup(dialog.close)
         values = dialog.values()
-        self.assertEqual((values["ai_auto_answer"], values["ai_auto_from"], values["ai_auto_cooldown"]),
-                         (True, "others", 45))
+        self.assertEqual((values["ai_auto_answer"], values["ai_auto_from"], values["ai_auto_cooldown"],
+                          values["ai_auto_solo"], values["ai_answer_seconds"]), (True, "others", 45, False, 30))
 
     def test_its_warning_says_it_sends_without_asking(self):
         dialog = SettingsDialog(dict(config.DEFAULTS))

@@ -30,7 +30,8 @@ said on your PC to somebody else's computer.
 - **The one exception is *Answer questions on its own***, a second switch in the same tab, also off by default.
   With it on, EchoSub sends **without you asking**: every question it hears — from a call, a video or a game,
   as you choose — goes to the service with the recent captions. It only counts a sentence ending in a question
-  mark and at least three words long, sends at most one every so often (20 seconds by default), and never sends a
+  mark and at least three words long — and, unless you switch that off, only while one person is talking —
+  sends at most one every so often (20 seconds by default), and never sends a
   new one while an answer is still on its way. With a paid service, each one costs money. LM Studio keeps all of it
   on your computer.
 - When you ask, it sends your question together with the **most recent captions** — as many as you choose (20 by

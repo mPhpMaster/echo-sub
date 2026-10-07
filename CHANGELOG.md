@@ -5,6 +5,14 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and 
 
 ## [Unreleased]
 
+### Added
+- **Answering on its own waits for one person to be talking.** *Settings → AI → Answer questions on its own* gains *Only when one person is talking* (on by default): if more than one voice — you included — spoke in the last half minute, a question heard is left alone. Voices are told apart by speaker detection.
+- **How long an answer stays** is now yours to set (*Settings → AI → Answer stays for*); 0 keeps the old behaviour, long enough to read it.
+
+### Changed
+- **Short error messages.** A failed question now shows a few words (“The AI is busy — try again shortly.”) instead of the service's whole explanation, which goes to the log.
+- **“Asking the AI…”** is shown while an answer is on its way, in the language the question was asked in, instead of “<service> is thinking…”.
+
 ## [1.11.2] — 2026-10-07
 
 ### Fixed

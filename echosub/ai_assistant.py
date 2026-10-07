@@ -31,6 +31,22 @@ DEFAULT_TRIGGER = "ask, اسأل"
 AUTO_MIN_WORDS = 3            # "What?" and "Really?" are not worth an answer
 AUTO_COOLDOWN = 20            # seconds between automatic answers, so a video cannot run up a bill
 QUESTION_MARKS = ("?", "؟", "？")  # the Latin, Arabic and full-width question marks
+SOLO_WINDOW = 30              # seconds looked back to tell one person talking from a group
+ANSWER_SECONDS_MAX = 600
+
+# Shown while the answer is on its way, in the language the question was asked in
+ASKING = {
+    "en": "Asking the AI…", "ar": "جارٍ سؤال الذكاء الاصطناعي…", "fr": "Question posée à l'IA…",
+    "de": "Die KI wird gefragt…", "es": "Preguntando a la IA…", "it": "Sto chiedendo all'IA…",
+    "pt": "Perguntando à IA…", "nl": "De AI wordt gevraagd…", "sv": "Frågar AI:n…", "tr": "Yapay zekâya soruluyor…",
+    "ru": "Спрашиваю ИИ…", "uk": "Запитую ШІ…", "fa": "در حال پرسیدن از هوش مصنوعی…", "ur": "AI سے پوچھا جا رہا ہے…",
+    "hi": "AI से पूछा जा रहा है…", "id": "Bertanya ke AI…", "ja": "AIに質問中…", "ko": "AI에게 묻는 중…",
+    "zh": "正在询问 AI…",
+}
+
+
+def asking_text(lang):
+    return ASKING.get(str(lang or "en").split("-")[0].lower(), ASKING["en"])
 
 
 def is_question(text):
@@ -95,6 +111,12 @@ class CaptionMemory:
         if text:
             self._lines.append({"text": text, "source": source, "speaker": speaker,
                                 "when": when if when is not None else time.time()})
+
+    def voices_since(self, seconds, now=None):
+        """How many different people spoke in the last `seconds`: you, and each voice told apart."""
+        since = (time.time() if now is None else now) - seconds
+        return len({"me" if line["source"] == "mic" else ("voice", line["speaker"])
+                    for line in self._lines if line["when"] >= since})
 
     def recent(self, count, mine_only=False):
         lines = [line for line in self._lines if not mine_only or line["source"] == "mic"]
@@ -163,6 +185,9 @@ class AiAssistantMixin:
         cooldown = max(0, int(self.cfg.get("ai_auto_cooldown", AUTO_COOLDOWN)))
         if now - getattr(self, "_ai_auto_at", -1e9) < cooldown:
             return False
+        if self.cfg.get("ai_auto_solo", True) and self.ai_memory().voices_since(SOLO_WINDOW) > 1:
+            log.debug("Not answering on its own: more than one person is talking")
+            return False
         self._ai_auto_at = now
         log.info("Answering a question on its own (%s)", source)
         return self.ask_ai(text, lang)
@@ -183,8 +208,7 @@ class AiAssistantMixin:
         lines = self.ai_memory().recent(count, mine_only=self.cfg.get("ai_context_who") == "me")
         answer_lang = lang or self.cfg.get("target_lang", "en")
         system, message = build_request(lines, question, answer_lang)
-        title = ai_providers.PROVIDERS.get(chosen["provider"], {}).get("title", "AI")
-        waiting = self._show_ai_line(f"{title} is thinking…", seconds=90)
+        waiting = self._show_ai_line(asking_text(answer_lang), seconds=90, lang=answer_lang)
         log.info("Asking %s with %d recent captions", chosen["provider"], len(lines))
         engine = getattr(self, "engine", None)
         self._ai_busy = True
@@ -211,9 +235,11 @@ class AiAssistantMixin:
     def _ai_finished(self, waiting, answer, translated, answer_lang, failed):
         self._ai_busy = False
         self.overlay.remove_caption(waiting)
-        # Long enough to read: a few seconds plus a little for every word of both rows.
-        words = len(answer.split()) + (len(translated.split()) if translated != answer else 0)
-        seconds = max(8, min(120, 4 + words // 2))
+        seconds = int(self.cfg.get("ai_answer_seconds", 0) or 0)
+        if seconds <= 0:
+            # Long enough to read: a few seconds plus a little for every word of both rows.
+            words = len(answer.split()) + (len(translated.split()) if translated != answer else 0)
+            seconds = max(8, min(120, 4 + words // 2))
         if failed:
             log.info("AI question failed: %s", answer)
             self._show_ai_line("⚠️ " + answer, seconds=seconds, lang="en")  # the messages are English
@@ -228,5 +254,6 @@ class AiAssistantMixin:
         line_id = next(self._reply_ids)
         self.overlay.add_final(line_id, text, translated or text, lang or self.cfg.get("target_lang", "en"),
                                None, "ai")
-        QTimer.singleShot(max(2, min(120, int(seconds))) * 1000, lambda: self.overlay.remove_caption(line_id))
+        seconds = max(2, min(ANSWER_SECONDS_MAX, int(seconds)))
+        QTimer.singleShot(seconds * 1000, lambda: self.overlay.remove_caption(line_id))
         return line_id

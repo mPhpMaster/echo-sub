@@ -76,6 +76,15 @@ class AiTabMixin:
         look_row.addStretch(1)
         form.addRow("Answers look:", look_row)
 
+        self.ai_answer_seconds = QSpinBox()
+        self.ai_answer_seconds.setRange(0, ai_assistant.ANSWER_SECONDS_MAX)
+        self.ai_answer_seconds.setSuffix(" s")
+        self.ai_answer_seconds.setSpecialValueText("long enough to read it")
+        self.ai_answer_seconds.setToolTip("How long an answer stays in the caption box. 0 = by its length.")
+        self.ai_answer_seconds.setMaximumWidth(200)
+        self.ai_answer_seconds.setValue(int(cfg.get("ai_answer_seconds", 0) or 0))
+        form.addRow("Answer stays for:", self.ai_answer_seconds)
+
         self.ai_provider = QComboBox()
         for key, spec in ai_providers.PROVIDERS.items():
             self.ai_provider.addItem(spec["title"], key)
@@ -166,6 +175,11 @@ class AiTabMixin:
         row.addWidget(self.ai_auto_cooldown)
         row.addStretch(1)
         form.addRow("Questions from:", row)
+        self.ai_auto_solo = QCheckBox("Only when one person is talking — not while several are")
+        self.ai_auto_solo.setToolTip("Looks at the last half minute. It tells voices apart with speaker "
+                                     "detection (Language & Engine); without it, every other voice counts as one.")
+        self.ai_auto_solo.setChecked(cfg.get("ai_auto_solo", True))
+        form.addRow(self.ai_auto_solo)
         note = QLabel(
             "⚠️ Unlike “ask …”, this sends without you asking: every question it hears — from a call, "
             "a video or a game — goes to the service above with the recent captions, and with a paid service "
@@ -175,9 +189,9 @@ class AiTabMixin:
         note.setStyleSheet("color: #D4A03C;")
         form.addRow(note)
         self.ai_auto_answer.toggled.connect(self.ai_auto_from.setEnabled)
-        self.ai_auto_answer.toggled.connect(self.ai_auto_cooldown.setEnabled)
-        self.ai_auto_from.setEnabled(self.ai_auto_answer.isChecked())
-        self.ai_auto_cooldown.setEnabled(self.ai_auto_answer.isChecked())
+        for field in (self.ai_auto_from, self.ai_auto_cooldown, self.ai_auto_solo):
+            self.ai_auto_answer.toggled.connect(field.setEnabled)
+            field.setEnabled(self.ai_auto_answer.isChecked())
         return group
 
     # ---- one service at a time, each remembered -----------------------------
@@ -273,4 +287,6 @@ class AiTabMixin:
             "ai_auto_answer": self.ai_auto_answer.isChecked(),
             "ai_auto_from": self.ai_auto_from.currentData(),
             "ai_auto_cooldown": self.ai_auto_cooldown.value(),
+            "ai_auto_solo": self.ai_auto_solo.isChecked(),
+            "ai_answer_seconds": self.ai_answer_seconds.value(),
         }

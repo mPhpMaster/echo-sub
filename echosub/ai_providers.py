@@ -42,6 +42,18 @@ EFFORT_MODELS = {"claude-fable-5-1", "claude-fable-5", "claude-opus-5-5", "claud
 FALLBACK_MODELS = {"claude-fable-5-1", "claude-opus-5-5", "claude-opus-5", "claude-sonnet-5-5"}
 
 
+# What the caption box says when a service answers with an error: a few words, never its whole
+# explanation, which goes to the log instead.
+SHORT = {
+    401: "The API key was refused.",
+    403: "The API key was refused.",
+    404: "That model isn't available — pick another in Settings → AI.",
+    429: "Too many questions — try again in a minute.",
+    503: "The AI is busy — try again shortly.",
+}
+NO_ANSWER = "The AI sent back no answer."
+
+
 class AiError(Exception):
     """Something the user can act on: a missing key, a wrong address, a service that said no."""
 
@@ -74,12 +86,11 @@ def list_models(provider, key, base_url):
         anthropic = _anthropic()
         try:
             return sorted(model.id for model in _claude_client(key).models.list())
-        except anthropic.AuthenticationError as e:
-            raise AiError("Claude rejected the API key.") from e
-        except anthropic.APIConnectionError as e:
-            raise AiError("Could not reach Anthropic — check the internet connection.") from e
         except anthropic.APIStatusError as e:
-            raise AiError(f"Anthropic answered with an error ({e.status_code}).") from e
+            log.info("Claude answered %s: %s", e.status_code, e.message)
+            raise AiError(_claude_error(e, anthropic)) from e
+        except anthropic.APIConnectionError as e:
+            raise AiError("Can't reach Claude — check the internet.") from e
     data = _request("GET", (base_url or spec["base_url"]).rstrip("/") + "/models", key)
     return sorted({_model_name(item.get("id")) for item in data.get("data", []) if item.get("id")})
 
@@ -102,6 +113,23 @@ def _claude_client(key):
     return _anthropic().Anthropic(api_key=key, timeout=TIMEOUT, max_retries=1)
 
 
+def _claude_error(e, anthropic):
+    """A few words for the caption box; the service's full explanation goes to the log."""
+    if isinstance(e, anthropic.AuthenticationError):
+        return "Claude refused the API key."
+    if isinstance(e, anthropic.PermissionDeniedError):
+        return "This key may not use that model."
+    if isinstance(e, anthropic.NotFoundError):
+        return SHORT[404]
+    if isinstance(e, anthropic.RateLimitError):
+        return SHORT[429]
+    if "credit balance" in str(e.message).lower():
+        return "No credit left on the Claude account."
+    if e.status_code >= 500:
+        return "Claude is busy — try again shortly."
+    return f"Claude refused the question ({e.status_code})."
+
+
 def _ask_claude(model, key, system, question):
     anthropic = _anthropic()
     client = _claude_client(key)
@@ -117,20 +145,11 @@ def _ask_claude(model, key, system, question):
                                                    fallbacks="default", **request)
         else:
             response = client.messages.create(**request)
-    except anthropic.AuthenticationError as e:
-        raise AiError("Claude rejected the API key.") from e
-    except anthropic.PermissionDeniedError as e:
-        raise AiError("This API key may not use that model.") from e
-    except anthropic.NotFoundError as e:
-        raise AiError(f"Claude does not know a model called {model}.") from e
-    except anthropic.RateLimitError as e:
-        raise AiError("Claude is rate-limiting this key; try again in a moment.") from e
-    except anthropic.BadRequestError as e:
-        raise AiError(f"Claude could not take that request: {e.message}") from e
-    except anthropic.APIConnectionError as e:
-        raise AiError("Could not reach Anthropic — check the internet connection.") from e
     except anthropic.APIStatusError as e:
-        raise AiError(f"Anthropic answered with an error ({e.status_code}); try again later.") from e
+        log.info("Claude answered %s: %s", e.status_code, e.message)
+        raise AiError(_claude_error(e, anthropic)) from e
+    except anthropic.APIConnectionError as e:
+        raise AiError("Can't reach Claude — check the internet.") from e
     if response.stop_reason == "refusal":
         return "(Claude declined to answer this.)"
     text = " ".join(block.text for block in response.content if block.type == "text").strip()
@@ -156,19 +175,15 @@ def _request(method, url, key, payload=None):
             detail = str(body.get("error", {}).get("message", ""))
         except (ValueError, AttributeError):
             pass
-        if e.code in (401, 403):
-            raise AiError("The service rejected the API key.") from e
-        if e.code == 404:
-            raise AiError(f"Nothing answered at that address, or the model does not exist. {detail}".strip()) from e
-        if e.code == 429:
-            raise AiError("The service is rate-limiting this key; try again in a moment.") from e
-        raise AiError(f"The service answered with an error ({e.code}). {detail}".strip()) from e
+        log.info("%s answered %s: %s", url.split("/")[2], e.code, detail or e.reason)
+        raise AiError(SHORT.get(e.code) or (SHORT[503] if e.code >= 500 else f"The AI refused the question "
+                                            f"({e.code}).")) from e
     except urllib.error.URLError as e:
-        raise AiError(f"Could not reach {url.split('/')[2]} — is it running, and is the address right?") from e
+        raise AiError(f"Can't reach {url.split('/')[2]} — is it running?") from e
     except (TimeoutError, OSError) as e:
-        raise AiError("The service took too long to answer.") from e
+        raise AiError("The AI took too long to answer.") from e
     except ValueError as e:
-        raise AiError("The service sent back something that was not an answer.") from e
+        raise AiError(NO_ANSWER) from e
 
 
 def _ask_openai_style(base_url, model, key, system, question):
@@ -179,5 +194,5 @@ def _ask_openai_style(base_url, model, key, system, question):
     try:
         text = data["choices"][0]["message"]["content"]
     except (KeyError, IndexError, TypeError) as e:
-        raise AiError("The service sent back something that was not an answer.") from e
+        raise AiError(NO_ANSWER) from e
     return (text or "").strip() or "(No answer came back.)"
