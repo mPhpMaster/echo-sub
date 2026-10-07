@@ -4,7 +4,7 @@
 
 APP_NAME = "EchoSub"
 APP_ID = "EchoSub"
-__version__ = "1.11.0"
+__version__ = "1.11.1"
 
 DESCRIPTION = "Live, translated captions for anything your PC plays."
 LONG_DESCRIPTION = (

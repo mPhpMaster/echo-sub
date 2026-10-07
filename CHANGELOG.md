@@ -5,6 +5,8 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and 
 
 ## [Unreleased]
 
+## [1.11.1] — 2026-10-07
+
 ### Fixed
 - **The AI answers any question, not only ones about the captions.** Asked “what's the date today?”, it used to refuse because nobody had said it. The captions are now background for it, not a fence: it answers from its own knowledge too, and it is told the PC's date, time and time zone, so questions about today get a real answer.
 
