@@ -5,6 +5,8 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and 
 
 ## [Unreleased]
 
+## [1.10.0] — 2026-10-07
+
 ### Added
 - **Ask an AI about what was said** (*Settings → AI*, **off by default**). Say your wake word and “ask …” — “echo sub, ask what was the price he said” — and the answer appears in the caption box. The question goes with the most recent captions: as many as you choose, from everyone or only from your microphone. Choose **Claude**, **ChatGPT**, **Gemini**, **DeepSeek** or **LM Studio**, which runs on your own PC; *Load models* lists what each service offers and checks the key and address at the same time. Claude is called through Anthropic’s SDK, on `claude-opus-5-5` by default, with server-side fallbacks so a request a safety check declines is re-run on another model instead of failing. **Nothing is sent until you ask**, the question waits for the usual countdown so “no” stops it, and API keys are encrypted with Windows’ own data protection before they are saved. This is the first feature that can send captions off your PC, and those can include other people’s words, so the privacy policy now says so plainly.
 - **Box position from the right-click menu.** Right-click the caption box or the tray icon → *Box position*, and pick any of the nine spots, each with a little picture of where it is. The current one is ticked, including after you change it elsewhere.
