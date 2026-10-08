@@ -5,6 +5,8 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and 
 
 ## [Unreleased]
 
+## [1.14.0] — 2026-10-08
+
 ### Added
 - **See what EchoSub costs your PC.** Processor, memory, graphics card, graphics memory and disk — for EchoSub and the programs it started (such as the graphics-card speech engine), counted the way Task Manager counts them. The figures are always at the bottom of the Settings window and in the tray icon's tooltip; *Settings → Advanced → EchoSub's own usage* adds a small line at the top of the caption box and a small window with bars (also *Usage window* in the tray menu) that can stay on top of other windows.
 - **The graphics-card engine starts itself again** if it stops (a driver reset, or closed from outside), and the sentence it was working on still comes through.
