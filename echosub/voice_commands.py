@@ -70,6 +70,7 @@ CAPTION_COMMANDS = (
     {"key": "hide_captions", "action": "app", "target": "hide", "label": "Caption box hidden"},
     {"key": "show_captions", "action": "app", "target": "show", "label": "Caption box shown"},
     {"key": "clear_captions", "action": "app", "target": "clear", "label": "Captions cleared"},
+    {"key": "exit_app", "action": "app", "target": "exit", "label": "Closing EchoSub"},
 )
 
 MEDIA_COMMANDS = tuple(
@@ -148,6 +149,20 @@ def _app_command(window):
             continue
         wants_close = closing >= 0 and (opening < 0 or closing < opening)
         return command(f"{'close' if wants_close else 'open'}_{name}")
+    return None
+
+
+def _exit_command(window):
+    """"Exit", or "close yourself": EchoSub closes, after the same countdown as every command.
+
+    A lone "exit" counts only when it is all that was said, so "exit the game" is not taken for it;
+    otherwise EchoSub has to be named ("quit echo sub", "close the app").
+    """
+    names_itself = _first_position(window, vocabulary.SELF_WORDS) >= 0
+    if any(window == normalize(word) for word in vocabulary.EXIT_WORDS):
+        return command("exit_app")
+    if names_itself and _first_position(window, vocabulary.EXIT_WORDS + vocabulary.CLOSE_SELF_WORDS) >= 0:
+        return command("exit_app")
     return None
 
 
@@ -433,6 +448,7 @@ def command_starters():
     from .ai_assistant import ASK_WORDS
 
     words |= set(vocabulary.GO_WORDS) | set(vocabulary.TYPE_WORDS) | set(ASK_WORDS)
+    words |= set(vocabulary.EXIT_WORDS) | set(vocabulary.CLOSE_SELF_WORDS)
     for _key, action_words in vocabulary.CAPTION_ACTIONS:
         words |= set(action_words)
     for _key, _target, _label, action_words in MEDIA_ACTIONS:
@@ -459,8 +475,8 @@ def _match(window, text, custom_commands, allow_key_presses, folders, allow_typi
         # Typing is tried first, so "type ... and press enter" writes that whole sentence out.
         # Enter on its own is a separate thing to say, which is the point of it being separate.
         found = _typing_command(window, text) or _enter_command(window)
-    found = (found or _mic_command(window) or _echosub_command(window) or _link_command(window) or
-             _go_command(window, text, folders) or _app_command(window) or
+    found = (found or _mic_command(window) or _exit_command(window) or _echosub_command(window) or
+             _link_command(window) or _go_command(window, text, folders) or _app_command(window) or
              _media_command(window))
     if found is None and allow_key_presses:
         found = _press_command(window)

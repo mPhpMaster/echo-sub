@@ -405,18 +405,25 @@ class App(TrayMenuMixin, UpdateCheckMixin, VoiceCommandMixin, AiAssistantMixin):
         return self.qt.exec()
 
 
+ERROR_ACCESS_DENIED = 5
 ERROR_ALREADY_EXISTS = 183
 
 
-def claim_mutex(name=MUTEX_NAME):
+def claim_mutex(name=MUTEX_NAME, kernel32=None):
     """Take the named Windows mutex. Returns (handle, True) for the first copy, (handle, False) if one runs.
 
+    A copy running as administrator owns a mutex an ordinary copy is not allowed to open: Windows
+    then answers "access denied" rather than "already exists", and that too means one is running.
     The handle is kept for as long as the app runs; the installer also looks for this mutex.
     """
-    kernel32 = ctypes.WinDLL("kernel32", use_last_error=True)
-    kernel32.CreateMutexW.restype = ctypes.c_void_p
+    if kernel32 is None:
+        kernel32 = ctypes.WinDLL("kernel32", use_last_error=True)
+        kernel32.CreateMutexW.restype = ctypes.c_void_p
     handle = kernel32.CreateMutexW(None, False, name)
-    return handle, ctypes.get_last_error() != ERROR_ALREADY_EXISTS
+    error = ctypes.get_last_error()
+    if not handle:
+        return None, error != ERROR_ACCESS_DENIED
+    return handle, error != ERROR_ALREADY_EXISTS
 
 
 def claim_single_instance(qt):

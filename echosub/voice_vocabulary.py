@@ -240,6 +240,19 @@ CAPTION_WORDS = (
     "자막",                                                   # Korean
 )
 
+# Closing EchoSub itself. A word on its own here is enough ("echo sub, exit"); "close" and its kin
+# also open and close other programs, so they count only together with a name for EchoSub.
+EXIT_WORDS = (
+    "exit", "quit", "exit echosub", "quit echosub", "shut down", "shutdown",
+    "اخرج", "أخرج", "خروج", "اطلع", "سكر نفسك", "اقفل نفسك", "طفي نفسك",
+    "quitte", "salir", "sal", "beenden", "esci", "sair", "çık", "çıkış", "выйди", "выход",
+    "خارج شو", "باہر نکلو", "बाहर निकलो", "keluar", "退出", "終了", "종료",
+)
+CLOSE_SELF_WORDS = ("close", "turn off", "اقفل", "سكر", "طفي", "سكّر", "ferme", "cierra", "schließe", "chiudi",
+                    "fecha", "kapat", "закрой", "ببند", "बंद करो", "tutup", "关闭", "閉じて", "닫아")
+SELF_WORDS = ("echosub", "echo sub", "yourself", "the app", "this app", "the program",
+              "ايكو صب", "إيكو صب", "نفسك", "البرنامج", "التطبيق")
+
 # Each caption action and the words that ask for it. The first word found in the sentence wins.
 CAPTION_ACTIONS = (
     ("pause_captions", ("pause", "stop", "halt", "اوقف", "ايقاف", "وقف", "pause les", "arrete", "arrête",

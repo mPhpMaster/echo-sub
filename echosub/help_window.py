@@ -39,6 +39,7 @@ def rows(cfg):
     add("pause captions / resume captions", "Stop and start the captions")
     add("hide captions / show captions", "Take the caption box off the screen, and put it back")
     add("clear captions", "Empty the caption box")
+    add("exit / close yourself", "Close EchoSub, after the countdown — say “no” to keep it open")
     add("open <app> / close <app>", "One of the everyday apps: " + ", ".join(sorted(voice_commands.APPS)))
     add("play / stop / next / previous / mute / volume up", "The media keys, as on a keyboard")
     add("open youtube / open google", "Opens that site in your own browser")

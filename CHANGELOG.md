@@ -5,6 +5,12 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and 
 
 ## [Unreleased]
 
+### Added
+- **“Exit” closes EchoSub by voice.** Say your wake word and “exit” or “quit”, or “close yourself” / “close the app” (in Arabic “اخرج”, “اقفل البرنامج”, “سكر نفسك”), and EchoSub closes after the usual countdown — “no” keeps it open. A lone “exit” counts only when it is all that was said, so “exit the game” does not close it; from your own microphone no wake word is needed. It is listed in the help window.
+
+### Fixed
+- **A second copy could still start** when the first was running as administrator and the second was opened normally (from the Start menu, say): Windows answers “access denied” instead of “already exists” in that case, and that was taken to mean nothing was running. Now it means one is.
+
 ## [1.13.0] — 2026-10-08
 
 ### Added

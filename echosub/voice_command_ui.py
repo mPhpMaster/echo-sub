@@ -334,6 +334,7 @@ class VoiceCommandMixin:
             "hide": lambda: self.act_show.setChecked(False),
             "show": lambda: self.act_show.setChecked(True),
             "clear": self.overlay.clear,
+            "exit": lambda: self._quit(),
         }
         action = actions.get(target)
         if action is None:
