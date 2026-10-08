@@ -148,6 +148,9 @@ DEFAULTS = {
     "screen_replies": False,               # answer chosen phrases with your own text in the caption box
     "screen_reply_pairs": [],              # [{"phrase": ..., "reply": ...}], written by you
     "screen_reply_seconds": 8,             # how long an answer stays on screen
+    "usage_line": False,                   # EchoSub's own CPU, memory, GPU and disk use in the caption box
+    "usage_window": False,                 # ...in a small window of its own
+    "usage_window_on_top": True,           # ...kept above other windows
     "last_update_check": 0,
     "global_hotkeys": True,
     "click_through": False,

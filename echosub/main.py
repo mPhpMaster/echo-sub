@@ -21,6 +21,8 @@ from .overlay import CaptionOverlay  # noqa: E402
 from .ai_assistant import AiAssistantMixin  # noqa: E402
 from .tray_menu import TrayMenuMixin  # noqa: E402
 from .update_ui import UpdateCheckMixin  # noqa: E402
+from .usage_app import UsageMixin, tray_text  # noqa: E402
+from . import usage  # noqa: E402
 from .voice_command_ui import VoiceCommandMixin  # noqa: E402
 from .settings_dialog import SettingsDialog  # noqa: E402
 
@@ -78,7 +80,7 @@ def make_icon(color):
     return QIcon(pm)
 
 
-class App(TrayMenuMixin, UpdateCheckMixin, VoiceCommandMixin, AiAssistantMixin):
+class App(TrayMenuMixin, UpdateCheckMixin, VoiceCommandMixin, AiAssistantMixin, UsageMixin):
     def __init__(self, qt):
         self.qt = qt
         self.qt.setQuitOnLastWindowClosed(False)
@@ -123,6 +125,7 @@ class App(TrayMenuMixin, UpdateCheckMixin, VoiceCommandMixin, AiAssistantMixin):
         self.reminder_timer.timeout.connect(self.check_reminders)
         self.reminder_timer.start(10_000)  # a reminder is never more than ten seconds late
         self.check_reminders()  # anything that fell due while EchoSub was closed
+        self.init_usage()
         self.tray.show()
         self._apply_hotkeys()
         self._start_engine()
@@ -176,7 +179,7 @@ class App(TrayMenuMixin, UpdateCheckMixin, VoiceCommandMixin, AiAssistantMixin):
         self.overlay.set_status("Paused" if paused else "", 0 if paused else 1)
         self._update_tray()
 
-    def _open_settings(self, add_phrase=None):
+    def _open_settings(self, add_phrase=None, show_tab=None):
         # Menu actions pass their checked state, which is not a phrase.
         add_phrase = add_phrase if isinstance(add_phrase, str) else None
         if self.settings_dialog is not None:
@@ -184,7 +187,7 @@ class App(TrayMenuMixin, UpdateCheckMixin, VoiceCommandMixin, AiAssistantMixin):
             self.settings_dialog.activateWindow()
             return
         backup = dict(self.cfg)
-        dlg = SettingsDialog(self.cfg, add_phrase=add_phrase)
+        dlg = SettingsDialog(self.cfg, add_phrase=add_phrase, show_tab=show_tab)
         self.settings_dialog = dlg
         self._placement_override = None
 
@@ -226,6 +229,7 @@ class App(TrayMenuMixin, UpdateCheckMixin, VoiceCommandMixin, AiAssistantMixin):
             self._update_hotkey_labels()
         self.overlay.entries = self.overlay.entries[-self.cfg["max_lines"]:]
         self.overlay.refresh()
+        self.apply_usage_settings()
         if restart:
             self._start_engine()
         elif self.engine:
@@ -372,10 +376,9 @@ class App(TrayMenuMixin, UpdateCheckMixin, VoiceCommandMixin, AiAssistantMixin):
     def _update_tray(self, detail=None):
         state = "paused" if self.act_pause.isChecked() and self.engine_state == "listening" else self.engine_state
         self.tray.setIcon(make_icon(STATE_COLORS[state]))
-        text = f"{APP_NAME} — {STATE_LABELS[state]}"
-        if detail:
-            text += f"\n{detail}"
-        self.tray.setToolTip(text[:120])
+        self._tray_state_text = f"{APP_NAME} — {STATE_LABELS[state]}"
+        self._tray_detail = detail
+        self.tray.setToolTip(tray_text(self._tray_state_text, usage.summary(usage.shared().latest), detail))
 
     def _on_status(self, gen, text):
         if gen != self.generation:

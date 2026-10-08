@@ -10,6 +10,7 @@ from PySide6.QtWidgets import (
 
 from . import APP_NAME, asr_vulkan, audio, config, gpu, languages
 from .settings_ai import AiTabMixin
+from .usage_ui import UsageStrip
 from .settings_microphone import MicrophoneGroupMixin
 from .settings_tabs import NUMBER_WIDTH, AdvancedTabMixin
 from .settings_reminders import RemindersTabMixin
@@ -58,6 +59,7 @@ class SettingsDialog(VoiceCommandsTabMixin, AdvancedTabMixin, MicrophoneGroupMix
         buttons.button(QDialogButtonBox.RestoreDefaults).clicked.connect(self._restore_defaults)
         buttons.accepted.connect(self.accept)
         buttons.rejected.connect(self.reject)
+        root.addWidget(UsageStrip())
         root.addWidget(buttons)
         if show_tab:
             for index in range(tabs.count()):
@@ -405,6 +407,7 @@ class SettingsDialog(VoiceCommandsTabMixin, AdvancedTabMixin, MicrophoneGroupMix
             "light_mode": self.light_mode.isChecked(),
             "light_model": self.light_model.currentData(),
             **self._microphone_values(),
+            **self.usage_values(),
             "translator": self.translator.currentData(),
             "device": self.device.currentData(),
             "audio_device": self.audio_dev.currentData(),

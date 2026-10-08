@@ -57,6 +57,7 @@ class AdvancedTabMixin:
         v.addWidget(self._catch_up_group(cfg))
         v.addWidget(self._transcripts_group(cfg))
         v.addWidget(self._hotkeys_group(cfg))
+        v.addWidget(self._usage_group(cfg))
         v.addStretch(1)
         return w
 
@@ -118,6 +119,27 @@ class AdvancedTabMixin:
         f.addRow(hint("EchoSub only tells you about a new version and opens its download page. "
                       "It never downloads or installs anything by itself."))
         return group
+
+    def _usage_group(self, cfg):
+        """Where EchoSub shows its own CPU, memory, graphics-card and disk use."""
+        group = QGroupBox("EchoSub's own usage")
+        f = QFormLayout(group)
+        f.addRow(hint("Always shown at the bottom of this window and when you point at the tray icon."))
+        self.usage_line = QCheckBox("Show a small line of figures at the top of the caption box")
+        self.usage_line.setChecked(cfg.get("usage_line", False))
+        self.usage_window = QCheckBox("Show them in a small window of their own")
+        self.usage_window.setChecked(cfg.get("usage_window", False))
+        self.usage_on_top = QCheckBox("Keep that window on top of other windows")
+        self.usage_on_top.setChecked(cfg.get("usage_window_on_top", True))
+        self.usage_window.toggled.connect(self.usage_on_top.setEnabled)
+        self.usage_on_top.setEnabled(self.usage_window.isChecked())
+        for box in (self.usage_line, self.usage_window, self.usage_on_top):
+            f.addRow(box)
+        return group
+
+    def usage_values(self):
+        return {"usage_line": self.usage_line.isChecked(), "usage_window": self.usage_window.isChecked(),
+                "usage_window_on_top": self.usage_on_top.isChecked()}
 
     def _hotkeys_group(self, cfg):
         group = QGroupBox("Hotkeys")

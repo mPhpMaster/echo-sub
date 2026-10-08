@@ -175,21 +175,30 @@ class VulkanTranscriber:
     compute_type = "ggml"
 
     def __init__(self, model_path, threads=4):
-        global _children
-        folder = server_folder()
-        if folder is None:
+        self.folder = server_folder()
+        if self.folder is None:
             raise VulkanUnavailable("this copy of EchoSub does not include the graphics-card engine")
-        self.port = free_port()
-        self.url = f"http://127.0.0.1:{self.port}"
+        self.model_path, self.threads = model_path, threads
         self.gpu_name = None
         self._lock = threading.Lock()
         self._session = requests.Session()
         self._session.trust_env = False  # never through a proxy: the server is on this PC
+        self._log = None
+        atexit.register(self.close)
+        self._start()
+
+    def _start(self):
+        global _children
+        self.port = free_port()
+        self.url = f"http://127.0.0.1:{self.port}"
         log_path = os.path.join(config.DATA_DIR, "logs", "whisper-server.log")
         os.makedirs(os.path.dirname(log_path), exist_ok=True)
+        if self._log is not None and not self._log.closed:
+            self._log.close()
         self._log = open(log_path, "w", encoding="utf-8", errors="replace")
-        command = [os.path.join(folder, SERVER_EXE), "-m", model_path, "--host", "127.0.0.1",
-                   "--port", str(self.port), "-t", str(threads), "-nt"]
+        folder = self.folder
+        command = [os.path.join(folder, SERVER_EXE), "-m", self.model_path, "--host", "127.0.0.1",
+                   "--port", str(self.port), "-t", str(self.threads), "-nt"]
         log.info("Starting the graphics-card engine: %s", " ".join(command))
         self.process = subprocess.Popen(command, cwd=folder, stdout=self._log, stderr=subprocess.STDOUT,
                                         stdin=subprocess.DEVNULL,
@@ -197,7 +206,6 @@ class VulkanTranscriber:
         if _children is None:
             _children = _ChildProcesses()
         _children.add(self.process)
-        atexit.register(self.close)
         self._wait_until_ready(log_path)
 
     def _wait_until_ready(self, log_path):
@@ -247,10 +255,23 @@ class VulkanTranscriber:
             "prompt": prompt or "",
         }
         with self._lock:
-            reply = self._session.post(self.url + "/inference", data=fields, timeout=REQUEST_TIMEOUT,
-                                       files={"file": ("speech.wav", wav_bytes(audio), "audio/wav")})
+            try:
+                reply = self._post(fields, audio)
+            except requests.ConnectionError:
+                # The engine stopped (a driver reset, or closed from outside): start it again once
+                # and try the same speech, rather than losing every caption from here on.
+                log.warning("The graphics-card engine stopped; starting it again")
+                self.close()
+                self._start()
+                reply = self._post(fields, audio)
         reply.raise_for_status()
         return read_answer(reply.json(), language, seconds)
+
+    def _post(self, fields, audio):
+        if self.process.poll() is not None:
+            raise requests.ConnectionError("the graphics-card engine is not running")
+        return self._session.post(self.url + "/inference", data=fields, timeout=REQUEST_TIMEOUT,
+                                  files={"file": ("speech.wav", wav_bytes(audio), "audio/wav")})
 
     def close(self):
         process = getattr(self, "process", None)

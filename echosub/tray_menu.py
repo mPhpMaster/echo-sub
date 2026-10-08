@@ -31,6 +31,9 @@ class TrayMenuMixin:
         self.act_mic_mute = QAction("Mute my microphone", m, checkable=True)
         self.act_mic_mute.setToolTip("Your microphone is still heard for the phrase that brings it back")
         self.act_mic_mute.toggled.connect(self.set_mic_muted)
+        self.act_usage = QAction("Usage window (CPU, memory, GPU, disk)", m, checkable=True,
+                                 checked=bool(self.cfg.get("usage_window")))
+        self.act_usage.toggled.connect(self.set_usage_window)
 
         self._build_position_menu(m)
 
@@ -59,6 +62,7 @@ class TrayMenuMixin:
         m.addAction("What can I say?…", self.open_help_window)
         m.addAction("Heard but not understood…", self.open_missed_window)
         m.addAction("Caption history…", self._open_history)
+        m.addAction(self.act_usage)
         m.addAction("Settings…", self._open_settings)
         m.addAction("Open log file", self._open_log)
         m.addAction("Check for updates…", lambda: self._check_updates_async(manual=True))

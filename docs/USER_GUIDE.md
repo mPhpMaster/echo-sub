@@ -203,6 +203,7 @@ Every dropdown accepts typing to search (e.g. type `ital` for Italian; Arabic na
 - Speech detection threshold, silence that ends a sentence, maximum sentence length.
 - **Save every caption to a transcript file** (in `%LOCALAPPDATA%\EchoSub\transcripts`).
 - **Global hotkeys** on/off.
+- **EchoSub's own usage** — how much processor, memory, graphics card, graphics memory and disk EchoSub (with the programs it started) is using, counted the way Task Manager counts it. Always shown at the bottom of the Settings window and when you point at the tray icon; optionally as a small line at the top of the caption box, and in a small window (also in the tray menu) that can stay on top of other windows.
 
 **Restore defaults** resets everything except where the caption box is.
 

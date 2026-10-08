@@ -43,6 +43,33 @@ def cards():
     return found
 
 
+def memory_size():
+    """The largest card's own memory in bytes, or None. Read from the driver's registry entry, since
+    the usual WMI figure stops at 4 GB."""
+    sizes = []
+    try:
+        with winreg.OpenKey(winreg.HKEY_LOCAL_MACHINE, _DISPLAY_CLASS) as parent:
+            for index in range(32):
+                try:
+                    name = winreg.EnumKey(parent, index)
+                except OSError:
+                    break
+                if not name.isdigit():
+                    continue
+                try:
+                    with winreg.OpenKey(parent, name) as key:
+                        value, _type = winreg.QueryValueEx(key, "HardwareInformation.qwMemorySize")
+                except OSError:
+                    continue
+                if isinstance(value, bytes):
+                    value = int.from_bytes(value[:8], "little")
+                if isinstance(value, int) and value > 0:
+                    sizes.append(value)
+    except OSError as e:
+        log.info("Could not read the graphics memory size: %s", e)
+    return max(sizes) if sizes else None
+
+
 def vendor(names=None):
     """"nvidia", "amd", "intel" or None, preferring a discrete card over built-in graphics."""
     names = cards() if names is None else names

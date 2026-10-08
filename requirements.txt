@@ -17,3 +17,4 @@ anthropic==1.11.0
 nvidia-cublas-cu12==12.9.2.10
 nvidia-cudnn-cu12==9.26.0.51
 nvidia-cuda-nvrtc-cu12==12.9.86
+psutil==7.2.2
