@@ -63,7 +63,7 @@ class AppTest(unittest.TestCase):
         app_._handle_voice_command("echo sub exit")
         self.assertEqual(app_.quits, 0, "it must not close before the countdown")
         app_._handle_voice_command("no")
-        app_.cfg["voice_command_delay"] = 0
+        app_._notice.fire_now()  # the countdown ends here, so nothing is left running after the test
         self.assertEqual(app_.quits, 0)
 
     def test_the_help_window_lists_it(self):

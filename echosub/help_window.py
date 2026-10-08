@@ -62,6 +62,19 @@ def rows(cfg):
     return said
 
 
+def translate_all(lines, translator, target, stop, done):
+    """Translate each line in turn into `done` as (index, text), until `stop` is set."""
+    for index, line in enumerate(lines):
+        if stop.is_set():
+            return
+        try:
+            text = translator.translate(line, "en", target)
+        except Exception as e:  # a translator that is busy or offline must not break the window
+            log.info("Could not translate a help line: %s", e)
+            text = ""
+        done.append((index, text or ""))
+
+
 class HelpWindow(QDialog):
     """The list of commands, with a translation beside each one."""
 
@@ -112,9 +125,11 @@ class HelpWindow(QDialog):
         buttons.addWidget(close)
         layout.addLayout(buttons)
 
-        # The thread never touches the window. It leaves finished lines in a queue, and a timer
-        # belonging to the window picks them up: a timer stops when its window goes, so closing
-        # this one mid-translation cannot reach a window that is already gone.
+        # The thread never touches the window — it is not even given it. It leaves finished lines in
+        # a queue, and a timer belonging to the window picks them up: a timer stops when its window
+        # goes, so closing this one mid-translation cannot reach a window that is already gone. Nor
+        # can the thread end up holding the last reference to the window, which would destroy it
+        # off the screen's thread — a crash at some random moment later.
         self._done = deque()
         self._stop = threading.Event()
         self._timer = QTimer(self)
@@ -122,7 +137,8 @@ class HelpWindow(QDialog):
         if target != "en" and translator is not None:
             self.table.setColumnHidden(2, False)
             self._timer.start(150)
-            threading.Thread(target=self._translate_all, args=(translator, target),
+            lines = [does for _say, does, _enabled in self.rows]
+            threading.Thread(target=translate_all, args=(lines, translator, target, self._stop, self._done),
                              name="help-translate", daemon=True).start()
         elif target == "en":
             self.table.setColumnHidden(2, True)
@@ -131,17 +147,6 @@ class HelpWindow(QDialog):
         self._stop.set()
         self._timer.stop()
         super().closeEvent(event)
-
-    def _translate_all(self, translator, target):
-        for index, (_say, does, _enabled) in enumerate(self.rows):
-            if self._stop.is_set():
-                return
-            try:
-                text = translator.translate(does, "en", target)
-            except Exception as e:  # a translator that is busy or offline must not break the window
-                log.info("Could not translate a help line: %s", e)
-                text = ""
-            self._done.append((index, text or ""))
 
     def _drain(self):
         while self._done:

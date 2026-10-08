@@ -113,9 +113,21 @@ class HelpWindowTest(unittest.TestCase):
         cfg = dict(config.DEFAULTS, voice_commands=True, target_lang="ar")
         window = help_window.HelpWindow(cfg, translator=Broken())
         self.addCleanup(window.close)
-        window._translate_all(Broken(), "ar")  # would raise if a failure were not handled
+        help_window.translate_all([row[1] for row in window.rows], Broken(), "ar", window._stop, window._done)
         window._drain()
         self.assertEqual(window.table.item(0, 2).text(), "")
+
+    def test_the_thread_is_never_given_the_window(self):
+        """If it held the window, the window could be destroyed off the screen's thread and crash later."""
+        started = []
+        real = help_window.threading.Thread
+        help_window.threading.Thread = lambda **kw: started.append(kw) or type("T", (), {"start": lambda s: None})()
+        self.addCleanup(lambda: setattr(help_window.threading, "Thread", real))
+        window = help_window.HelpWindow(dict(config.DEFAULTS, voice_commands=True, target_lang="ar"),
+                                        translator=object())
+        self.addCleanup(window.close)
+        self.assertIs(started[0]["target"], help_window.translate_all)
+        self.assertFalse(any(arg is window for arg in started[0]["args"]))
 
     def test_closing_the_window_stops_the_translating(self):
         slow = []
