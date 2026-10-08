@@ -13,7 +13,7 @@ import time
 
 from faster_whisper.vad import VadOptions, get_speech_timestamps
 
-from . import asr, audio, downloads, languages, speaker, translate  # noqa: F401
+from . import asr, asr_vulkan, audio, downloads, languages, speaker, translate  # noqa: F401
 from . import segmentation
 from .engine_sources import MICROPHONE, SYSTEM, AudioStream
 from .engine_translation import MAX_PENDING_TRANSLATIONS, TranslationMixin  # noqa: F401 (kept for callers)
@@ -104,6 +104,9 @@ class CaptionEngine(TranslationMixin):
         for t in (self._thread, self._translation_thread):
             if t is not None:
                 t.join(timeout=10)
+        close = getattr(getattr(self, "asr", None), "close", None)
+        if close is not None:  # the graphics-card engine is a separate program: end it with us
+            close()
 
     def cancel_download(self):
         self._cancel_download.set()
@@ -175,21 +178,26 @@ class CaptionEngine(TranslationMixin):
             should_cancel=lambda: self._cancel_download.is_set() or self._stop.is_set())
         model = self.whisper_model()
         self.on_status(f"Loading speech recognition model ({model})…")
-        whisper_path = downloader.whisper(model)
-        try:
-            self.asr = asr.Transcriber(whisper_path, cfg["device"])
-        except Exception as e:
-            if cfg["device"] != "cuda":
-                raise
-            log.exception("GPU load failed, falling back to CPU")
-            self.on_status(f"Could not use the GPU ({e}) — switching to CPU")
-            self.asr = asr.Transcriber(whisper_path, "cpu")
+        if cfg["device"] == "vulkan":
+            self.asr = asr_vulkan.load(downloader, model, self.on_status)
+        else:
+            whisper_path = downloader.whisper(model)
+            try:
+                self.asr = asr.Transcriber(whisper_path, cfg["device"])
+            except Exception as e:
+                if cfg["device"] != "cuda":
+                    raise
+                log.exception("GPU load failed, falling back to CPU")
+                self.on_status(f"Could not use the GPU ({e}) — switching to CPU")
+                self.asr = asr.Transcriber(whisper_path, "cpu")
         log.info("Whisper %s on %s/%s", model, self.asr.device, self.asr.compute_type)
 
         if cfg["translator"] != "none":
             self.on_status("Loading translation model…")
         try:
-            self.translator = translate.create(cfg["translator"], self.asr.device, downloader)
+            # The Vulkan engine is not CTranslate2's: translation uses an NVIDIA card if there is one
+            device = "cuda" if self.asr.device == "vulkan" else self.asr.device
+            self.translator = translate.create(cfg["translator"], device, downloader)
             if hasattr(self.translator, "notify"):
                 self.translator.notify = self.on_status
         except downloads.DownloadCanceled:

@@ -26,6 +26,7 @@ WHISPER_FILES = ["config.json", "preprocessor_config.json", "model.bin", "tokeni
 NLLB_SKIP = [".gitattributes", "README.md"]
 SPEAKER_MODEL = "3dspeaker_speech_campplus_sv_zh_en_16k-common_advanced.onnx"
 TASHKEEL_URL = "https://github.com/abjadai/catt/releases/download/v2/eo_model_onnx.zip"
+GGML_URL = "https://huggingface.co/ggerganov/whisper.cpp/resolve/main/"
 SPEAKER_URL = ("https://github.com/k2-fsa/sherpa-onnx/releases/download/speaker-recongition-models/"
                + SPEAKER_MODEL)
 
@@ -66,6 +67,23 @@ class ModelDownloader:
         if repo is None:
             raise DownloadFailed(f"unknown speech model '{name}'")
         return self._repo(repo, f"Speech recognition model ({name})", include=WHISPER_FILES)
+
+    def whisper_ggml(self, name):
+        """The whisper.cpp file of a speech model, for the graphics-card (Vulkan) engine."""
+        from .asr_vulkan import GGML_FILES
+
+        file = GGML_FILES.get(name)
+        if file is None:
+            raise DownloadFailed(f"unknown speech model '{name}'")
+        folder = os.path.join(self.models_dir, "whisper-ggml")
+        path = os.path.join(folder, file)
+        if os.path.exists(path):
+            return path
+        os.makedirs(folder, exist_ok=True)
+        url = GGML_URL + file
+        total = self._remote_size(url)
+        self._run(f"Speech recognition model ({name}, graphics-card engine)", [(url, path, total, file)], total)
+        return path
 
     def nllb(self, key):
         return self._repo(config.NLLB_REPOS[key], f"Translation model ({key.upper()})", exclude=NLLB_SKIP)

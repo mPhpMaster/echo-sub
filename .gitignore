@@ -8,6 +8,7 @@ venv/
 # Build output
 build/
 dist/
+vendor/
 
 # Local runtime data (created when running from source)
 models/

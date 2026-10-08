@@ -30,6 +30,8 @@ EchoSub is built on the open-source software and AI models listed below. Each co
 | CATT tokenizer code (`echosub/tashkeel/tokenizer.py`, `bw2ar.py`), adapted | Apache-2.0 — Copyright Abjad AI / Faris Alasmary | https://github.com/abjadai/catt |
 | Arabic constants (`echosub/tashkeel/utils.py`) | BSD — Copyright 2003 Arabeyes, Mohammed Elzubeir; 2019 Faris Abdullah Alasmary | https://github.com/abjadai/catt |
 | tqdm | MPL-2.0 AND MIT | https://github.com/tqdm/tqdm |
+| whisper.cpp and ggml (`whisper-server.exe` and its libraries, built with the Vulkan backend) | MIT — Copyright The ggml authors | https://github.com/ggml-org/whisper.cpp |
+| Anthropic Python SDK | MIT | https://github.com/anthropics/anthropic-sdk-python |
 | NVIDIA cuBLAS, cuDNN, NVRTC runtime libraries | NVIDIA proprietary (redistributable runtime components under the NVIDIA CUDA / cuDNN license agreements) | https://developer.nvidia.com/cuda-zone |
 
 The LGPL components (Qt / PySide6, libsoxr, FFmpeg) are used as separate, dynamically loaded libraries. You may replace them with your own builds; the complete corresponding source of EchoSub is available at https://github.com/mPhpMaster/echo-sub.
@@ -41,6 +43,7 @@ These models are **not** included in the installer; EchoSub downloads them from 
 | Model | Used for | License |
 |---|---|---|
 | OpenAI Whisper (large-v3-turbo, large-v3, medium, small, base) — CTranslate2 conversions by Mobius Labs / Systran | Speech recognition | MIT |
+| OpenAI Whisper (same sizes) — whisper.cpp (ggml) conversions by Georgi Gerganov, compressed (q5/q8), for the graphics-card engine | Speech recognition on any graphics card | MIT |
 | Meta NLLB-200 distilled 600M / 1.3B — CTranslate2 conversions by JustFrederik | Offline translation | **CC-BY-NC-4.0 (non-commercial use only)** |
 | 3D-Speaker CAM++ speaker-verification model (via sherpa-onnx releases) | Telling speakers apart | Apache-2.0 |
 | CATT encoder-only diacritization model (Abjad AI, via GitHub releases) — only when Arabic diacritics are turned on | Arabic diacritics (تشكيل) | Apache-2.0 |

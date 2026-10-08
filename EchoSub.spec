@@ -26,6 +26,14 @@ datas = [
 ]
 datas += collect_data_files("faster_whisper")          # Silero VAD model
 datas += collect_data_files("sherpa_onnx")
+# The any-brand graphics-card engine (whisper.cpp + Vulkan), when it was built into vendor\ by
+# scriptsendor-whisper-vulkan.ps1. Without it the app simply does not offer that option.
+VULKAN_ENGINE = os.path.join(ROOT, "vendor", "whisper-vulkan")
+if os.path.isfile(os.path.join(VULKAN_ENGINE, "whisper-server.exe")):
+    for path in glob.glob(os.path.join(VULKAN_ENGINE, "*")):
+        datas.append((path, "whisper-vulkan"))
+else:
+    print("NOTE: vendor/whisper-vulkan is missing; building without the any-brand graphics-card engine")
 for doc in ("LICENSE", "README.md", "PRIVACY.md", "THIRD_PARTY_NOTICES.md", "CHANGELOG.md"):
     datas.append((os.path.join(ROOT, doc), "."))
 

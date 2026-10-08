@@ -84,7 +84,7 @@ Everything runs locally: speech recognition and translation happen on your own m
 | **Operating system** | Windows 10, 64-bit | Windows 11, 64-bit |
 | **Processor** | 64-bit, 4 cores (e.g. Intel Core i3-8100 / AMD Ryzen 3 2200G) | 6+ cores (e.g. Intel Core i5-9400F / AMD Ryzen 5 3600) |
 | **Memory (RAM)** | 8 GB | 16 GB |
-| **Graphics** | None required — runs on the CPU with the *Small* or *Base* speech model (captions lag several seconds) | NVIDIA GeForce GTX 1060 6 GB or better (GTX 10-series and newer); RTX cards are faster |
+| **Graphics** | None required — runs on the CPU with the *Small* or *Base* speech model (captions lag several seconds) | NVIDIA GeForce GTX 1060 6 GB or better (GTX 10-series and newer); RTX cards are faster. AMD Radeon and Intel graphics work through *Run on: Graphics card, any brand* (Vulkan) |
 | **Graphics memory** | 4 GB for the default models on an NVIDIA GPU | 6 GB or more (needed for *NLLB 1.3B* or *Large v3*) |
 | **NVIDIA driver** | 527.41 or newer (CUDA 12) | Latest Game Ready or Studio driver |
 | **Free disk space** | 6 GB (app 2.3 GB + default models 2.3 GB) | 10 GB on an SSD (room for all models) |
@@ -93,6 +93,8 @@ Everything runs locally: speech recognition and translation happen on your own m
 | **Display** | 1280 × 720 | 1920 × 1080 or higher |
 
 EchoSub picks the fastest precision for your GPU automatically (for example int8 on GTX 10-series cards, which have no fast float16).
+
+**AMD and Intel graphics:** choose *Settings → Language & Engine → Run on → Graphics card, any brand: AMD, Intel or NVIDIA (Vulkan)*. It runs a second speech engine, [whisper.cpp](https://github.com/ggml-org/whisper.cpp), on any card with a current driver, and downloads its own compressed copy of the chosen model the first time (574 MB for *Large v3 Turbo*, 264 MB for *Small*). On a GTX 1060 it ran *Small* about 7× faster than real time against under 1× on the processor; on NVIDIA cards the NVIDIA-only option is still the fastest. It has been tested on NVIDIA through Vulkan — reports from AMD and Intel owners are welcome.
 
 ### Models
 

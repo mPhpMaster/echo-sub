@@ -6,6 +6,7 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and 
 ## [Unreleased]
 
 ### Added
+- **AMD and Intel graphics cards can run speech recognition.** *Settings → Language & Engine → Run on* gains **Graphics card, any brand: AMD, Intel or NVIDIA (Vulkan)**. It runs [whisper.cpp](https://github.com/ggml-org/whisper.cpp) with its Vulkan backend as a helper program that ships with EchoSub and talks to it only inside the PC (127.0.0.1). The first time, it downloads a compressed copy of the chosen model (574 MB for Large v3 Turbo). On a GTX 1060 through Vulkan, *Small* ran about 7× faster than real time, against under 1× on the processor; on NVIDIA cards the NVIDIA-only option stays faster. If it cannot start, captions carry on with the processor, and the engine always closes with EchoSub, even after a crash. AMD and Intel owners are told about it in the settings.
 - **A model is chosen for you.** Leave *Settings → AI → Model* empty and EchoSub asks the service which models it has and uses the newest fast, released one (for example a “flash” or “mini” model) — so ChatGPT and Gemini work without picking first. A model you choose yourself is never replaced, and if the chosen one is withdrawn, it chooses again.
 
 ### Changed

@@ -47,12 +47,20 @@ class NoteTest(unittest.TestCase):
         self._real = gpu.cuda_usable
         gpu.cuda_usable = lambda: False
         self.addCleanup(lambda: setattr(gpu, "cuda_usable", self._real))
+        real_shipped = gpu.vulkan_shipped
+        gpu.vulkan_shipped = lambda: False  # a copy without the any-brand engine
+        self.addCleanup(lambda: setattr(gpu, "vulkan_shipped", real_shipped))
 
     def test_an_amd_machine_is_told_why_plainly(self):
         note = gpu.note(AMD)
         self.assertIn("Radeon", note)
         self.assertIn("NVIDIA cards only", note)
         self.assertIn("Light mode", note, "it should say what to do about it")
+
+    def test_with_the_any_brand_engine_amd_and_intel_are_pointed_to_it(self):
+        gpu.vulkan_shipped = lambda: True
+        for names in (AMD, INTEL):
+            self.assertIn("any brand", gpu.note(names))
 
     def test_an_intel_machine_too(self):
         self.assertIn("Intel", gpu.note(INTEL))
@@ -73,7 +81,7 @@ class SettingsTest(unittest.TestCase):
     def test_the_option_no_longer_promises_any_graphics_card(self):
         from PySide6.QtWidgets import QApplication
 
-        from echosub import config
+        from echosub import asr_vulkan, config
         from echosub.settings_dialog import SettingsDialog
 
         QApplication.instance() or QApplication([])
@@ -81,8 +89,9 @@ class SettingsTest(unittest.TestCase):
         self.addCleanup(dialog.close)
         labels = [dialog.device.itemText(i) for i in range(dialog.device.count())]
         self.assertTrue(any("NVIDIA only" in label for label in labels), labels)
+        expected = ["cuda", "vulkan", "cpu"] if asr_vulkan.available() else ["cuda", "cpu"]
         self.assertEqual([dialog.device.itemData(i) for i in range(dialog.device.count())],
-                         ["cuda", "cpu"], "the stored values must not change")
+                         expected, "the stored values must not change")
 
 
 if __name__ == "__main__":

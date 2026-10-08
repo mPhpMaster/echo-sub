@@ -5,7 +5,8 @@
 EchoSub recognizes speech with CTranslate2, which can target a processor or an NVIDIA card and
 nothing else — there is no AMD or Intel path in it. On those machines the app quietly fell back to
 the processor while the settings still offered "GPU (CUDA)", so people were left to wonder why it
-was slow. This exists so the app can say what is really going on.
+was slow. This exists so the app can say what is really going on — and, when this copy ships the
+any-brand Vulkan engine (asr_vulkan), point AMD and Intel owners to it.
 """
 import logging
 import winreg
@@ -63,6 +64,17 @@ def cuda_usable():
         return False
 
 
+def vulkan_shipped():
+    """Whether this copy includes the graphics-card engine that works on any brand."""
+    try:
+        from . import asr_vulkan
+
+        return asr_vulkan.available()
+    except Exception as e:
+        log.info("Could not look for the graphics-card engine: %s", e)
+        return False
+
+
 def note(names=None):
     """What to tell the user about their card, or None when the GPU setting needs no explanation."""
     if cuda_usable():
@@ -70,6 +82,9 @@ def note(names=None):
     names = cards() if names is None else names
     make = vendor(names)
     card = names[0] if names else "your graphics card"
+    if make in ("amd", "intel") and vulkan_shipped():
+        return (f"{card}: choose “Graphics card, any brand” below to use it for speech recognition. "
+                "The NVIDIA-only engine cannot use it.")
     if make == "amd":
         return (f"{card} cannot be used for speech recognition: the engine EchoSub uses runs on "
                 "processors and NVIDIA cards only. Captions will use the processor, which works but "

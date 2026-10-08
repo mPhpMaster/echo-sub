@@ -8,7 +8,7 @@ from PySide6.QtWidgets import (
     QVBoxLayout, QWidget,
 )
 
-from . import APP_NAME, audio, config, gpu, languages
+from . import APP_NAME, asr_vulkan, audio, config, gpu, languages
 from .settings_ai import AiTabMixin
 from .settings_microphone import MicrophoneGroupMixin
 from .settings_tabs import NUMBER_WIDTH, AdvancedTabMixin
@@ -107,6 +107,8 @@ class SettingsDialog(VoiceCommandsTabMixin, AdvancedTabMixin, MicrophoneGroupMix
         self._select(self.translator, cfg["translator"])
         self.device = SearchableComboBox()
         self.device.addItem("Graphics card (NVIDIA only) — faster", "cuda")
+        if asr_vulkan.available():
+            self.device.addItem("Graphics card, any brand: AMD, Intel or NVIDIA (Vulkan)", "vulkan")
         self.device.addItem("Processor", "cpu")
         self._select(self.device, cfg["device"])
         self.audio_dev = SearchableComboBox()

@@ -4,7 +4,7 @@
 
 ## Before you install
 
-Check the [system requirements](../README.md#system-requirements): Windows 10/11 64-bit, 8 GB RAM, and ideally an NVIDIA GPU with 4 GB+ of graphics memory. Without an NVIDIA GPU, choose the *Small* speech model.
+Check the [system requirements](../README.md#system-requirements): Windows 10/11 64-bit, 8 GB RAM, and ideally a graphics card with 4 GB+ of graphics memory. With an AMD or Intel card, choose *Run on: Graphics card, any brand*; with no graphics card at all, choose the *Small* speech model.
 
 ## First start
 
@@ -169,7 +169,7 @@ Every dropdown accepts typing to search (e.g. type `ital` for Italian; Arabic na
 - **Spoken language** — *Auto-detect* works for any language; choosing the language improves accuracy.
 - **Speech recognition model** — *Large v3 Turbo* is the best balance; *Small*/*Medium* are faster on weaker GPUs.
 - **Translation engine** — *NLLB 600M* (offline, fast), *NLLB 1.3B* (offline, more accurate), *Google Translate* (online), or *No translation*. If Google Translate starts refusing requests (it limits how much one computer can translate), EchoSub waits a little and tries again; meanwhile it translates offline with an NLLB model if you have downloaded one before.
-- **Run on** — GPU (CUDA) or CPU. **Audio source** — follow the default output device, or pick one.
+- **Run on** — *Graphics card (NVIDIA only)*, the fastest on NVIDIA; *Graphics card, any brand* (Vulkan) for AMD and Intel, which downloads its own compressed copy of the model the first time; or *Processor*. **Audio source** — follow the default output device, or pick one.
 - **Translate even when speech is already in the caption language** — rewrites dialect or casual speech into the standard language (e.g. Egyptian or Gulf Arabic into Modern Standard Arabic).
 - **Arabic diacritics (تشكيل)** — adds harakat to Arabic captions: on the translation, the original text, or both. Turning it on downloads a 70 MB model once. Sentences mixing Arabic with other languages get less accurate harakat.
 - **Moroccan Arabic (Darija)** — choose it as *Show captions in* to get captions in Darija, or as *Spoken language* when the audio is Darija (auto-detect hears Darija as Arabic). *NLLB 1.3B* gives noticeably better Darija than *NLLB 600M*.

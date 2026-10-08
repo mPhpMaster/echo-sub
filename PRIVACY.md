@@ -8,6 +8,9 @@ EchoSub is designed to work on your computer, not in the cloud. This page explai
 
 - EchoSub captures the audio playing through your selected output device (speakers or headphones) while it is running and not paused.
 - The audio is processed **on your computer** to detect speech, recognize voices and create captions. It is never uploaded.
+- With *Run on: Graphics card, any brand* chosen, speech is recognized by a helper program that ships with EchoSub
+  (`whisper-server.exe`). EchoSub hands it the audio through a connection that only exists inside your computer
+  (127.0.0.1, which other machines cannot reach). It is still never uploaded.
 - Audio normally stays in memory. The one exception is the **catch-up buffer**: when recognition falls behind (a busy graphics card, for example), the audio waiting its turn is written to a temporary folder so captions can catch up instead of losing what was said. It is read back, deleted as it is read, and the whole folder is removed when EchoSub closes — a folder left behind by a crash is deleted on the next start. It is a recovery window, not a recording, and it is capped by *Settings → Advanced → Catch-up audio buffer*, where **0 min turns it off** completely. You choose which drive it is written to in the same place; by default it is the Windows temp folder.
 
 ## Captions and transcripts
