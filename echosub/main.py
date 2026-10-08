@@ -392,11 +392,6 @@ class App(TrayMenuMixin, UpdateCheckMixin, VoiceCommandMixin, AiAssistantMixin):
         self.overlay.set_status("Error: " + text)
         self.tray.showMessage(APP_NAME, text, QSystemTrayIcon.Critical, 6000)
 
-    def activate_from_second_instance(self):
-        self.tray.showMessage(APP_NAME, f"{APP_NAME} is already running — opening Settings.",
-                              QSystemTrayIcon.Information, 2500)
-        self._open_settings()
-
     def _quit(self):
         config.save(self.cfg)
         self.history.flush_pending()
@@ -410,13 +405,25 @@ class App(TrayMenuMixin, UpdateCheckMixin, VoiceCommandMixin, AiAssistantMixin):
         return self.qt.exec()
 
 
+ERROR_ALREADY_EXISTS = 183
+
+
+def claim_mutex(name=MUTEX_NAME):
+    """Take the named Windows mutex. Returns (handle, True) for the first copy, (handle, False) if one runs.
+
+    The handle is kept for as long as the app runs; the installer also looks for this mutex.
+    """
+    kernel32 = ctypes.WinDLL("kernel32", use_last_error=True)
+    kernel32.CreateMutexW.restype = ctypes.c_void_p
+    handle = kernel32.CreateMutexW(None, False, name)
+    return handle, ctypes.get_last_error() != ERROR_ALREADY_EXISTS
+
+
 def claim_single_instance(qt):
-    """Returns a QLocalServer if this is the only running copy, else pings the running copy and returns None."""
+    """Returns a QLocalServer if this is the only running copy, else None. The running copy is left alone."""
     probe = QLocalSocket()
     probe.connectToServer(INSTANCE_KEY)
     if probe.waitForConnected(300):
-        probe.write(b"activate")
-        probe.waitForBytesWritten(300)
         probe.disconnectFromServer()
         return None
     QLocalServer.removeServer(INSTANCE_KEY)  # stale socket left by a crash
@@ -434,7 +441,10 @@ def main():
     if sys.platform == "win32":
         # Own taskbar identity (not "python.exe") and a mutex the installer can detect
         ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID(f"{APP_NAME}.{__version__}")
-        main.mutex = ctypes.windll.kernel32.CreateMutexW(None, False, MUTEX_NAME)
+        main.mutex, first = claim_mutex()
+        if not first:  # opened again while running: do nothing at all
+            log.info("Another instance is already running; not starting a second one")
+            return 0
     qt = QApplication(sys.argv)
     qt.setApplicationName(APP_NAME)
     qt.setApplicationVersion(__version__)
@@ -442,21 +452,11 @@ def main():
     qt.setWindowIcon(app_icon())
     server = claim_single_instance(qt)
     if server is None:
-        log.info("Another instance is already running; asked it to open Settings")
+        log.info("Another instance is already running; not starting a second one")
         return 0
     log.info("%s %s starting (data: %s)", APP_NAME, __version__, config.DATA_DIR)
     app = App(qt)
-
-    def on_connection():
-        conn = server.nextPendingConnection()
-
-        def on_ready_read():
-            conn.readAll()
-            app.activate_from_second_instance()
-
-        conn.readyRead.connect(on_ready_read)
-
-    server.newConnection.connect(on_connection)
+    main.server = server  # kept listening, so a later copy can tell this one is running
     code = app.run()
     log.info("%s exited", APP_NAME)
     return code

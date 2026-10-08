@@ -9,6 +9,7 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and 
 - **A model is chosen for you.** Leave *Settings → AI → Model* empty and EchoSub asks the service which models it has and uses the newest fast, released one (for example a “flash” or “mini” model) — so ChatGPT and Gemini work without picking first. A model you choose yourself is never replaced, and if the chosen one is withdrawn, it chooses again.
 
 ### Changed
+- **Opening EchoSub while it is already running does nothing.** It used to pop up a notice and open Settings; now the second copy simply closes, and the one already running is left alone. It is also caught earlier, so two copies started at the same moment can no longer both run.
 - **The model list shows only models that can answer, newest first.** Models that draw pictures, speak, transcribe or embed text are left out, and older ones a service still lists (such as a retired Gemini) sink to the bottom. *Load models* picks the best one when none was chosen.
 - **The wake-word warning knows more risky words**: other assistants' names (Alexa, Siri, Google, Copilot…) and what people call each other in calls and games (daddy, bro, حبيبي…).
 
