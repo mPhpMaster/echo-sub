@@ -63,6 +63,7 @@ class TrayMenuMixin:
         m.addAction("What can I say?…", self.open_help_window)
         m.addAction("Heard but not understood…", self.open_missed_window)
         m.addAction("Caption history…", self._open_history)
+        m.addAction("Summarize the conversation (AI)…", self.summarize_conversation)
         m.addAction(self.act_usage)
         m.addAction("Settings…", self._open_settings)
         m.addAction("Open log file", self._open_log)

@@ -55,6 +55,11 @@ def rows(cfg):
     add("type <words>", "Types what you say into the window you are using",
         cfg.get("voice_typing", False))
     add("press enter", "Presses Enter on its own", cfg.get("voice_typing", False))
+    ai_on = cfg.get("ai_enabled", False)
+    trigger = (cfg.get("ai_trigger") or "ask").split(",")[0].strip() or "ask"
+    add(f"{trigger} <question>", "Asks the AI chosen in Settings → AI, with the recent captions", ai_on)
+    add("summarize", "A summary of the last few minutes from the AI, in a window of its own",
+        ai_on and cfg.get("ai_summary", True))
     for entry in voice_commands.valid_custom_commands(cfg.get("voice_custom_commands", [])):
         what = f"Starts {entry['run']}" if "run" in entry else f"Your own command: {entry['command']}"
         add(entry["phrase"], what)

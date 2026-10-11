@@ -19,6 +19,7 @@ from PySide6.QtWidgets import QApplication, QSystemTrayIcon  # noqa: E402
 from . import APP_NAME, AUTHOR, __version__, config, history, hotkeys, transcript_fixes  # noqa: E402
 from .overlay import CaptionOverlay  # noqa: E402
 from .ai_assistant import AiAssistantMixin  # noqa: E402
+from .ai_summary import SummaryMixin  # noqa: E402
 from .tray_menu import TrayMenuMixin  # noqa: E402
 from .update_ui import UpdateCheckMixin  # noqa: E402
 from .usage_app import UsageMixin, tray_text  # noqa: E402
@@ -80,7 +81,7 @@ def make_icon(color):
     return QIcon(pm)
 
 
-class App(TrayMenuMixin, UpdateCheckMixin, VoiceCommandMixin, AiAssistantMixin, UsageMixin):
+class App(TrayMenuMixin, UpdateCheckMixin, VoiceCommandMixin, AiAssistantMixin, SummaryMixin, UsageMixin):
     def __init__(self, qt):
         self.qt = qt
         self.qt.setQuitOnLastWindowClosed(False)

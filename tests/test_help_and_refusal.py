@@ -90,7 +90,7 @@ class HelpWindowTest(unittest.TestCase):
         self.assertTrue(any("press" in say for say in off), off)
 
     def test_switching_them_on_marks_them_on(self):
-        rows = self.window(voice_typing=True, voice_key_presses=True).rows
+        rows = self.window(voice_typing=True, voice_key_presses=True, ai_enabled=True).rows
         self.assertTrue(all(enabled for _say, _does, enabled in rows))
 
     def test_your_own_commands_are_listed(self):

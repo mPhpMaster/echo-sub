@@ -136,6 +136,8 @@ DEFAULTS = {
     "ai_auto_cooldown": 20,                # seconds between answers given without being asked
     "ai_auto_solo": True,                  # ...and only while one person is talking, not a group
     "ai_answer_seconds": 0,                # how long an answer stays; 0 = long enough to read it
+    "ai_summary": True,                    # "summarize" asks the AI for a summary of the last few minutes
+    "ai_summary_minutes": 10,              # ...of this many minutes
     "ai_font_size": 0,                     # pt for an AI's answer; 0 = the same size as the captions
     "reminders": [],                       # set by voice: {"when": iso time, "what": ...}
     "transcript_fixes": [],                # your own spellings: {"heard": ..., "write": ...}

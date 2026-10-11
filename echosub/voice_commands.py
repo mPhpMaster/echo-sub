@@ -40,6 +40,9 @@ from .voice_actions import (  # noqa: F401 (kept where callers and tests expect 
     AppNotInstalled, CommandRunner, REPEAT_COOLDOWN_SEC, close_program, open_link, press_keys,
     resolve_program, send_media_key, start_program,
 )
+from .voice_text import (  # noqa: F401 (callers and tests use them from here)
+    RISKY_WAKE_WORDS, WAKE_WORD_MIN_CHARS, normalize, wake_word_warning,
+)
 from .voice_registry import (
     APPS, CLOSE_WORDS, LINKS, MEDIA_ACTIONS, MEDIA_NOUNS, OPEN_WORDS,
 )  # noqa: F401 (MEDIA_ACTIONS is used by command_starters)
@@ -71,6 +74,7 @@ CAPTION_COMMANDS = (
     {"key": "show_captions", "action": "app", "target": "show", "label": "Caption box shown"},
     {"key": "clear_captions", "action": "app", "target": "clear", "label": "Captions cleared"},
     {"key": "exit_app", "action": "app", "target": "exit", "label": "Closing EchoSub"},
+    {"key": "ai_summary", "action": "app", "target": "summary", "label": "Summarizing the conversation"},
 )
 
 MEDIA_COMMANDS = tuple(
@@ -90,17 +94,6 @@ APP_COMMANDS = tuple(
 )
 
 COMMANDS = CAPTION_COMMANDS + MEDIA_COMMANDS + LINK_COMMANDS + APP_COMMANDS
-
-_ARABIC_MARKS = re.compile(r"[ً-ْـ]")
-_PUNCTUATION = re.compile(r"[^\w\s؀-ۿ]+", re.UNICODE)
-
-
-def normalize(text):
-    """Lower-case, drop punctuation and Arabic diacritics, and even out spacing, alifs and taa."""
-    text = _ARABIC_MARKS.sub("", str(text).lower())
-    text = _PUNCTUATION.sub(" ", text)
-    text = text.replace("أ", "ا").replace("إ", "ا").replace("آ", "ا").replace("ة", "ه").replace("ى", "ي")
-    return re.sub(r"\s+", " ", text).strip()
 
 
 def command(key):
@@ -222,6 +215,13 @@ def _reminder_command(window, raw_text):
             "what": what}
 
 
+def _summary_command(window):
+    """"Summarize" or "summarize the conversation" — the word first, and only a few words in all."""
+    if _first_position(window, vocabulary.SUMMARY_WORDS) == 0 and len(window.split()) <= 4:
+        return command("ai_summary")
+    return None
+
+
 def _ask_command(window, raw_text, words):
     """"Ask ..." — everything after the trigger word is the question, exactly as it was heard."""
     if _first_position(window, words) < 0:
@@ -267,49 +267,6 @@ def _go_command(window, raw_text, folders):
         if said:
             return voice_destinations.destination_command(said, folders, windows_too=False, allow_url=False)
     return None
-
-
-# Words common enough in ordinary speech that using one as a wake word means EchoSub will think
-# it is being spoken to all day long. "PC" is the one that catches people out: it is in every
-# other sentence of a technology video.
-RISKY_WAKE_WORDS = {
-    "pc", "computer", "laptop", "windows", "ok", "okay", "hey", "yes", "no", "now", "stop", "go",
-    "app", "game", "video", "sound", "audio", "music", "screen", "phone", "mic", "test", "one",
-    "بي سي", "بيسي", "كمبيوتر", "لاب توب", "نعم", "لا", "الان", "شاشه", "صوت",
-    # other assistants: videos and calls name them all the time
-    "alexa", "siri", "google", "hey google", "ok google", "cortana", "copilot", "chatgpt", "gemini",
-    "اليكسا", "سيري", "جوجل",
-    # what people call each other in a call or a game
-    "daddy", "dad", "mom", "mommy", "baby", "bro", "dude", "man", "guys", "buddy", "sir",
-    "بابا", "ماما", "اخوي", "حبيبي", "يا رجال",
-}
-WAKE_WORD_MIN_CHARS = 4
-
-
-def wake_word_warning(wake_words):
-    """Why a wake word is likely to be heard by accident, or None when it looks sound.
-
-    EchoSub listens to everything the PC plays, so a wake word that turns up in ordinary speech
-    costs far more here than it would on a phone: every stray match is a sentence it tries to obey.
-    """
-    risky, short = [], []
-    for raw in str(wake_words).split(","):
-        word = normalize(raw)
-        if not word:
-            continue
-        if word in RISKY_WAKE_WORDS:
-            risky.append(raw.strip())
-        elif len(word.replace(" ", "")) < WAKE_WORD_MIN_CHARS:
-            short.append(raw.strip())
-    if not risky and not short:
-        return None
-    parts = []
-    if risky:
-        parts.append("“" + "”, “".join(risky) + ("” turn up" if len(risky) > 1 else "” turns up") +
-                     " in ordinary speech, so anything your PC plays will set it off often")
-    if short:
-        parts.append("“" + "”, “".join(short) + "” is very short, which is easily misheard")
-    return ". ".join(parts) + ". Something two words long and unusual is heard far less by accident."
 
 
 def is_cancel(text):
@@ -448,7 +405,7 @@ def command_starters():
     from .ai_assistant import ASK_WORDS
 
     words |= set(vocabulary.GO_WORDS) | set(vocabulary.TYPE_WORDS) | set(ASK_WORDS)
-    words |= set(vocabulary.EXIT_WORDS) | set(vocabulary.CLOSE_SELF_WORDS)
+    words |= set(vocabulary.EXIT_WORDS) | set(vocabulary.CLOSE_SELF_WORDS) | set(vocabulary.SUMMARY_WORDS)
     for _key, action_words in vocabulary.CAPTION_ACTIONS:
         words |= set(action_words)
     for _key, _target, _label, action_words in MEDIA_ACTIONS:
@@ -470,7 +427,7 @@ def _match(window, text, custom_commands, allow_key_presses, folders, allow_typi
         from .ai_assistant import ASK_WORDS
 
         words = tuple(allow_ai) if isinstance(allow_ai, (tuple, list)) and allow_ai else ASK_WORDS
-        found = _ask_command(window, text, words)
+        found = _summary_command(window) or _ask_command(window, text, words)
     if found is None and allow_typing:
         # Typing is tried first, so "type ... and press enter" writes that whole sentence out.
         # Enter on its own is a separate thing to say, which is the point of it being separate.

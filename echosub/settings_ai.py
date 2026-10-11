@@ -85,6 +85,22 @@ class AiTabMixin:
         self.ai_answer_seconds.setValue(int(cfg.get("ai_answer_seconds", 0) or 0))
         form.addRow("Answer stays for:", self.ai_answer_seconds)
 
+        self.ai_summary = QCheckBox("“Summarize” gives a summary of the last")
+        self.ai_summary.setChecked(cfg.get("ai_summary", True))
+        self.ai_summary.setToolTip("Say your wake word and “summarize”, or use the tray menu")
+        self.ai_summary_minutes = QSpinBox()
+        self.ai_summary_minutes.setRange(1, 120)
+        self.ai_summary_minutes.setSuffix(" min")
+        self.ai_summary_minutes.setMaximumWidth(110)
+        self.ai_summary_minutes.setValue(int(cfg.get("ai_summary_minutes", 10)))
+        self.ai_summary.toggled.connect(self.ai_summary_minutes.setEnabled)
+        self.ai_summary_minutes.setEnabled(self.ai_summary.isChecked())
+        summary_row = QHBoxLayout()
+        summary_row.addWidget(self.ai_summary)
+        summary_row.addWidget(self.ai_summary_minutes)
+        summary_row.addStretch(1)
+        form.addRow("Summaries:", summary_row)
+
         self.ai_provider = QComboBox()
         for key, spec in ai_providers.PROVIDERS.items():
             self.ai_provider.addItem(spec["title"], key)
@@ -290,4 +306,6 @@ class AiTabMixin:
             "ai_auto_cooldown": self.ai_auto_cooldown.value(),
             "ai_auto_solo": self.ai_auto_solo.isChecked(),
             "ai_answer_seconds": self.ai_answer_seconds.value(),
+            "ai_summary": self.ai_summary.isChecked(),
+            "ai_summary_minutes": self.ai_summary_minutes.value(),
         }

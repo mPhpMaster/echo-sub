@@ -240,6 +240,13 @@ CAPTION_WORDS = (
     "자막",                                                   # Korean
 )
 
+# "Summarize": a summary of the last few minutes from the AI, when the AI is switched on.
+SUMMARY_WORDS = ("summarize", "summarise", "summary", "sum up", "recap",
+                 "لخص", "ملخص", "تلخيص", "لخص الكلام", "لخص المحادثه",
+                 "resume", "résume", "resumen", "resume la", "zusammenfassung", "fasse zusammen",
+                 "riassumi", "resuma", "özetle", "подведи итог", "кратко", "خلاصه کن", "خلاصہ",
+                 "सारांश", "ringkas", "总结", "要約", "요약")
+
 # Closing EchoSub itself. A word on its own here is enough ("echo sub, exit"); "close" and its kin
 # also open and close other programs, so they count only together with a name for EchoSub.
 EXIT_WORDS = (

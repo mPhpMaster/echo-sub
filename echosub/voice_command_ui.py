@@ -335,6 +335,7 @@ class VoiceCommandMixin:
             "show": lambda: self.act_show.setChecked(True),
             "clear": self.overlay.clear,
             "exit": lambda: self._quit(),
+            "summary": lambda: self.summarize_conversation(),
         }
         action = actions.get(target)
         if action is None:
