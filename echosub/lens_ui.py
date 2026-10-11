@@ -8,7 +8,7 @@ from PySide6.QtCore import QRect, QTimer
 from PySide6.QtGui import QColor, QCursor, QGuiApplication, QIcon, QPainter, QPen
 from PySide6.QtWidgets import QFileDialog, QMessageBox, QSystemTrayIcon
 
-from . import config, hotkeys, languages, lens_files, lens_follow, lens_shortcuts, lens_translate
+from . import config, hotkeys, languages, lens_files, lens_follow, lens_shortcuts, lens_translate, translate
 from .lens_app import LENS_NAME, ctrl_held
 from .lens_menu import LensMenuMixin
 from .lens_overlay import LensOverlay
@@ -139,7 +139,9 @@ class LensApp(LensMenuMixin):
             device = self.echosub_cfg.get("device", "cuda")
             if device in ("cuda", "vulkan") and not cuda_libs.available():
                 device = "cpu"
-            self._translators[key] = lens_translate.LensTranslator(key, device)
+            fast_cpu = self.echosub_cfg.get("fast_cpu_translation", True)
+            self._translators[key] = lens_translate.LensTranslator(
+                key, device, factory=lambda k, d: translate.create(k, d, fast_cpu=fast_cpu))
         return self._translators[key]
 
     def set_target(self, code):
