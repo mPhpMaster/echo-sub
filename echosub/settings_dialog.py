@@ -11,6 +11,7 @@ from PySide6.QtWidgets import (
 from . import APP_NAME, asr_vulkan, audio, config, gpu, languages
 from .settings_ai import AiTabMixin
 from .settings_tts import SpeechTabMixin
+from .settings_stream import StreamTabMixin
 from .usage_ui import UsageStrip
 from .settings_microphone import MicrophoneGroupMixin
 from .settings_tabs import NUMBER_WIDTH, AdvancedTabMixin
@@ -26,7 +27,8 @@ from .overlay import SCALE_MAX, SCALE_MIN, SCALE_STEP
 
 
 class SettingsDialog(VoiceCommandsTabMixin, AdvancedTabMixin, MicrophoneGroupMixin,
-                     TranscriptFixesMixin, RemindersTabMixin, TextTabMixin, AiTabMixin, SpeechTabMixin, QDialog):
+                     TranscriptFixesMixin, RemindersTabMixin, TextTabMixin, AiTabMixin, SpeechTabMixin,
+                     StreamTabMixin, QDialog):
     preview = Signal(dict)  # emitted on every change so the overlay can show it live
 
     def __init__(self, cfg, parent=None, add_phrase=None, show_tab=None):
@@ -51,6 +53,7 @@ class SettingsDialog(VoiceCommandsTabMixin, AdvancedTabMixin, MicrophoneGroupMix
         tabs.addTab(_scrollable(self._reminders_tab(cfg)), "Reminders")
         tabs.addTab(_scrollable(self._ai_tab(cfg)), "AI")
         tabs.addTab(_scrollable(self._speech_tab(cfg)), "Read aloud")
+        tabs.addTab(_scrollable(self._stream_tab(cfg)), "Stream")
         tabs.addTab(_scrollable(self._advanced_tab(cfg)), "Advanced")
 
         buttons = QDialogButtonBox(
@@ -411,6 +414,7 @@ class SettingsDialog(VoiceCommandsTabMixin, AdvancedTabMixin, MicrophoneGroupMix
             **self._microphone_values(),
             **self.usage_values(),
             **self.tts_values(),
+            **self.stream_values(),
             "translator": self.translator.currentData(),
             "device": self.device.currentData(),
             "audio_device": self.audio_dev.currentData(),

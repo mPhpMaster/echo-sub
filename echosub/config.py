@@ -156,6 +156,12 @@ DEFAULTS = {
     "tts_voice": "",                       # a voice by name; empty = the first for the language
     "tts_rate": 0,                         # -10 (slow) to 10 (fast)
     "tts_volume": 100,                     # 0-100
+    "stream_enabled": False,               # a local page with the captions, for OBS's Browser Source
+    "stream_port": 8790,                   # on 127.0.0.1 only
+    "stream_lines": 2,                     # captions shown at once
+    "stream_font_size": 42,                # px
+    "stream_hide_after": 8,                # seconds a caption stays
+    "stream_show_original": True,          # the original words above the translation
     "profiles_enabled": True,              # the Profile menu, and switching profiles by voice
     "profiles": {},                        # name -> saved settings (see profiles.py)
     "active_profile": "",

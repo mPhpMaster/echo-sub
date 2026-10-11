@@ -8,6 +8,8 @@ EchoSub is designed to work on your computer, not in the cloud. This page explai
 
 - EchoSub captures the audio playing through your selected output device (speakers or headphones) while it is running and not paused.
 - The audio is processed **on your computer** to detect speech, recognize voices and create captions. It is never uploaded.
+- With *Settings → Stream* switched on, the latest captions are offered on a page at `http://127.0.0.1:<port>/` for
+  OBS. That address exists only inside your computer; other machines on your network cannot open it.
 - With *Run on: Graphics card, any brand* chosen, speech is recognized by a helper program that ships with EchoSub
   (`whisper-server.exe`). EchoSub hands it the audio through a connection that only exists inside your computer
   (127.0.0.1, which other machines cannot reach). It is still never uploaded.
