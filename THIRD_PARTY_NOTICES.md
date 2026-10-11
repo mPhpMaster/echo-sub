@@ -30,6 +30,7 @@ EchoSub is built on the open-source software and AI models listed below. Each co
 | CATT tokenizer code (`echosub/tashkeel/tokenizer.py`, `bw2ar.py`), adapted | Apache-2.0 — Copyright Abjad AI / Faris Alasmary | https://github.com/abjadai/catt |
 | Arabic constants (`echosub/tashkeel/utils.py`) | BSD — Copyright 2003 Arabeyes, Mohammed Elzubeir; 2019 Faris Abdullah Alasmary | https://github.com/abjadai/catt |
 | tqdm | MPL-2.0 AND MIT | https://github.com/tqdm/tqdm |
+| `app-audio.exe` (captures one program's sound; EchoSub's own code, built with the Windows SDK's WRL headers) | GPL-3.0-only — part of EchoSub | https://github.com/mPhpMaster/echo-sub |
 | whisper.cpp and ggml (`whisper-server.exe` and its libraries, built with the Vulkan backend) | MIT — Copyright The ggml authors | https://github.com/ggml-org/whisper.cpp |
 | Anthropic Python SDK | MIT | https://github.com/anthropics/anthropic-sdk-python |
 | NVIDIA cuBLAS, cuDNN, NVRTC runtime libraries | NVIDIA proprietary (redistributable runtime components under the NVIDIA CUDA / cuDNN license agreements) | https://developer.nvidia.com/cuda-zone |

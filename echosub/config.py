@@ -61,6 +61,7 @@ DEFAULTS = {
     "translate_same_language": True,      # also translate when speech is already in the caption language
     "arabic_diacritics": "off",           # off | translation | original | both — add harakat to Arabic text
     "audio_device": "default",
+    "audio_app": "",                      # listen to this program only (e.g. "Discord.exe"); empty = everything
     "show_original": True,
     "show_partial": True,
     "light_mode": False,                  # faster on a busy PC: a smaller speech model, no live text
@@ -216,8 +217,8 @@ BOX_ROWS = ("top", "middle", "bottom")
 BOX_COLUMNS = ("left", "center", "right")
 
 # Settings that require reloading models or reopening the audio stream
-ENGINE_KEYS = ("whisper_model", "device", "translator", "audio_device", "speaker_detection", "light_mode",
-               "audio_backlog_sec", "audio_backlog_dir", "mic_enabled", "mic_device", "light_model")
+ENGINE_KEYS = ("whisper_model", "device", "translator", "audio_device", "audio_app", "speaker_detection",
+               "light_mode", "audio_backlog_sec", "audio_backlog_dir", "mic_enabled", "mic_device", "light_model")
 
 SPEAKER_COLOR_TARGETS = {
     "both": "Translation and original text",

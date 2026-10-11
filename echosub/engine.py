@@ -13,7 +13,7 @@ import time
 
 from faster_whisper.vad import VadOptions, get_speech_timestamps
 
-from . import asr, asr_vulkan, audio, cuda_libs, downloads, gpu, languages, speaker, translate  # noqa: F401
+from . import app_audio, asr, asr_vulkan, audio, cuda_libs, downloads, gpu, languages, speaker, translate  # noqa: F401
 from . import segmentation
 from .engine_sources import MICROPHONE, SYSTEM, AudioStream
 from .engine_translation import MAX_PENDING_TRANSLATIONS, TranslationMixin  # noqa: F401 (kept for callers)
@@ -255,11 +255,8 @@ class CaptionEngine(TranslationMixin):
             self._mic_capture = None
 
     def _open_capture(self):
-        self._capture = audio.LoopbackCapture(
-            self.cfg["audio_device"], self.cfg.get("audio_backlog_sec", audio.DEFAULT_BACKLOG_SEC),
-            self.cfg.get("audio_backlog_dir", ""))
-        try:
-            self._capture.start()
+        try:  # the whole PC, or one program only (app_audio)
+            self._capture = app_audio.make_capture(self.cfg, self.on_status)
         except Exception:
             self._capture = None
             raise
@@ -485,7 +482,10 @@ class CaptionEngine(TranslationMixin):
             self._queue_translation(seg_id, text, lang)
 
     def _should_switch_device(self):
-        """The default device changed, or the one the user picked is plugged back in."""
+        """The default device changed, the one the user picked is plugged back in, or their program started."""
+        decided = app_audio.should_switch(self._capture, self.cfg)
+        if decided is not None:
+            return decided
         if self.cfg["audio_device"] == "default":
             return self._default_device_changed()
         return self._capture.using_fallback and audio.device_available(self.cfg["audio_device"])

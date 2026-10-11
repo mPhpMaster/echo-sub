@@ -36,6 +36,12 @@ if os.path.isfile(os.path.join(VULKAN_ENGINE, "whisper-server.exe")):
         datas.append((path, "whisper-vulkan"))
 else:
     print("NOTE: vendor/whisper-vulkan is missing; building without the any-brand graphics-card engine")
+# The helper that captures one program's sound (scriptsuild-app-audio.ps1); without it the option is not offered.
+APP_AUDIO = os.path.join(ROOT, "vendor", "app-audio", "app-audio.exe")
+if os.path.isfile(APP_AUDIO):
+    datas.append((APP_AUDIO, "app-audio"))
+else:
+    print("NOTE: vendor/app-audio is missing; building without 'Only this program'")
 for doc in ("LICENSE", "README.md", "PRIVACY.md", "THIRD_PARTY_NOTICES.md", "CHANGELOG.md"):
     datas.append((os.path.join(ROOT, doc), "."))
 
