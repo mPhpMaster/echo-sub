@@ -156,6 +156,9 @@ DEFAULTS = {
     "tts_voice": "",                       # a voice by name; empty = the first for the language
     "tts_rate": 0,                         # -10 (slow) to 10 (fast)
     "tts_volume": 100,                     # 0-100
+    "profiles_enabled": True,              # the Profile menu, and switching profiles by voice
+    "profiles": {},                        # name -> saved settings (see profiles.py)
+    "active_profile": "",
     "usage_line": False,                   # EchoSub's own CPU, memory, GPU and disk use in the caption box
     "usage_window": False,                 # ...in a small window of its own
     "usage_window_on_top": True,           # ...kept above other windows

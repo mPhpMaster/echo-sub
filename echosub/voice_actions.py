@@ -71,7 +71,8 @@ class CommandRunner:
                 and not _valid_run_command(command_entry)
                 and not _valid_typing_command(command_entry)
                 and not _valid_reminder_command(command_entry)
-                and not _valid_ask_command(command_entry)):
+                and not _valid_ask_command(command_entry)
+                and not _valid_profile_command(command_entry)):
             log.warning("Refused a command that is not on the list: %r", command_entry)
             return None
         key, last_time = self._last
@@ -137,6 +138,13 @@ def _valid_destination_command(entry):
     if action == "open_file":
         return isinstance(target, str) and os.path.isfile(target)
     return False
+
+
+def _valid_profile_command(entry):
+    """A profile switch names a profile and nothing else; the app checks the name is one you saved."""
+    return (isinstance(entry, dict) and entry.get("key") == "switch_profile" and entry.get("action") == "app"
+            and isinstance(entry.get("target"), str) and entry["target"].startswith("profile:")
+            and 0 < len(entry["target"]) <= 60)
 
 
 def _valid_ask_command(entry):

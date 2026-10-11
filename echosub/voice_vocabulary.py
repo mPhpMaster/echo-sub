@@ -247,6 +247,10 @@ SUMMARY_WORDS = ("summarize", "summarise", "summary", "sum up", "recap",
                  "riassumi", "resuma", "özetle", "подведи итог", "кратко", "خلاصه کن", "خلاصہ",
                  "सारांश", "ringkas", "总结", "要約", "요약")
 
+# Switching to a saved profile: one of these words together with the profile's name.
+PROFILE_WORDS = ("profile", "mode", "بروفايل", "البروفايل", "الوضع", "وضع", "modus", "modo", "профиль", "режим",
+                 "profil", "mod")
+
 # Closing EchoSub itself. A word on its own here is enough ("echo sub, exit"); "close" and its kin
 # also open and close other programs, so they count only together with a name for EchoSub.
 EXIT_WORDS = (

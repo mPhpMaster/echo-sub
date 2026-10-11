@@ -41,7 +41,8 @@ from .voice_actions import (  # noqa: F401 (kept where callers and tests expect 
     resolve_program, send_media_key, start_program,
 )
 from .voice_text import (  # noqa: F401 (callers and tests use them from here)
-    RISKY_WAKE_WORDS, WAKE_WORD_MIN_CHARS, normalize, wake_word_warning,
+    PREFIX_MATCH_MIN_CHARS, RISKY_WAKE_WORDS, WAKE_WORD_MIN_CHARS, _first_position, _needs_word_boundary,
+    _spoken_tail, is_cancel, normalize, position_of, wake_word_warning,
 )
 from .voice_registry import (
     APPS, CLOSE_WORDS, LINKS, MEDIA_ACTIONS, MEDIA_NOUNS, OPEN_WORDS,
@@ -54,7 +55,6 @@ DEFAULT_WAKE_WORDS = (
 )
 MAX_WORDS_AFTER_WAKE = 8   # the command must follow the wake word closely
 MAX_WINDOW_CHARS = 60      # ...and in languages written without spaces, this many characters
-PREFIX_MATCH_MIN_CHARS = 5  # from this length a word may carry a grammatical ending
 MAX_RUN_CHARS = 500         # a program and its arguments, typed by you in the settings
 CREATE_NO_WINDOW = 0x08000000
 WM_CLOSE = 0x0010
@@ -98,31 +98,6 @@ COMMANDS = CAPTION_COMMANDS + MEDIA_COMMANDS + LINK_COMMANDS + APP_COMMANDS
 
 def command(key):
     return next(c for c in COMMANDS if c["key"] == key)
-
-
-def _needs_word_boundary(word):
-    """Chinese, Japanese, Korean and Thai are written without spaces, so they match as plain text."""
-    return not any(low <= ord(ch) <= high for ch in word for low, high in vocabulary.NO_SPACE_RANGES)
-
-
-def position_of(window, word):
-    """Where `word` appears in the sentence, or -1. Whole words, except for space-less scripts."""
-    word = normalize(word)
-    if not word:
-        return -1
-    if not _needs_word_boundary(word):
-        return window.find(word)
-    # Turkish, Arabic, Hindi and others glue endings onto a word ("altyazi" -> "altyazilari"),
-    # so a long word may be the start of the spoken one; a short one must match exactly.
-    tail = "" if len(word) >= PREFIX_MATCH_MIN_CHARS else r"(?!\w)"
-    match = re.search(rf"(?<!\w){re.escape(word)}{tail}", window)
-    return match.start() if match else -1
-
-
-def _first_position(window, words):
-    found = [position_of(window, word) for word in words]
-    found = [index for index in found if index >= 0]
-    return min(found) if found else -1
 
 
 def _app_command(window):
@@ -178,23 +153,6 @@ def _echosub_command(window):
     return command(best)
 
 
-def _spoken_tail(raw_text, words):
-    """What was said after one of `words`, taken from the text as spoken rather than normalized.
-
-    A web address has to come from the raw text: normalizing would turn "a.com" into "a com".
-    The earliest of those words wins, and at that spot the longest one ("go to" over "go").
-    """
-    lowered = str(raw_text).lower()
-    found = []
-    for word in words:
-        for match in re.finditer(rf"(?<!\w){re.escape(word.lower())}(?!\w)", lowered):
-            found.append((match.start(), -match.end()))
-    if not found:
-        return ""
-    start, negative_end = min(found)
-    return str(raw_text)[-negative_end:].strip()
-
-
 def _reminder_command(window, raw_text):
     """"Remind me in five minutes to ..." — the time must be said, or nothing is set.
 
@@ -213,6 +171,18 @@ def _reminder_command(window, raw_text):
     return {"key": "set_reminder", "action": "reminder", "target": when.isoformat(timespec="seconds"),
             "label": f"Reminder {reminders.describe(when)}" + (f": {what}" if what else ""),
             "what": what}
+
+
+def _profile_command(window, names):
+    """"Game profile", "switch to the meeting mode" — a word for a profile and a saved name."""
+    if not names or _first_position(window, vocabulary.PROFILE_WORDS) < 0:
+        return None
+    from .profiles import find_name
+
+    name = find_name(window, names)
+    if name is None:
+        return None
+    return {"key": "switch_profile", "action": "app", "target": f"profile:{name}", "label": f"Profile: {name}"}
 
 
 def _summary_command(window):
@@ -267,15 +237,6 @@ def _go_command(window, raw_text, folders):
         if said:
             return voice_destinations.destination_command(said, folders, windows_too=False, allow_url=False)
     return None
-
-
-def is_cancel(text):
-    """Did someone just say "no"? Only at the start of what was said, so a sentence that merely
-    contains the word does not call off a command that is waiting.
-    """
-    spoken = normalize(text)
-    return any(spoken == word or spoken.startswith(word + " ")
-               for word in (normalize(w) for w in vocabulary.CANCEL_WORDS) if word)
 
 
 def _mic_command(window):
@@ -406,6 +367,7 @@ def command_starters():
 
     words |= set(vocabulary.GO_WORDS) | set(vocabulary.TYPE_WORDS) | set(ASK_WORDS)
     words |= set(vocabulary.EXIT_WORDS) | set(vocabulary.CLOSE_SELF_WORDS) | set(vocabulary.SUMMARY_WORDS)
+    words |= set(vocabulary.PROFILE_WORDS)
     for _key, action_words in vocabulary.CAPTION_ACTIONS:
         words |= set(action_words)
     for _key, _target, _label, action_words in MEDIA_ACTIONS:
@@ -413,7 +375,8 @@ def command_starters():
     return tuple(words)
 
 
-def _match(window, text, custom_commands, allow_key_presses, folders, allow_typing=False, allow_ai=False):
+def _match(window, text, custom_commands, allow_key_presses, folders, allow_typing=False, allow_ai=False,
+           profiles=()):
     """The command in one window of speech, or None. The order decides what wins a tie.
 
     Typing comes early on purpose: "type open the calculator" is a sentence to write down, not a
@@ -432,7 +395,8 @@ def _match(window, text, custom_commands, allow_key_presses, folders, allow_typi
         # Typing is tried first, so "type ... and press enter" writes that whole sentence out.
         # Enter on its own is a separate thing to say, which is the point of it being separate.
         found = _typing_command(window, text) or _enter_command(window)
-    found = (found or _mic_command(window) or _exit_command(window) or _echosub_command(window) or
+    found = (found or _mic_command(window) or _exit_command(window) or _profile_command(window, profiles) or
+             _echosub_command(window) or
              _link_command(window) or _go_command(window, text, folders) or _app_command(window) or
              _media_command(window))
     if found is None and allow_key_presses:
@@ -441,7 +405,7 @@ def _match(window, text, custom_commands, allow_key_presses, folders, allow_typi
 
 
 def find_detail(text, wake_words=DEFAULT_WAKE_WORDS, custom_commands=(), allow_key_presses=False,
-                reply_pairs=(), folders=(), require_wake=True, allow_typing=False, allow_ai=False):
+                reply_pairs=(), folders=(), require_wake=True, allow_typing=False, allow_ai=False, profiles=()):
     """(command, what was said after the wake word).
 
     The second value lets the app say "I heard you but that was not a command", which is very
@@ -472,7 +436,8 @@ def find_detail(text, wake_words=DEFAULT_WAKE_WORDS, custom_commands=(), allow_k
             if not tail:
                 continue
             window = " ".join(tail.split()[:MAX_WORDS_AFTER_WAKE])[:MAX_WINDOW_CHARS]
-            found = _match(window, text, custom_commands, allow_key_presses, folders, allow_typing, allow_ai)
+            found = _match(window, text, custom_commands, allow_key_presses, folders, allow_typing, allow_ai,
+                           profiles)
             if found is not None:
                 return found, window
             heard = heard or window
@@ -487,7 +452,8 @@ def find_detail(text, wake_words=DEFAULT_WAKE_WORDS, custom_commands=(), allow_k
         if isinstance(allow_ai, (tuple, list)):
             starters += tuple(allow_ai)  # the user's own trigger words begin a command as well
         if found is None and _first_position(window, starters) == 0:
-            found = _match(window, text, custom_commands, allow_key_presses, folders, allow_typing, allow_ai)
+            found = _match(window, text, custom_commands, allow_key_presses, folders, allow_typing, allow_ai,
+                           profiles)
         # Nothing is reported as "heard but not understood": that would fire on every sentence.
         return found, None
     return None, heard

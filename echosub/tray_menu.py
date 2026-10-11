@@ -49,6 +49,7 @@ class TrayMenuMixin:
             self.lang_actions[code] = a
         lang_menu.addSeparator()
         lang_menu.addAction("More languages…", self._open_settings)
+        self._build_profile_menu(m)
 
         m.addAction(self.act_show)
         m.addAction(self.act_position)

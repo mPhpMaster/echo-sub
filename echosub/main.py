@@ -21,6 +21,7 @@ from .overlay import CaptionOverlay  # noqa: E402
 from .ai_assistant import AiAssistantMixin  # noqa: E402
 from .ai_summary import SummaryMixin  # noqa: E402
 from .tts import SpeechMixin  # noqa: E402
+from .profiles import ProfileMixin  # noqa: E402
 from .tray_menu import TrayMenuMixin  # noqa: E402
 from .update_ui import UpdateCheckMixin  # noqa: E402
 from .usage_app import UsageMixin, tray_text  # noqa: E402
@@ -83,7 +84,7 @@ def make_icon(color):
 
 
 class App(TrayMenuMixin, UpdateCheckMixin, VoiceCommandMixin, AiAssistantMixin, SummaryMixin, UsageMixin,
-          SpeechMixin):
+          SpeechMixin, ProfileMixin):
     def __init__(self, qt):
         self.qt = qt
         self.qt.setQuitOnLastWindowClosed(False)
@@ -235,6 +236,7 @@ class App(TrayMenuMixin, UpdateCheckMixin, VoiceCommandMixin, AiAssistantMixin, 
         self.apply_usage_settings()
         if not self.cfg.get("tts_enabled", False):
             self.stop_speaking()
+        self.profile_menu.menuAction().setVisible(bool(self.cfg.get("profiles_enabled", True)))
         if restart:
             self._start_engine()
         elif self.engine:

@@ -58,6 +58,7 @@ class AdvancedTabMixin:
         v.addWidget(self._transcripts_group(cfg))
         v.addWidget(self._hotkeys_group(cfg))
         v.addWidget(self._usage_group(cfg))
+        v.addWidget(self._profiles_group(cfg))
         v.addStretch(1)
         return w
 
@@ -137,8 +138,19 @@ class AdvancedTabMixin:
             f.addRow(box)
         return group
 
+    def _profiles_group(self, cfg):
+        group = QGroupBox("Profiles")
+        f = QFormLayout(group)
+        self.profiles_enabled = QCheckBox("Show the Profile menu, and switch profiles by voice (“game profile”)")
+        self.profiles_enabled.setChecked(cfg.get("profiles_enabled", True))
+        f.addRow(self.profiles_enabled)
+        f.addRow(hint("Tray menu → Profile → Save current settings as a profile. A profile keeps how EchoSub looks "
+                      "and works; your commands, reminders, spellings and keys stay the same in every profile."))
+        return group
+
     def usage_values(self):
-        return {"usage_line": self.usage_line.isChecked(), "usage_window": self.usage_window.isChecked(),
+        return {"profiles_enabled": self.profiles_enabled.isChecked(),
+                "usage_line": self.usage_line.isChecked(), "usage_window": self.usage_window.isChecked(),
                 "usage_window_on_top": self.usage_on_top.isChecked()}
 
     def _hotkeys_group(self, cfg):

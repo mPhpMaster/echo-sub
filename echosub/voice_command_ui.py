@@ -107,6 +107,7 @@ class VoiceCommandMixin:
             needs_wake,
             self.cfg.get("voice_typing", False),
             ai_assistant.trigger_words(self.cfg) if self.cfg.get("ai_enabled", False) else False,
+            tuple(self.cfg.get("profiles") or {}) if self.cfg.get("profiles_enabled", True) else (),
         )
         if command is None:
             self._report_unknown_command(heard)
@@ -337,6 +338,8 @@ class VoiceCommandMixin:
             "exit": lambda: self._quit(),
             "summary": lambda: self.summarize_conversation(),
         }
+        if str(target).startswith("profile:"):  # only a profile you saved; anything else is refused there
+            return self.switch_profile(target[len("profile:"):])
         action = actions.get(target)
         if action is None:
             log.warning("Refused an unknown app command: %r", target)
