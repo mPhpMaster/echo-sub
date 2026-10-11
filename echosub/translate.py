@@ -21,19 +21,33 @@ class NoTranslator:
         return text
 
 
+def cpu_threads():
+    """Threads for translating on the processor: four, but always one core left for speech recognition.
+
+    More is worse on a busy PC: with six threads on a six-core processor that a game and Discord were
+    also using, a sentence took 23-56 s instead of 2.5-5 s.
+    """
+    return max(1, min(4, (os.cpu_count() or 4) - 1))
+
+
 class NLLBTranslator:
     streaming = True
 
-    def __init__(self, path, device="cuda"):
+    def __init__(self, path, device="cuda", fast_cpu=True):
         import ctranslate2
         import sentencepiece as spm
 
-        if device == "cuda" and ctranslate2.get_cuda_device_count() == 0:
-            device = "cpu"
+        from . import cuda_libs
+
+        if device == "cuda" and (ctranslate2.get_cuda_device_count() == 0 or not cuda_libs.available()):
+            device = "cpu"  # no card, or none of NVIDIA's libraries: every sentence would fail on it
+        self.device = device
+        # On the processor a greedy search is about a fifth faster than two beams, for nearly the same words
+        self.beam_size = 1 if device == "cpu" and fast_cpu else 2
         supported = ctranslate2.get_supported_compute_types(device)
         compute_type = "int8_float16" if "int8_float16" in supported else "int8"
         self.translator = ctranslate2.Translator(
-            path, device=device, compute_type=compute_type, intra_threads=4
+            path, device=device, compute_type=compute_type, intra_threads=cpu_threads() if device == "cpu" else 4
         )
         self.sp = spm.SentencePieceProcessor(model_file=os.path.join(path, "sentencepiece.bpe.model"))
 
@@ -57,7 +71,7 @@ class NLLBTranslator:
         results = self.translator.translate_batch(
             batch,
             target_prefix=[[tgt_code]] * len(batch),
-            beam_size=2,
+            beam_size=self.beam_size,
             max_batch_size=32,
             max_decoding_length=200,
             repetition_penalty=1.1,
@@ -155,7 +169,7 @@ class GoogleTranslator:
             raise RateLimited(retry_in)
 
 
-def offline_fallback(device, downloader=None):
+def offline_fallback(device, downloader=None, fast_cpu=True):
     """(name, factory) for an NLLB model that is already downloaded, or None."""
     from .downloads import ModelDownloader
 
@@ -163,15 +177,15 @@ def offline_fallback(device, downloader=None):
     for key in config.NLLB_REPOS:
         path = downloader.nllb_local(key)
         if path:
-            return key.upper(), lambda: NLLBTranslator(path, device)
+            return key.upper(), lambda: NLLBTranslator(path, device, fast_cpu)
     return None
 
 
-def create(key, device, downloader=None):
+def create(key, device, downloader=None, fast_cpu=True):
     if key == "google":
-        return GoogleTranslator(offline_fallback(device, downloader))
+        return GoogleTranslator(offline_fallback(device, downloader, fast_cpu))
     if key in config.NLLB_REPOS:
         from .downloads import ModelDownloader
 
-        return NLLBTranslator((downloader or ModelDownloader()).nllb(key), device)
+        return NLLBTranslator((downloader or ModelDownloader()).nllb(key), device, fast_cpu)
     return NoTranslator()

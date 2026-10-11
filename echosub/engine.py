@@ -210,7 +210,8 @@ class CaptionEngine(TranslationMixin):
         try:
             # The Vulkan engine is not CTranslate2's: translation uses an NVIDIA card if there is one
             device = "cuda" if self.asr.device == "vulkan" else self.asr.device
-            self.translator = translate.create(cfg["translator"], device, downloader)
+            self.translator = translate.create(cfg["translator"], device, downloader,
+                                               cfg.get("fast_cpu_translation", True))
             if hasattr(self.translator, "notify"):
                 self.translator.notify = self.on_status
         except downloads.DownloadCanceled:
