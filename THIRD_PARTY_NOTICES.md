@@ -26,6 +26,7 @@ EchoSub is built on the open-source software and AI models listed below. Each co
 | pycaw | MIT | https://github.com/AndreMiras/pycaw |
 | comtypes | MIT | https://github.com/enthought/comtypes |
 | psutil | BSD-3-Clause | https://github.com/giampaolo/psutil |
+| PyWinRT (`winrt-*` packages: Windows' own OCR for EchoSub Lens) | MIT | https://github.com/pywinrt/pywinrt |
 | requests | Apache-2.0 | https://requests.readthedocs.io |
 | CATT tokenizer code (`echosub/tashkeel/tokenizer.py`, `bw2ar.py`), adapted | Apache-2.0 — Copyright Abjad AI / Faris Alasmary | https://github.com/abjadai/catt |
 | Arabic constants (`echosub/tashkeel/utils.py`) | BSD — Copyright 2003 Arabeyes, Mohammed Elzubeir; 2019 Faris Abdullah Alasmary | https://github.com/abjadai/catt |

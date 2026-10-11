@@ -13,7 +13,7 @@ LOG_DIR = os.path.join(config.DATA_DIR, "logs")
 LOG_PATH = os.path.join(LOG_DIR, "echosub.log")
 
 
-def setup():
+def setup(filename="echosub.log"):
     # pythonw (run.bat) has no console: sys.stdout/stderr are None and any library that prints
     # (e.g. Hugging Face download progress bars) would crash. Give them somewhere harmless to write.
     if sys.stdout is None:
@@ -25,12 +25,13 @@ def setup():
         sys.stderr = open(os.devnull, "w", encoding="utf-8")
 
     os.makedirs(LOG_DIR, exist_ok=True)
+    path = os.path.join(LOG_DIR, filename)  # EchoSub Lens runs in a process of its own: lens.log
     fmt = logging.Formatter("%(asctime)s %(levelname)-7s %(threadName)s %(name)s: %(message)s")
     root = logging.getLogger()
     root.setLevel(logging.DEBUG if os.environ.get("ECHOSUB_DEBUG") else logging.INFO)
 
     file_handler = logging.handlers.RotatingFileHandler(
-        LOG_PATH, maxBytes=1_000_000, backupCount=3, encoding="utf-8")
+        path, maxBytes=1_000_000, backupCount=3, encoding="utf-8")
     file_handler.setFormatter(fmt)
     root.addHandler(file_handler)
 
@@ -52,4 +53,4 @@ def setup():
 
     sys.excepthook = excepthook
     threading.excepthook = thread_excepthook
-    return LOG_PATH
+    return path

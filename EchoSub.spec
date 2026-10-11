@@ -52,7 +52,9 @@ binaries += collect_dynamic_libs("sherpa_onnx")
 hiddenimports = (
     collect_submodules("pycaw")
     + collect_submodules("sherpa_onnx")
-    + ["pyaudiowpatch", "sentencepiece", "soxr", "deep_translator", "comtypes.stream"]
+    + collect_submodules("winrt")  # EchoSub Lens: Windows OCR
+    + ["pyaudiowpatch", "sentencepiece", "soxr", "deep_translator", "comtypes.stream",
+       "PySide6.QtPdf"]  # EchoSub Lens reads PDF files
 )
 
 a = Analysis(
@@ -65,7 +67,7 @@ a = Analysis(
     runtime_hooks=[],
     excludes=["tkinter", "matplotlib", "torch", "tensorflow", "IPython", "pytest",
               "PySide6.QtWebEngineCore", "PySide6.QtWebEngineWidgets", "PySide6.Qt3DCore", "PySide6.QtQuick3D",
-              "PySide6.QtMultimedia", "PySide6.QtCharts", "PySide6.QtDataVisualization", "PySide6.QtPdf"],
+              "PySide6.QtMultimedia", "PySide6.QtCharts", "PySide6.QtDataVisualization"],
     noarchive=False,
 )
 pyz = PYZ(a.pure)

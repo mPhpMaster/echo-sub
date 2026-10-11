@@ -51,6 +51,16 @@ Everything runs locally: speech recognition and translation happen on your own m
 - Hides itself when nobody is talking; stays while your mouse is over it.
 - Click-through lock, global hotkeys (`Ctrl+Alt+H` show/hide, `Ctrl+Alt+P` pause, `Ctrl+Alt+L` lock).
 
+**EchoSub Lens — translate the screen**
+- A tool of its own, with its own tray icon: choose an area of the screen or a whole screen and every piece of text in it is shown translated right on top of the original.
+- Clicks pass through to the page or program underneath; hold `Ctrl` to select and copy a translation. `Ctrl+Alt+T` starts and stops it, `Ctrl+Alt+R` chooses a new area.
+- Text is read offline with Windows' own OCR; translation uses NLLB (offline) or Google.
+- Your own look: font, size, bold, text and background colours, opacity and rounded corners.
+- Shows in screenshots and screen sharing (Discord, OBS), or only on your own screen if you prefer.
+- A lens around the mouse (`Ctrl+Alt+M`): only the text under the pointer is translated, and the lens follows the mouse.
+- Translates files too: pictures, PDF (scanned ones as well), Word (.docx, formatting kept) and text or subtitle files.
+- Any key for any option: *Settings → Keyboard shortcuts*.
+
 **Everything else**
 - Caption history window (copy / save) and optional automatic transcripts.
 - Live preview while you change settings; searchable dropdowns; restore defaults.
@@ -151,6 +161,7 @@ Settings, models, logs and transcripts are kept in `%LOCALAPPDATA%\EchoSub`. The
 - **Bigger / smaller:** hold **Shift** and turn the mouse wheel over the box (also *Settings… → Position & Alignment → Size (zoom)*).
 - **Lock:** menu → *Lock window (click-through)* makes clicks pass through the box; unlock from the tray icon or `Ctrl+Alt+L`.
 - **History:** menu → *Caption history…*.
+- **Translate what is on the screen:** start *EchoSub Lens* from the Start menu (or *EchoSub Lens: translate the screen…* in the tray menu). Its own icon appears by the clock: click it to start or stop, right-click it to choose an area or a screen, the language and the translator. Hold `Ctrl` to select and copy a translation; otherwise clicks go through to what is underneath.
 - **Tray icon dot:** blue = listening, amber = loading or reconnecting, grey = paused, red = error.
 
 If captions lag, choose a smaller speech model (Settings → Language & Engine → *Small* or *Medium*). The full [User Guide](docs/USER_GUIDE.md) explains every setting and common fixes.

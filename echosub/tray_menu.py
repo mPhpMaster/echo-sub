@@ -3,7 +3,7 @@
 """The tray icon's menu: every switch the app has, in one place."""
 from PySide6.QtCore import QUrl
 from PySide6.QtGui import QAction, QActionGroup, QDesktopServices
-from PySide6.QtWidgets import QMenu
+from PySide6.QtWidgets import QMenu, QSystemTrayIcon
 
 from . import APP_NAME, DONATE_URL, hotkeys, languages
 from .settings_widgets import position_icon
@@ -65,6 +65,7 @@ class TrayMenuMixin:
         m.addAction("Heard but not understood…", self.open_missed_window)
         m.addAction("Caption history…", self._open_history)
         m.addAction("Summarize the conversation (AI)…", self.summarize_conversation)
+        m.addAction("EchoSub Lens: translate the screen…", self.open_lens)
         m.addAction(self.act_usage)
         m.addAction("Settings…", self._open_settings)
         m.addAction("Open log file", self._open_log)
@@ -109,6 +110,13 @@ class TrayMenuMixin:
     def set_box_position(self, key):
         if key in self.position_actions and key != "custom":
             self._apply({"box_position": key})
+
+    def open_lens(self):
+        """EchoSub Lens runs in a process of its own; a second start only points at the running one."""
+        from . import lens_app
+
+        if not lens_app.launch():
+            self.tray.showMessage(APP_NAME, "Could not start EchoSub Lens", QSystemTrayIcon.Warning, 4000)
 
     def _update_hotkey_labels(self):
         enabled = self.cfg["global_hotkeys"]

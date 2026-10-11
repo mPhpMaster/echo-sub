@@ -52,7 +52,7 @@ MinVersion=10.0
 PrivilegesRequired=lowest
 PrivilegesRequiredOverridesAllowed=dialog
 ; Ask to close a running EchoSub before installing or uninstalling (the app owns this mutex).
-AppMutex=EchoSubAppMutex
+AppMutex=EchoSubAppMutex,EchoSubLensMutex
 CloseApplications=yes
 
 [Languages]
@@ -82,6 +82,7 @@ Source: "..\CHANGELOG.md"; DestDir: "{app}"; Flags: ignoreversion
 [Icons]
 Name: "{autoprograms}\{#AppName}"; Filename: "{app}\{#AppExe}"; Comment: "Live, translated captions for anything your PC plays"
 Name: "{autodesktop}\{#AppName}"; Filename: "{app}\{#AppExe}"; Tasks: desktopicon
+Name: "{autoprograms}\{#AppName} Lens"; Filename: "{app}\{#AppExe}"; Parameters: "--lens";     Comment: "Translate the text on your screen, in place"
 
 [Registry]
 Root: HKCU; Subkey: "Software\Microsoft\Windows\CurrentVersion\Run"; ValueType: string; ValueName: "{#AppName}"; \

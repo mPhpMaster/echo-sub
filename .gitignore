@@ -15,6 +15,7 @@ models/
 logs/
 transcripts/
 settings.json
+lens.json
 tests/_data/
 
 # Editors / OS

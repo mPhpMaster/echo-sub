@@ -38,28 +38,38 @@ class NLLBTranslator:
         self.sp = spm.SentencePieceProcessor(model_file=os.path.join(path, "sentencepiece.bpe.model"))
 
     def translate(self, text, src, tgt):
+        return self.translate_many([text], src, tgt)[0]
+
+    def translate_many(self, texts, src, tgt):
+        """Several texts in one pass over the model (much faster on a graphics card than one by one)."""
         src_code, tgt_code = languages.nllb_code(src), languages.nllb_code(tgt)
-        if not text or not tgt_code:
-            return text
+        if not tgt_code:
+            return list(texts)
         if not src_code:
             src_code = "eng_Latn"
-        sentences = [s for s in _SENTENCE_SPLIT.split(text) if s.strip()]
-        batch = [[src_code] + self.sp.encode(s, out_type=str) + ["</s>"] for s in sentences]
+        owners, batch = [], []
+        for index, text in enumerate(texts):
+            for sentence in (s for s in _SENTENCE_SPLIT.split(text or "") if s.strip()):
+                owners.append(index)
+                batch.append([src_code] + self.sp.encode(sentence, out_type=str) + ["</s>"])
+        if not batch:
+            return list(texts)
         results = self.translator.translate_batch(
             batch,
             target_prefix=[[tgt_code]] * len(batch),
             beam_size=2,
+            max_batch_size=32,
             max_decoding_length=200,
             repetition_penalty=1.1,
             no_repeat_ngram_size=4,
         )
-        out = []
-        for r in results:
+        out = [[] for _ in texts]
+        for index, r in zip(owners, results):
             tokens = r.hypotheses[0]
             if tokens and tokens[0] == tgt_code:
                 tokens = tokens[1:]
-            out.append(self.sp.decode(tokens).strip().lstrip("-–— ").strip())
-        return " ".join(out).strip()
+            out[index].append(self.sp.decode(tokens).strip().lstrip("-–— ").strip())
+        return [" ".join(parts).strip() if parts else text for parts, text in zip(out, texts)]
 
 
 class RateLimited(Exception):

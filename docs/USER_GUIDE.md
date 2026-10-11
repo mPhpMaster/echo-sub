@@ -157,6 +157,57 @@ device and says so in the status line, then moves back to yours as soon as it is
 
 Move the mouse over the caption box: a small copy button appears next to every line, the original and the translation. Click it to copy that line's text to the clipboard — the button shows a check mark for a moment. Turn the buttons off in *Settings → Text & Colors*. They don't appear while the box is locked (click-through).
 
+## EchoSub Lens: translating the screen
+
+EchoSub Lens translates the text you *see*, not what you hear: a web page, a game's menus, a program in
+another language. It is a tool of its own, with its own icon by the clock, and runs with or without the
+captions. Start it from *Start menu → EchoSub Lens* or *EchoSub tray menu → EchoSub Lens: translate the screen…*
+(running from source: `python -m echosub --lens`).
+
+- **What to translate:** right-click its icon → *Choose an area of the screen…* (or `Ctrl+Alt+R`) and drag a
+  rectangle — `Esc` or a right-click cancels — or *Translate a whole screen* and pick one of your screens.
+- **A lens around the mouse:** *Lens around the mouse* (`Ctrl+Alt+M`) translates only a box around the
+  pointer, and the box follows the mouse: stop on a line and its translation appears about half a second
+  later. Small moves inside the box do not move it, so you can read without it jumping; hold `Ctrl` and it stays
+  still while you select or copy. *Lens size and frame* chooses Small, Medium, Large or Wide, makes it
+  *Bigger* or *Smaller* (each can have its own key), and switches the thin frame off. Turning the lens off goes
+  back to the area or screen you were translating before.
+- **Start / stop:** click the icon, or press `Ctrl+Alt+T`. The icon's magnifying glass is green while it translates.
+- **Language:** *Translate into* — EchoSub's caption language unless you pick another one.
+- **The text on the screen** is read by Windows' own OCR, offline. *Text on the screen is in* picks the language
+  it reads; *Automatic* uses your Windows display languages. To read a language that is not in the list, add it in
+  *Settings → Time & language → Language* (with its "Optical character recognition" feature).
+- **Translator:** the one EchoSub uses, or Google / NLLB just for Lens. The first screen takes a few seconds while
+  the model loads; after that only new text is translated.
+- **Working underneath:** clicks, scrolling and typing go to the page or program as if the translations were not
+  there. While it scrolls or changes the translations step aside, and come back once it settles.
+- **Copying:** hold `Ctrl` and the translations take the mouse: drag over a word or sentence and press `Ctrl+C`,
+  double-click a word, or right-click for *Copy this translation*, *Copy the original text* or *Copy all
+  translations*. Hovering with `Ctrl` held shows the original. *Select mode* in the menu keeps them that way
+  without holding `Ctrl`.
+- **Appearance:** *Appearance (font, size, colours)…* chooses the font, the size — fitted to the original text
+  (larger or smaller by a percentage) or always the same size — bold, the text colour and the background
+  (*Match the page* or your own colour), the background's opacity (0 % shows only the words) and rounded
+  corners. Changes show at once; *Cancel* puts back what was there.
+- **Screen sharing:** the translations show in screenshots and in screen sharing (Discord, Teams, OBS), so the
+  people watching see the translated screen. Untick *Show translations in screenshots and screen sharing* to keep
+  them on your own screen only.
+- **Translating a file:** *Translate a file…* (`Ctrl+Alt+F`) opens a picture (PNG, JPG, BMP, GIF, TIFF,
+  WebP), a PDF, a Word document (.docx) or a text or subtitle file (.txt, .srt, .md, .csv). Pictures and PDF
+  pages appear with the translation over the original — *Show the original* switches back — and the
+  translated text sits beside them, ready to select and copy. *Save translated copy…* writes a PNG or a PDF;
+  a Word document keeps its headings, tables, bold, colours, headers and footers, with only the words
+  translated, and a subtitle file keeps its numbers and times. The original file is never changed. An old
+  .doc file can be saved as .docx from Word first. `EchoSub.exe --lens <file>` opens a file straight away.
+- **Keyboard shortcuts:** *Settings (look, keyboard shortcuts)…* → *Keyboard shortcuts* gives every option
+  its own key: click its box and press any key or combination — F-keys, the keypad and media keys work, with
+  or without Ctrl, Alt, Shift or the Windows key. *Clear* removes a key. A key given to two options, one
+  EchoSub's captions already use, or one another program holds is pointed out before it is kept. The keys
+  work everywhere, even in a game, and the menu shows each one.
+- **Text that changes under a translation** (a game's dialogue box, a subtitle): Lens makes the translations
+  invisible for a split second every few seconds to look underneath. *Look under the translations for changes*
+  sets how often, or *Never*. It does not need to while they are hidden from screen sharing.
+
 ## Settings
 
 Every dropdown accepts typing to search (e.g. type `ital` for Italian; Arabic names work too, with or without hamza).
