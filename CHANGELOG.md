@@ -5,6 +5,9 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and 
 
 ## [Unreleased]
 
+### Added
+- **Support EchoSub.** A *♥ Support EchoSub* button in the About window and an item in the tray menu open its PayPal page in your browser, for anyone who wants to give something back. It is optional and quiet: no pop-ups, no reminders, nothing held back. The repository page gets a *Sponsor* button too.
+
 ## [1.14.0] — 2026-10-08
 
 ### Added

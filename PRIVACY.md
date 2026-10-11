@@ -62,7 +62,7 @@ EchoSub connects to the internet only in these cases:
 |---|---|---|
 | First use of a model (including the Arabic diacritics model, if you turn that option on) | Hugging Face (huggingface.co) and GitHub (github.com) | A normal download request for the model files. No audio or captions. |
 | You select the **Google Translate** engine | Google's translation service | The text of each caption, so it can be translated. Google's privacy policy applies. |
-| You click a link in the About window | The linked website | Whatever your browser normally sends. |
+| You click a link in the About window, or *Support EchoSub* | The linked website (for *Support EchoSub*, PayPal) | Whatever your browser normally sends. EchoSub itself sends nothing. |
 | Once a day, and when you choose *Check for updates…* (can be switched off in *Settings → Advanced*) | GitHub (api.github.com) | A request for the latest release number. No audio or captions. |
 | You switch on *Settings → AI* **and** ask a question with a cloud service chosen | Anthropic, OpenAI, Google or DeepSeek — the one you chose | Your question, the recent captions you chose to send and your PC's date, time and time zone, with your API key. Never with LM Studio, which runs on your computer. |
 | You switch on *Answer questions on its own* **and** a question is heard, with a cloud service chosen | The same service | The question that was heard and the recent captions — sent without you asking, as described above. |

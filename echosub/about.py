@@ -9,7 +9,8 @@ from PySide6.QtGui import QColor, QDesktopServices, QFont, QIcon, QPainter, QPai
 from PySide6.QtWidgets import QDialog, QHBoxLayout, QLabel, QPushButton, QVBoxLayout
 
 from . import (
-    APP_NAME, AUTHOR, AUTHOR_EMAIL, COPYRIGHT, DESCRIPTION, LICENSE_NAME, LINKS, REPOSITORY_URL, __version__, config,
+    APP_NAME, AUTHOR, AUTHOR_EMAIL, COPYRIGHT, DESCRIPTION, DONATE_URL, LICENSE_NAME, LINKS, REPOSITORY_URL,
+    __version__, config,
 )
 
 AVATAR_NAMES = ("author.png", "author.jpg", "author.jpeg")
@@ -74,6 +75,9 @@ class AboutDialog(QDialog):
             QPushButton#close {{ background: {ACCENT}; color: #04211D; border: none; border-radius: 8px;
                                 padding: 11px; font-weight: 700; font-size: 11pt; }}
             QPushButton#close:hover {{ background: #2DD4BF; }}
+            QPushButton#support {{ background: transparent; color: #FDA4AF; border: 1px solid #7F1D3A;
+                                  border-radius: 8px; padding: 9px 18px; font-weight: 700; }}
+            QPushButton#support:hover {{ border-color: #FB7185; color: white; background: #2A1219; }}
         """)
 
         root = QVBoxLayout(self)
@@ -123,6 +127,19 @@ class AboutDialog(QDialog):
         links.addStretch(1)
         root.addSpacing(4)
         root.addLayout(links)
+
+        thanks = QLabel(f"{APP_NAME} is free. If it helps you, you can support its development.")
+        thanks.setObjectName("muted")
+        thanks.setAlignment(Qt.AlignCenter)
+        thanks.setWordWrap(True)
+        root.addSpacing(6)
+        root.addWidget(thanks)
+        support = QHBoxLayout()
+        support.addStretch(1)
+        self.support_button = self._link_button(f"♥  Support {APP_NAME}", DONATE_URL, "support")
+        support.addWidget(self.support_button)
+        support.addStretch(1)
+        root.addLayout(support)
 
         docs = QHBoxLayout()
         docs.addStretch(1)

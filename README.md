@@ -13,6 +13,7 @@
   <a href="LICENSE"><img alt="License: GPL-3.0" src="https://img.shields.io/badge/license-GPL--3.0-blue.svg"></a>
   <img alt="Platform: Windows 10/11" src="https://img.shields.io/badge/platform-Windows%2010%20%7C%2011-0078D6.svg">
   <img alt="Python 3.10" src="https://img.shields.io/badge/python-3.10-3776AB.svg">
+  <a href="https://paypal.me/mfsafadi"><img alt="Support EchoSub on PayPal" src="https://img.shields.io/badge/support-PayPal-E11D48.svg"></a>
 </p>
 
 <p align="center">
@@ -172,6 +173,10 @@ See [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md) for the project layout, how the p
 ## Privacy
 
 EchoSub processes audio on your computer. Audio and captions are never uploaded — except the caption text sent to Google if you select the Google Translate engine. See [PRIVACY.md](PRIVACY.md).
+
+## Support EchoSub
+
+EchoSub is free and always will be. If it helps you follow a video, a call or a game, you can support its development with a donation through **[PayPal](https://paypal.me/mfsafadi)** — it is also in the app, under *Support EchoSub* in the tray menu and the About window. It is entirely optional: nothing in EchoSub is held back, and the app never asks.
 
 ## Contributing
 

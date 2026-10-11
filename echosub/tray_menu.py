@@ -1,10 +1,11 @@
 # SPDX-License-Identifier: GPL-3.0-only
 # Copyright (C) 2026 Mohammad Al-Safadi
 """The tray icon's menu: every switch the app has, in one place."""
-from PySide6.QtGui import QAction, QActionGroup
+from PySide6.QtCore import QUrl
+from PySide6.QtGui import QAction, QActionGroup, QDesktopServices
 from PySide6.QtWidgets import QMenu
 
-from . import APP_NAME, hotkeys, languages
+from . import APP_NAME, DONATE_URL, hotkeys, languages
 from .settings_widgets import position_icon
 
 ROWS = ("top", "middle", "bottom")
@@ -66,6 +67,7 @@ class TrayMenuMixin:
         m.addAction("Settings…", self._open_settings)
         m.addAction("Open log file", self._open_log)
         m.addAction("Check for updates…", lambda: self._check_updates_async(manual=True))
+        m.addAction(f"♥ Support {APP_NAME}…", lambda: QDesktopServices.openUrl(QUrl(DONATE_URL)))
         m.addAction(f"About {APP_NAME}…", self._open_about)
         m.addAction("Restart engine", self._start_engine)
         m.addSeparator()

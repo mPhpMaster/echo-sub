@@ -25,3 +25,5 @@ LINKS = {
     "Discord": "http://discord.com/invite/BRgVPum",
 }
 REPOSITORY_URL = "https://github.com/mPhpMaster/echo-sub"
+# Where people can give something if EchoSub helps them. Written here, never taken from anywhere else.
+DONATE_URL = "https://paypal.me/mfsafadi"
