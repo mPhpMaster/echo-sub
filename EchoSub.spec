@@ -14,8 +14,10 @@ SITE = os.path.join(ROOT, ".venv", "Lib", "site-packages")
 
 # NVIDIA CUDA runtime DLLs, kept in nvidia\<package>\bin like in site-packages (echosub.cuda_setup finds them there).
 # nvblas is not used by CTranslate2.
+# They are 2 GB, so by default they are left out: an NVIDIA PC downloads them on first use (echosub/cuda_libs.py).
+# Set ECHOSUB_BUNDLE_CUDA=1 to build the old, all-in-one app instead.
 nvidia_binaries = []
-for package in ("cublas", "cudnn", "cuda_nvrtc"):
+for package in (("cublas", "cudnn", "cuda_nvrtc") if os.environ.get("ECHOSUB_BUNDLE_CUDA") == "1" else ()):
     for dll in glob.glob(os.path.join(SITE, "nvidia", package, "bin", "*.dll")):
         if not os.path.basename(dll).lower().startswith("nvblas"):
             nvidia_binaries.append((dll, f"nvidia/{package}/bin"))

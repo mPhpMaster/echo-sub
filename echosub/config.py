@@ -156,6 +156,7 @@ DEFAULTS = {
     "tts_voice": "",                       # a voice by name; empty = the first for the language
     "tts_rate": 0,                         # -10 (slow) to 10 (fast)
     "tts_volume": 100,                     # 0-100
+    "cuda_download": True,                 # on an NVIDIA PC, fetch NVIDIA's libraries the first time they are needed
     "stream_enabled": False,               # a local page with the captions, for OBS's Browser Source
     "stream_port": 8790,                   # on 127.0.0.1 only
     "stream_lines": 2,                     # captions shown at once

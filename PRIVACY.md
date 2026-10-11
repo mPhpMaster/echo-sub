@@ -63,6 +63,7 @@ EchoSub connects to the internet only in these cases:
 | When | Where | What is sent |
 |---|---|---|
 | First use of a model (including the Arabic diacritics model, if you turn that option on) | Hugging Face (huggingface.co) and GitHub (github.com) | A normal download request for the model files. No audio or captions. |
+| First use of an NVIDIA graphics card (can be switched off in *Settings → Language & Engine*) | PyPI (files.pythonhosted.org) | A normal download request for NVIDIA's CUDA libraries. No audio or captions. |
 | You select the **Google Translate** engine | Google's translation service | The text of each caption, so it can be translated. Google's privacy policy applies. |
 | You click a link in the About window, or *Support EchoSub* | The linked website (for *Support EchoSub*, PayPal) | Whatever your browser normally sends. EchoSub itself sends nothing. |
 | Once a day, and when you choose *Check for updates…* (can be switched off in *Settings → Advanced*) | GitHub (api.github.com) | A request for the latest release number. No audio or captions. |

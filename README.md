@@ -95,6 +95,8 @@ Everything runs locally: speech recognition and translation happen on your own m
 
 EchoSub picks the fastest precision for your GPU automatically (for example int8 on GTX 10-series cards, which have no fast float16).
 
+**NVIDIA's libraries** (cuBLAS, cuDNN, NVRTC — about 1.3 GB) are not in the installer: a PC with an NVIDIA card downloads them the first time the card is used, from NVIDIA's packages on PyPI, checked against pinned hashes. Other PCs never need them, which keeps the installer small.
+
 **AMD and Intel graphics:** choose *Settings → Language & Engine → Run on → Graphics card, any brand: AMD, Intel or NVIDIA (Vulkan)*. It runs a second speech engine, [whisper.cpp](https://github.com/ggml-org/whisper.cpp), on any card with a current driver, and downloads its own compressed copy of the chosen model the first time (574 MB for *Large v3 Turbo*, 264 MB for *Small*). On a GTX 1060 it ran *Small* about 7× faster than real time against under 1× on the processor; on NVIDIA cards the NVIDIA-only option is still the fastest. It has been tested on NVIDIA through Vulkan — reports from AMD and Intel owners are welcome.
 
 ### Models

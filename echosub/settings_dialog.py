@@ -150,6 +150,10 @@ class SettingsDialog(VoiceCommandsTabMixin, AdvancedTabMixin, MicrophoneGroupMix
         self.device_note.setStyleSheet("color: #D4A03C;")
         self.device_note.setVisible(bool(self.device_note.text()))
         f.addRow(self.device_note)
+        self.cuda_download = QCheckBox("With an NVIDIA card, download NVIDIA's libraries for it the first time "
+                                       "(about 1.3 GB, once)")
+        self.cuda_download.setChecked(cfg.get("cuda_download", True))
+        f.addRow(self.cuda_download)
         f.addRow("Audio source:", self.audio_dev)
         self.translate_same = QCheckBox("Translate even when speech is already in the caption language")
         self.translate_same.setToolTip("Rewrites dialect or casual speech into the standard language, "
@@ -417,6 +421,7 @@ class SettingsDialog(VoiceCommandsTabMixin, AdvancedTabMixin, MicrophoneGroupMix
             **self.stream_values(),
             "translator": self.translator.currentData(),
             "device": self.device.currentData(),
+            "cuda_download": self.cuda_download.isChecked(),
             "audio_device": self.audio_dev.currentData(),
             "font_family": self.font_family.currentFont().family(),
             "show_original": self.show_original.isChecked(),

@@ -13,7 +13,7 @@ import time
 
 from faster_whisper.vad import VadOptions, get_speech_timestamps
 
-from . import asr, asr_vulkan, audio, downloads, languages, speaker, translate  # noqa: F401
+from . import asr, asr_vulkan, audio, cuda_libs, downloads, gpu, languages, speaker, translate  # noqa: F401
 from . import segmentation
 from .engine_sources import MICROPHONE, SYSTEM, AudioStream
 from .engine_translation import MAX_PENDING_TRANSLATIONS, TranslationMixin  # noqa: F401 (kept for callers)
@@ -182,11 +182,23 @@ class CaptionEngine(TranslationMixin):
         if cfg["device"] == "vulkan":
             self.asr = asr_vulkan.load(downloader, model, self.on_status)
         else:
+            if cuda_libs.needed(cfg):
+                self.on_status("Downloading NVIDIA's graphics-card libraries (about 1.3 GB, only once)…")
+                try:
+                    cuda_libs.download(downloader)
+                except downloads.DownloadFailed as e:
+                    log.warning("NVIDIA libraries: %s", e)
+                    self.on_status(f"Could not get NVIDIA's libraries ({e}) — using the processor")
+            device = cfg["device"]
+            if device == "cuda" and not cuda_libs.available():
+                device = "cpu"  # without NVIDIA's libraries every sentence would fail on the card
+                if gpu.vendor() == "nvidia":
+                    self.on_status("NVIDIA's libraries are not on this PC — captions use the processor")
             whisper_path = downloader.whisper(model)
             try:
-                self.asr = asr.Transcriber(whisper_path, cfg["device"])
+                self.asr = asr.Transcriber(whisper_path, device)
             except Exception as e:
-                if cfg["device"] != "cuda":
+                if device != "cuda":
                     raise
                 log.exception("GPU load failed, falling back to CPU")
                 self.on_status(f"Could not use the GPU ({e}) — switching to CPU")

@@ -5,6 +5,9 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and 
 
 ## [Unreleased]
 
+### Changed
+- **A much smaller installer.** NVIDIA's CUDA libraries — 2 GB of the app, useful only with an NVIDIA card — are no longer in the installer. On a PC with an NVIDIA card they are downloaded the first time it is used (about 1.3 GB, once, in the same window as the models, with the same cancel and resume), from NVIDIA's own packages on PyPI, checked against pinned SHA-256 hashes; only the DLLs are kept. AMD, Intel and processor-only PCs never download them. *Settings → Language & Engine* can switch the download off (the processor is used then). An existing installation keeps the copy it already has.
+
 ### Added
 - **Captions for a live stream (OBS).** *Settings → Stream* (off by default) offers the captions as a page for OBS's *Browser Source*: transparent, each speaker in their colour, the original above the translation if you like, Arabic right to left. It is served on this PC only (127.0.0.1), on a port of its own; copy the address from the same tab. Nothing runs while it is off.
 - **Download and install updates from inside EchoSub.** The update message gains *Download and install*: the official installer is fetched from EchoSub's own GitHub releases (at an address built from the version number, never one taken from the network), checked against its published SHA-256 — a file that does not match is deleted — and run; EchoSub closes and starts again on its own afterwards. Nothing happens until you click. *Settings → Advanced* hides the button and chooses the download folder (the Windows temp folder by default).
