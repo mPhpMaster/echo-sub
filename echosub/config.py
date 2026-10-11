@@ -157,6 +157,7 @@ DEFAULTS = {
     "tts_voice": "",                       # a voice by name; empty = the first for the language
     "tts_rate": 0,                         # -10 (slow) to 10 (fast)
     "tts_volume": 100,                     # 0-100
+    "fast_cpu_translation": True,          # on the processor, a quicker search (nearly the same translation)
     "cuda_download": True,                 # on an NVIDIA PC, fetch NVIDIA's libraries the first time they are needed
     "stream_enabled": False,               # a local page with the captions, for OBS's Browser Source
     "stream_port": 8790,                   # on 127.0.0.1 only
@@ -218,7 +219,8 @@ BOX_COLUMNS = ("left", "center", "right")
 
 # Settings that require reloading models or reopening the audio stream
 ENGINE_KEYS = ("whisper_model", "device", "translator", "audio_device", "audio_app", "speaker_detection",
-               "light_mode", "audio_backlog_sec", "audio_backlog_dir", "mic_enabled", "mic_device", "light_model")
+               "light_mode", "fast_cpu_translation", "cuda_download", "audio_backlog_sec", "audio_backlog_dir",
+               "mic_enabled", "mic_device", "light_model")
 
 SPEAKER_COLOR_TARGETS = {
     "both": "Translation and original text",

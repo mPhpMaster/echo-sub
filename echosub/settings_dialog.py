@@ -151,6 +151,10 @@ class SettingsDialog(VoiceCommandsTabMixin, AdvancedTabMixin, MicrophoneGroupMix
         self.device_note.setStyleSheet("color: #D4A03C;")
         self.device_note.setVisible(bool(self.device_note.text()))
         f.addRow(self.device_note)
+        self.fast_cpu_translation = QCheckBox("Faster translation on the processor (a simpler search, "
+                                              "nearly the same words)")
+        self.fast_cpu_translation.setChecked(cfg.get("fast_cpu_translation", True))
+        f.addRow(self.fast_cpu_translation)
         self.cuda_download = QCheckBox("With an NVIDIA card, download NVIDIA's libraries for it the first time "
                                        "(about 1.3 GB, once)")
         self.cuda_download.setChecked(cfg.get("cuda_download", True))
@@ -425,6 +429,7 @@ class SettingsDialog(VoiceCommandsTabMixin, AdvancedTabMixin, MicrophoneGroupMix
             "translator": self.translator.currentData(),
             "device": self.device.currentData(),
             "cuda_download": self.cuda_download.isChecked(),
+            "fast_cpu_translation": self.fast_cpu_translation.isChecked(),
             "audio_device": self.audio_dev.currentData(),
             "audio_app": app_value(self.audio_app),
             "font_family": self.font_family.currentFont().family(),
