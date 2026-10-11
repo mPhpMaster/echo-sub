@@ -5,6 +5,8 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and 
 
 ## [Unreleased]
 
+## [1.16.0] — 2026-10-11
+
 ### Changed
 - **Faster translation on the processor** — which is where it runs on AMD and Intel PCs. It uses a simpler search there (about a fifth faster in a test, the same words), and always leaves a processor core for speech recognition: with every core in use while Discord and a game were running, one sentence took 23–56 s instead of 2.5–5 s. *Settings → Language & Engine* switches the quicker search off; on an NVIDIA card nothing changes. Translation also no longer tries an NVIDIA card whose libraries are missing, which made every sentence fail.
 - **A much smaller installer.** NVIDIA's CUDA libraries — 2 GB of the app, useful only with an NVIDIA card — are no longer in the installer. On a PC with an NVIDIA card they are downloaded the first time it is used (about 1.3 GB, once, in the same window as the models, with the same cancel and resume), from NVIDIA's own packages on PyPI, checked against pinned SHA-256 hashes; only the DLLs are kept. AMD, Intel and processor-only PCs never download them. *Settings → Language & Engine* can switch the download off (the processor is used then). An existing installation keeps the copy it already has.
