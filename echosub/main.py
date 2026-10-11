@@ -20,6 +20,7 @@ from . import APP_NAME, AUTHOR, __version__, config, history, hotkeys, transcrip
 from .overlay import CaptionOverlay  # noqa: E402
 from .ai_assistant import AiAssistantMixin  # noqa: E402
 from .ai_summary import SummaryMixin  # noqa: E402
+from .tts import SpeechMixin  # noqa: E402
 from .tray_menu import TrayMenuMixin  # noqa: E402
 from .update_ui import UpdateCheckMixin  # noqa: E402
 from .usage_app import UsageMixin, tray_text  # noqa: E402
@@ -81,7 +82,8 @@ def make_icon(color):
     return QIcon(pm)
 
 
-class App(TrayMenuMixin, UpdateCheckMixin, VoiceCommandMixin, AiAssistantMixin, SummaryMixin, UsageMixin):
+class App(TrayMenuMixin, UpdateCheckMixin, VoiceCommandMixin, AiAssistantMixin, SummaryMixin, UsageMixin,
+          SpeechMixin):
     def __init__(self, qt):
         self.qt = qt
         self.qt.setQuitOnLastWindowClosed(False)
@@ -231,6 +233,8 @@ class App(TrayMenuMixin, UpdateCheckMixin, VoiceCommandMixin, AiAssistantMixin, 
         self.overlay.entries = self.overlay.entries[-self.cfg["max_lines"]:]
         self.overlay.refresh()
         self.apply_usage_settings()
+        if not self.cfg.get("tts_enabled", False):
+            self.stop_speaking()
         if restart:
             self._start_engine()
         elif self.engine:
@@ -329,6 +333,7 @@ class App(TrayMenuMixin, UpdateCheckMixin, VoiceCommandMixin, AiAssistantMixin, 
             self._report_alerts(original)
             self.remember_for_ai(original, source, spk)
             self.maybe_answer_on_its_own(original, source, lang)
+            self.speak_final(seg_id, original, translated, lang, source)
         # Still offered to the commands, so a muted microphone can hear itself being unmuted.
         self._handle_voice_command(original, source, lang)
 
@@ -344,6 +349,7 @@ class App(TrayMenuMixin, UpdateCheckMixin, VoiceCommandMixin, AiAssistantMixin, 
         if gen == self.generation:
             self.overlay.set_translation(seg_id, translated)
             self.history.set_translation((gen, seg_id), translated)
+            self.speak_translation(seg_id, translated)
 
     def _on_activity(self, gen):
         if gen == self.generation:

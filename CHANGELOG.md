@@ -6,6 +6,7 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and 
 ## [Unreleased]
 
 ### Added
+- **Read the captions aloud** (*Settings → Read aloud*, off by default). Each finished caption — its translation, or the original words — is spoken with a Windows voice in that language, on this PC and offline, so you can listen instead of reading. Choose the voice, speed and volume, and whether your own words are read too (not by default). While it speaks, EchoSub ignores what the PC plays so it never captions its own voice; your microphone still counts. The newer Windows voices (Arabic among them) are used, and if a language has none, it says how to add one.
 - **A summary of the conversation.** Say your wake word and “summarize” (or “لخص”), or choose *Summarize the conversation (AI)* in the tray menu, and the AI chosen in *Settings → AI* writes a short summary of the last 10 minutes — what was talked about, what was agreed, names, numbers and times, and open questions — in a window you can copy from, in your caption language. Only on request, only with the AI switched on; *Settings → AI → Summaries* switches it off or changes the minutes.
 
 ## [1.15.0] — 2026-10-11

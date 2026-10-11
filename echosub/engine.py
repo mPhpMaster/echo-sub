@@ -74,6 +74,7 @@ class CaptionEngine(TranslationMixin):
         self.speakers = None
         self.translator = translate.NoTranslator()
         self.paused = False
+        self.mute_system_until = 0.0  # while a voice reads captions aloud, the PC's own sound is ignored
         self._stop = threading.Event()
         self._thread = None
         self._translation_thread = None
@@ -299,6 +300,10 @@ class CaptionEngine(TranslationMixin):
                 self._clear_pending_partial()
                 time.sleep(0.1)
                 continue
+            if time.monotonic() < self.mute_system_until:
+                for stream in streams:
+                    if stream.name == SYSTEM:
+                        stream.clear()
 
             now = time.monotonic()
             if now - last_health_check > HEALTH_CHECK_SEC:

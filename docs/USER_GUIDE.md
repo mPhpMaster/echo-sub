@@ -199,6 +199,10 @@ Every dropdown accepts typing to search (e.g. type `ital` for Italian; Arabic na
 - **Detect speakers** — a new line and color for each voice. **Apply speaker color to** the translation, the original, or both. **Speaker colors** for up to 8 voices.
 - **Matching strictness** — raise it if two people share a color; lower it if one person gets several colors.
 
+### Read aloud
+
+- **Read each finished caption aloud** (off by default) with a Windows voice: the translation or the original words, other people only or everyone. Pick the voice (*Automatic* uses one in the caption's language), speed and volume, and press **Try it**. Voices come from *Windows Settings → Time & language → Speech*. While it speaks, the PC's own sound is ignored so the voice is never captioned.
+
 ### Advanced
 - Speech detection threshold, silence that ends a sentence, maximum sentence length.
 - **Save every caption to a transcript file** (in `%LOCALAPPDATA%\EchoSub\transcripts`).

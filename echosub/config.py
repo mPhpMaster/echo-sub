@@ -150,6 +150,12 @@ DEFAULTS = {
     "screen_replies": False,               # answer chosen phrases with your own text in the caption box
     "screen_reply_pairs": [],              # [{"phrase": ..., "reply": ...}], written by you
     "screen_reply_seconds": 8,             # how long an answer stays on screen
+    "tts_enabled": False,                  # read finished captions aloud with a Windows voice
+    "tts_what": "translation",             # translation | original
+    "tts_who": "others",                   # others (not your microphone) | everyone
+    "tts_voice": "",                       # a voice by name; empty = the first for the language
+    "tts_rate": 0,                         # -10 (slow) to 10 (fast)
+    "tts_volume": 100,                     # 0-100
     "usage_line": False,                   # EchoSub's own CPU, memory, GPU and disk use in the caption box
     "usage_window": False,                 # ...in a small window of its own
     "usage_window_on_top": True,           # ...kept above other windows
