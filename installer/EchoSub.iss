@@ -89,8 +89,15 @@ Root: HKCU; Subkey: "Software\Microsoft\Windows\CurrentVersion\Run"; ValueType: 
 
 [Run]
 Filename: "{app}\{#AppExe}"; Description: "{cm:LaunchProgram,{#AppName}}"; Flags: nowait postinstall skipifsilent
+; An update started from inside EchoSub passes /RELAUNCH=1: start it again, as the user, not as administrator
+Filename: "{app}\{#AppExe}"; Flags: nowait runasoriginaluser; Check: RelaunchAfterUpdate
 
 [Code]
+function RelaunchAfterUpdate: Boolean;
+begin
+  Result := ExpandConstant('{param:RELAUNCH|0}') = '1';
+end;
+
 procedure CurPageChanged(CurPageID: Integer);
 begin
   if CurPageID = wpFinished then

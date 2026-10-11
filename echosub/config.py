@@ -162,6 +162,8 @@ DEFAULTS = {
     "usage_line": False,                   # EchoSub's own CPU, memory, GPU and disk use in the caption box
     "usage_window": False,                 # ...in a small window of its own
     "usage_window_on_top": True,           # ...kept above other windows
+    "update_install": True,                # offer "Download and install" when a new version is out
+    "update_dir": "",                      # where the installer is downloaded; empty = the Windows temp folder
     "last_update_check": 0,
     "global_hotkeys": True,
     "click_through": False,

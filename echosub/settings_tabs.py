@@ -117,8 +117,19 @@ class AdvancedTabMixin:
         self.update_checks = QCheckBox("Check for a new EchoSub version once a day")
         self.update_checks.setChecked(cfg.get("update_checks", True))
         f.addRow(self.update_checks)
-        f.addRow(hint("EchoSub only tells you about a new version and opens its download page. "
-                      "It never downloads or installs anything by itself."))
+        self.update_install = QCheckBox("Offer to download and install it for me (only when I click)")
+        self.update_install.setChecked(cfg.get("update_install", True))
+        f.addRow(self.update_install)
+        self.update_dir = QLineEdit(cfg.get("update_dir", ""))
+        self.update_dir.setPlaceholderText("Windows temp folder")
+        browse = QPushButton("Browse…")
+        browse.clicked.connect(lambda: self.update_dir.setText(
+            QFileDialog.getExistingDirectory(self, "Download updates to", self.update_dir.text()) or
+            self.update_dir.text()))
+        f.addRow("Download to:", self._row(self.update_dir, browse))
+        f.addRow(hint("EchoSub never downloads or installs anything by itself. When you click Download and "
+                      "install, the official installer (about 1 GB) is fetched from EchoSub's GitHub releases, "
+                      "checked against its published checksum, and run; EchoSub starts again afterwards."))
         return group
 
     def _usage_group(self, cfg):
@@ -150,6 +161,7 @@ class AdvancedTabMixin:
 
     def usage_values(self):
         return {"profiles_enabled": self.profiles_enabled.isChecked(),
+                "update_install": self.update_install.isChecked(), "update_dir": self.update_dir.text().strip(),
                 "usage_line": self.usage_line.isChecked(), "usage_window": self.usage_window.isChecked(),
                 "usage_window_on_top": self.usage_on_top.isChecked()}
 

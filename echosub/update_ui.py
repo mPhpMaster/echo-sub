@@ -1,6 +1,6 @@
 # SPDX-License-Identifier: GPL-3.0-only
 # Copyright (C) 2026 Mohammad Al-Safadi
-"""Telling the user about a new EchoSub release, without ever installing anything itself."""
+"""Telling the user about a new EchoSub release. Installing it happens only when they choose to."""
 import logging
 import threading
 import time
@@ -10,6 +10,7 @@ from PySide6.QtGui import QDesktopServices
 from PySide6.QtWidgets import QMessageBox, QSystemTrayIcon
 
 from . import APP_NAME, __version__, config, updates
+from .update_install import InstallMixin
 
 log = logging.getLogger("echosub")
 
@@ -29,7 +30,7 @@ def is_due(last_check, now=None, interval=CHECK_INTERVAL_SEC):
     return not 0 <= now - last < interval  # a clock set backwards must not block checks for ever
 
 
-class UpdateCheckMixin:
+class UpdateCheckMixin(InstallMixin):
     """Adds the update check to the tray app.
 
     Only the installed build checks, once a day, on its own thread; the user is shown a message
@@ -76,10 +77,16 @@ class UpdateCheckMixin:
         box = QMessageBox()
         box.setWindowTitle(f"{APP_NAME} update available")
         box.setText(f"{APP_NAME} {update.version} is available. You have {__version__}.")
-        box.setInformativeText(f"{APP_NAME} does not install anything by itself. The button below opens the "
-                               "official installer's download page in your browser.")
-        download = box.addButton("Open download page", QMessageBox.AcceptRole)
+        offer_install = bool(self.cfg.get("update_install", True)) and config.FROZEN
+        box.setInformativeText(f"{APP_NAME} never installs anything by itself."
+                               + (" Download and install fetches the official installer, checks it, and runs it."
+                                  if offer_install else
+                                  " The button below opens the official installer's download page in your browser."))
+        install = box.addButton("Download and install", QMessageBox.AcceptRole) if offer_install else None
+        download = box.addButton("Open download page", QMessageBox.ActionRole)
         box.addButton("Later", QMessageBox.RejectRole)
         box.exec()
-        if box.clickedButton() is download:
+        if install is not None and box.clickedButton() is install:
+            self.install_update(update)
+        elif box.clickedButton() is download:
             QDesktopServices.openUrl(QUrl(update.download_url))
