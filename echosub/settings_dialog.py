@@ -10,7 +10,7 @@ from PySide6.QtWidgets import (
 
 from . import APP_NAME, asr_vulkan, audio, config, gpu, languages
 from .settings_ai import AiTabMixin
-from .settings_audio_app import app_field, app_value
+from .settings_audio_app import app_field
 from .settings_tts import SpeechTabMixin
 from .settings_stream import StreamTabMixin
 from .usage_ui import UsageStrip
@@ -161,7 +161,7 @@ class SettingsDialog(VoiceCommandsTabMixin, AdvancedTabMixin, MicrophoneGroupMix
         f.addRow(self.cuda_download)
         f.addRow("Audio source:", self.audio_dev)
         self.audio_app = app_field(cfg)
-        f.addRow("Only this program:", self.audio_app)
+        f.addRow("Only this program or window:", self.audio_app)
         self.translate_same = QCheckBox("Translate even when speech is already in the caption language")
         self.translate_same.setToolTip("Rewrites dialect or casual speech into the standard language, "
                                        "e.g. Egyptian or Gulf Arabic into Modern Standard Arabic.")
@@ -431,7 +431,7 @@ class SettingsDialog(VoiceCommandsTabMixin, AdvancedTabMixin, MicrophoneGroupMix
             "cuda_download": self.cuda_download.isChecked(),
             "fast_cpu_translation": self.fast_cpu_translation.isChecked(),
             "audio_device": self.audio_dev.currentData(),
-            "audio_app": app_value(self.audio_app),
+            **self.audio_app.values(),
             "font_family": self.font_family.currentFont().family(),
             "show_original": self.show_original.isChecked(),
             "show_partial": self.show_partial.isChecked(),

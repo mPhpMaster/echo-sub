@@ -1,6 +1,7 @@
 # SPDX-License-Identifier: GPL-3.0-only
 # Copyright (C) 2026 Mohammad Al-Safadi
-"""Listening to one program only — Discord, say, without the game's sound or the music.
+"""Listening to one program only — Discord, say, without the game's sound or the music — or to the
+program behind one window (app_windows).
 
 Windows 10 (2004) and later can capture what one program plays, with the programs it started
 (Process Loopback). Python cannot reach that directly, so a small helper that ships with EchoSub,
@@ -19,7 +20,7 @@ import threading
 import psutil
 import soxr
 
-from . import audio, config
+from . import app_windows, audio, config
 
 log = logging.getLogger(__name__)
 
@@ -81,33 +82,57 @@ def find_root_pid(name):
     return (roots or matches)[0]["pid"]
 
 
-class AppCapture(audio.LoopbackCapture):
-    """The same as LoopbackCapture, but fed by app-audio.exe for one program."""
+def chosen(cfg):
+    """(program, window title, the window's process when it was picked); empty for the whole PC."""
+    try:
+        window_pid = int(cfg.get("audio_window_pid") or 0)
+    except (TypeError, ValueError):
+        window_pid = 0
+    return str(cfg.get("audio_app") or "").strip(), str(cfg.get("audio_window") or "").strip(), window_pid
 
-    def __init__(self, app_name, backlog_seconds=audio.DEFAULT_BACKLOG_SEC, backlog_dir=None):
+
+def label(app, window=""):
+    return f"\u201c{window}\u201d" if window else app
+
+
+def target_pid(app, window="", window_pid=0):
+    """The process to capture: the program copy behind the window, or the program; None if not open."""
+    if window:
+        pid = app_windows.find_pid(window, app, window_pid)
+        return None if pid is None else app_windows.instance_root(pid)
+    return find_root_pid(app)
+
+
+class AppCapture(audio.LoopbackCapture):
+    """The same as LoopbackCapture, but fed by app-audio.exe for one program (or one window's program)."""
+
+    def __init__(self, app_name, backlog_seconds=audio.DEFAULT_BACKLOG_SEC, backlog_dir=None, window="",
+                 window_pid=0):
         super().__init__("default", backlog_seconds, backlog_dir)
         self.app_name = app_name
+        self.window = window
+        self.window_pid = window_pid
         self._process = None
         self._reader = None
 
     def start(self):
-        pid = find_root_pid(self.app_name)
+        pid = target_pid(self.app_name, self.window, self.window_pid)
         if pid is None:
-            raise AppNotRunning(self.app_name)
+            raise AppNotRunning(label(self.app_name, self.window))
         path = helper_path()
         self._channels = 2
         self._resampler = soxr.ResampleStream(RATE, audio.SAMPLE_RATE, 1, dtype="float32")
         self._process = subprocess.Popen([path, str(pid)], stdout=subprocess.PIPE, stderr=subprocess.PIPE,
                                          stdin=subprocess.DEVNULL,
                                          creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0))
-        self.device_name = f"{self.app_name} only"
+        self.device_name = f"{label(self.app_name, self.window)} only"
         self._reader = threading.Thread(target=self._read, name="app-audio", daemon=True)
         self._reader.start()
         if self._backlog is not None:
             self._spill_stop.clear()
             self._spill_thread = threading.Thread(target=self._spill_worker, name="audio-spill", daemon=True)
             self._spill_thread.start()
-        log.info("Listening to %s only (process %s)", self.app_name, pid)
+        log.info("Listening to %s only (process %s)", label(self.app_name, self.window), pid)
 
     def _read(self):
         process = self._process
@@ -140,33 +165,35 @@ class AppCapture(audio.LoopbackCapture):
 
 
 def make_capture(cfg, on_status=None):
-    """The capture to listen with: one program if chosen and running, otherwise the whole PC."""
+    """The capture to listen with: one program or window if chosen and open, otherwise the whole PC."""
     on_status = on_status or (lambda text: None)
-    app = str(cfg.get("audio_app") or "").strip()
+    app, window, window_pid = chosen(cfg)
+    name = label(app, window)
     backlog = cfg.get("audio_backlog_sec", audio.DEFAULT_BACKLOG_SEC), cfg.get("audio_backlog_dir", "")
-    if app and available():
-        capture = AppCapture(app, *backlog)
+    if (app or window) and available():
+        capture = AppCapture(app, *backlog, window=window, window_pid=window_pid)
         try:
             capture.start()
             return capture
         except AppNotRunning:
-            on_status(f"{app} is not running — listening to everything until it starts")
+            on_status(f"The window {name} is not open — listening to everything until it opens" if window
+                      else f"{app} is not running — listening to everything until it starts")
         except Exception as e:
-            log.warning("Could not listen to %s only: %s", app, e)
-            on_status(f"Could not listen to {app} only ({e}) — listening to everything")
+            log.warning("Could not listen to %s only: %s", name, e)
+            on_status(f"Could not listen to {name} only ({e}) — listening to everything")
         capture.stop()
     capture = audio.LoopbackCapture(cfg["audio_device"], *backlog)
     capture.start()
-    capture.waiting_for_app = app if app and available() else ""
+    capture.waiting_for = (app, window) if (app or window) and available() else None
     return capture
 
 
 def should_switch(capture, cfg):
-    """None to let the usual device checks decide; True/False when one program is in play."""
-    app = str(cfg.get("audio_app") or "").strip()
-    waiting = getattr(capture, "waiting_for_app", "")
+    """None to let the usual device checks decide; True/False when one program or window is in play."""
+    app, window, window_pid = chosen(cfg)
     if isinstance(capture, AppCapture):
         return False  # its own health check notices the program closing
-    if waiting and app == waiting:
-        return find_root_pid(app) is not None  # the program started: go back to it
+    waiting = getattr(capture, "waiting_for", None)
+    if waiting and waiting == (app, window):
+        return target_pid(app, window, window_pid) is not None  # it opened: go back to it
     return None

@@ -23,6 +23,48 @@ class _Signals(QObject):
     done = Signal()
 
 
+# ---- the worker thread ---------------------------------------------------------
+def work(path, kind, target, translator, ocr_language, signals, cancel):
+    try:
+        if kind in ("image", "pdf"):
+            _work_pages(path, target, translator, ocr_language, signals, cancel)
+        else:
+            _work_texts(path, kind, target, translator, signals, cancel)
+        if not cancel.is_set():
+            signals.done.emit()
+    except Exception as e:
+        log.exception("Could not translate %s", path)
+        signals.failed.emit(str(e) or e.__class__.__name__)
+
+
+def _work_pages(path, target, translator, ocr_language, signals, cancel):
+    reader = lens_ocr.Reader(ocr_language)
+    total = lens_files.page_count(path)
+    for index, image in enumerate(lens_files.pages(path)):
+        if cancel.is_set():
+            return
+        signals.progress.emit(f"Reading and translating page {index + 1} of {total}…")
+        blocks = lens_files.translate_page(reader, translator, image, target)
+        signals.page.emit(index, image, blocks)
+
+
+def _work_texts(path, kind, target, translator, signals, cancel):
+    if kind == "word":
+        texts = lens_files.word_texts(path)
+    else:
+        texts = lens_files.text_lines(lens_files.read_text(path))
+    signals.progress.emit(f"Translating {len(texts)} paragraphs…")
+    translations = {}
+    step = 40
+    for start in range(0, len(texts), step):
+        if cancel.is_set():
+            return
+        chunk = texts[start:start + step]
+        translations.update(zip(chunk, translator.translate_many(chunk, target)))
+        signals.progress.emit(f"Translated {min(start + step, len(texts))} of {len(texts)} paragraphs…")
+    signals.texts.emit(translations)
+
+
 class FileWindow(QWidget):
     """Translates `path` in a thread of its own; pages appear as they are done."""
 
@@ -45,7 +87,10 @@ class FileWindow(QWidget):
         self.signals.progress.connect(self.status.setText)
         self.signals.failed.connect(self._failed)
         self.signals.done.connect(self._done)
-        threading.Thread(target=self._work, args=(translator, ocr_language), name="lens-file", daemon=True).start()
+        # The thread is handed only what it needs, never the window: a window let go of last by another
+        # thread would be deleted there, and Qt crashes.
+        threading.Thread(target=work, args=(self.path, self.kind, self.target, translator, ocr_language,
+                                            self.signals, self._cancel), name="lens-file", daemon=True).start()
 
     # ---- layout --------------------------------------------------------------
     def _build(self):
@@ -88,45 +133,6 @@ class FileWindow(QWidget):
         self.original_button.setVisible(pictures)
         layout.addWidget(splitter, 1)
         self.page_labels = []
-
-    # ---- the worker thread -----------------------------------------------------
-    def _work(self, translator, ocr_language):
-        try:
-            if self.kind in ("image", "pdf"):
-                self._work_pages(translator, ocr_language)
-            else:
-                self._work_texts(translator)
-            if not self._cancel.is_set():
-                self.signals.done.emit()
-        except Exception as e:
-            log.exception("Could not translate %s", self.path)
-            self.signals.failed.emit(str(e) or e.__class__.__name__)
-
-    def _work_pages(self, translator, ocr_language):
-        reader = lens_ocr.Reader(ocr_language)
-        total = lens_files.page_count(self.path)
-        for index, image in enumerate(lens_files.pages(self.path)):
-            if self._cancel.is_set():
-                return
-            self.signals.progress.emit(f"Reading and translating page {index + 1} of {total}…")
-            blocks = lens_files.translate_page(reader, translator, image, self.target)
-            self.signals.page.emit(index, image, blocks)
-
-    def _work_texts(self, translator):
-        if self.kind == "word":
-            texts = lens_files.word_texts(self.path)
-        else:
-            texts = lens_files.text_lines(lens_files.read_text(self.path))
-        self.signals.progress.emit(f"Translating {len(texts)} paragraphs…")
-        translations = {}
-        step = 40
-        for start in range(0, len(texts), step):
-            if self._cancel.is_set():
-                return
-            chunk = texts[start:start + step]
-            translations.update(zip(chunk, translator.translate_many(chunk, self.target)))
-            self.signals.progress.emit(f"Translated {min(start + step, len(texts))} of {len(texts)} paragraphs…")
-        self.signals.texts.emit(translations)
 
     # ---- results (Qt thread) ---------------------------------------------------
     def _page_done(self, index, image, blocks):

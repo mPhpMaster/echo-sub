@@ -62,6 +62,8 @@ DEFAULTS = {
     "arabic_diacritics": "off",           # off | translation | original | both — add harakat to Arabic text
     "audio_device": "default",
     "audio_app": "",                      # listen to this program only (e.g. "Discord.exe"); empty = everything
+    "audio_window": "",                   # ...or to the program behind this window (its title)
+    "audio_window_pid": 0,                # that window's program when it was picked, if the title changes
     "show_original": True,
     "show_partial": True,
     "light_mode": False,                  # faster on a busy PC: a smaller speech model, no live text
@@ -218,7 +220,8 @@ BOX_ROWS = ("top", "middle", "bottom")
 BOX_COLUMNS = ("left", "center", "right")
 
 # Settings that require reloading models or reopening the audio stream
-ENGINE_KEYS = ("whisper_model", "device", "translator", "audio_device", "audio_app", "speaker_detection",
+ENGINE_KEYS = ("whisper_model", "device", "translator", "audio_device", "audio_app", "audio_window",
+               "audio_window_pid", "speaker_detection",
                "light_mode", "fast_cpu_translation", "cuda_download", "audio_backlog_sec", "audio_backlog_dir",
                "mic_enabled", "mic_device", "light_model")
 

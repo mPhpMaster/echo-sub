@@ -5,6 +5,14 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and 
 
 ## [Unreleased]
 
+## [1.18.0] — 2026-10-12
+
+### Added
+- **Listen to one window only.** *Settings → Language & Engine → Only this program or window* now lists the open windows as well as the programs playing sound, and *Pick a window…* takes the window you switch to within 3 seconds. EchoSub captions the program behind that window only — a second copy of VLC or a game started twice can be told apart. The window is found again by its title, or by its program when the title changes (a new song, a new tab); if it is closed, EchoSub listens to everything, says so, and goes back to it when it opens again. Windows keeps sound apart per program, not per window, so two windows of the same Chrome still share their sound. *Default: everything the PC plays.*
+
+### Fixed
+- EchoSub Lens: the window that translates a file could crash the app when it was closed while its last page was still being finished.
+
 ## [1.17.0] — 2026-10-11
 
 ### Added

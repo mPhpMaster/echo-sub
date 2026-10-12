@@ -144,6 +144,7 @@ Settings, models, logs and transcripts are kept in `%LOCALAPPDATA%\EchoSub`. The
 - **Menu:** right-click the caption box, or click the EchoSub icon in the system tray (next to the clock).
 - **Translation language:** menu → *Translation language*, or *Settings… → Language & Engine* for all languages.
 - **Move / resize:** menu → *Adjust window position and size*, then drag the box or its corner; or pick a spot under *Settings… → Position & Alignment*.
+- **One program or one window only:** *Settings… → Language & Engine → Only this program or window* captions just Discord, say, or the program behind one window — pick it from the list or with *Pick a window…*, then switch to it. Windows keeps sound apart per program, so two windows of the same program (two Chrome windows) cannot be told apart, but two copies of a program can.
 - **Light mode:** tray menu → *Light mode*, for when a game or another program is using the GPU: captions arrive sooner with a smaller speech model.
 - **Delayed captions:** *Settings… → Advanced → Catch-up audio buffer* temporarily keeps delayed audio on disk so captions can recover after a short slowdown. It does not run another AI model or create a permanent recording.
 - **Updates:** the installed app checks once a day for an official release. Use *Check for updates…* from the tray menu to check now; EchoSub opens the installer only after you choose it.
