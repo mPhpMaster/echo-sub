@@ -5,7 +5,7 @@ from PySide6.QtCore import QUrl
 from PySide6.QtGui import QAction, QActionGroup, QDesktopServices
 from PySide6.QtWidgets import QMenu, QSystemTrayIcon
 
-from . import APP_NAME, DONATE_URL, hotkeys, languages
+from . import APP_NAME, DONATE_URL, hotkeys, languages, lens_standalone
 from .settings_widgets import position_icon
 
 ROWS = ("top", "middle", "bottom")
@@ -65,7 +65,8 @@ class TrayMenuMixin:
         m.addAction("Heard but not understood…", self.open_missed_window)
         m.addAction("Caption history…", self._open_history)
         m.addAction("Summarize the conversation (AI)…", self.summarize_conversation)
-        m.addAction("EchoSub Lens: translate the screen…", self.open_lens)
+        self.act_lens = m.addAction(lens_standalone.menu_text(), self.open_lens)
+        m.aboutToShow.connect(self._refresh_lens_label)  # the standalone Lens may be installed or removed later
         m.addAction(self.act_usage)
         m.addAction("Settings…", self._open_settings)
         m.addAction("Open log file", self._open_log)
@@ -112,11 +113,15 @@ class TrayMenuMixin:
             self._apply({"box_position": key})
 
     def open_lens(self):
-        """EchoSub Lens runs in a process of its own; a second start only points at the running one."""
+        """EchoSub Lens runs in a process of its own; a second start only points at the running one.
+        The standalone EchoSub Lens opens when it is installed, the copy built into EchoSub otherwise."""
         from . import lens_app
 
-        if not lens_app.launch():
+        if not lens_standalone.open_lens(lens_app.launch):
             self.tray.showMessage(APP_NAME, "Could not start EchoSub Lens", QSystemTrayIcon.Warning, 4000)
+
+    def _refresh_lens_label(self):
+        self.act_lens.setText(lens_standalone.menu_text())
 
     def _update_hotkey_labels(self):
         enabled = self.cfg["global_hotkeys"]

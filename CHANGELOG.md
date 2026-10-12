@@ -5,6 +5,9 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and 
 
 ## [Unreleased]
 
+### Changed
+- **EchoSub opens the standalone EchoSub Lens when it is installed.** The tray menu item (*Screen translation (EchoSub Lens)…* when it is installed) and the Start menu's *EchoSub Lens* (`EchoSub.exe --lens`, files to translate included) start `EchoSubLens.exe`, found from its installer's entry (per user, then per machine) or its usual folders; if it is already running, it just shows itself. Without it, the Lens built into EchoSub opens as before. `EchoSub.exe --lens --builtin-lens` always opens the built-in one.
+
 ## [1.18.0] — 2026-10-12
 
 ### Added

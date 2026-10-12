@@ -88,10 +88,24 @@ def ctrl_held():
     return bool(ctypes.windll.user32.GetAsyncKeyState(VK_CONTROL) & 0x8000)
 
 
+def open_standalone_instead(argv=None):
+    """`EchoSub.exe --lens` (the Start menu's "EchoSub Lens") opens the standalone EchoSub Lens when it is
+    installed, passing on the files to translate. True when it did, so this built-in copy does not start."""
+    from . import lens_standalone
+
+    argv = sys.argv[1:] if argv is None else argv
+    if lens_standalone.BUILTIN_FLAG in argv:
+        return False
+    started = lens_standalone.open_lens(lambda: False, files_to_open(argv))
+    return started == "standalone"
+
+
 def main():
     cuda_setup.setup()
     logging_setup.setup("lens.log")
     log = logging.getLogger("echosub.lens")
+    if open_standalone_instead():
+        return 0
     from PySide6.QtGui import QIcon
     from PySide6.QtWidgets import QApplication
 
