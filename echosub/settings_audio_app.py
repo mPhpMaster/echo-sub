@@ -1,7 +1,7 @@
 # SPDX-License-Identifier: GPL-3.0-only
 # Copyright (C) 2026 Mohammad Al-Safadi
 """The "Only this program or window" field of the Settings window (see app_audio and app_windows)."""
-from PySide6.QtCore import QTimer
+from PySide6.QtCore import Qt, QTimer
 from PySide6.QtWidgets import QComboBox, QHBoxLayout, QPushButton, QToolTip, QWidget
 
 from . import app_audio, app_windows
@@ -25,6 +25,12 @@ class _Field(QComboBox):
         super().__init__()
         self._picker = picker
         self.setEditable(True)
+        # Long window titles must not widen the Settings window: the box keeps a modest width and the
+        # list shows the whole title
+        self.setSizeAdjustPolicy(QComboBox.AdjustToMinimumContentsLengthWithIcon)
+        self.setMinimumContentsLength(18)
+        self.view().setTextElideMode(Qt.ElideMiddle)
+        self.view().setMinimumWidth(420)
 
     def showPopup(self):
         self._picker.refresh()

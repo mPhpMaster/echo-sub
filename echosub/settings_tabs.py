@@ -122,13 +122,14 @@ class AdvancedTabMixin:
         f.addRow(self.update_install)
         self.update_dir = QLineEdit(cfg.get("update_dir", ""))
         self.update_dir.setPlaceholderText("Windows temp folder")
+        self.update_dir.setMinimumWidth(260)
         browse = QPushButton("Browse…")
         browse.clicked.connect(lambda: self.update_dir.setText(
             QFileDialog.getExistingDirectory(self, "Download updates to", self.update_dir.text()) or
             self.update_dir.text()))
         f.addRow("Download to:", self._row(self.update_dir, browse))
         f.addRow(hint("EchoSub never downloads or installs anything by itself. When you click Download and "
-                      "install, the official installer (about 1 GB) is fetched from EchoSub's GitHub releases, "
+                      "install, the official installer (about 100 MB) is fetched from EchoSub's GitHub releases, "
                       "checked against its published checksum, and run; EchoSub starts again afterwards."))
         return group
 

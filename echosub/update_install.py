@@ -115,7 +115,7 @@ class InstallMixin:
         folder = download_folder(self.cfg.get("update_dir", ""))
         answer = QMessageBox.question(
             None, f"{APP_NAME} update",
-            f"Download {APP_NAME} {update.version} (about 1 GB) to {folder} and install it?\n\n"
+            f"Download {APP_NAME} {update.version} (about 100 MB) to {folder} and install it?\n\n"
             f"It comes from {APP_NAME}'s own GitHub releases and is checked before it runs. "
             f"{APP_NAME} closes while it installs and starts again afterwards.")
         if answer != QMessageBox.Yes:

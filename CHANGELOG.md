@@ -3,6 +3,13 @@
 All notable changes to EchoSub are documented in this file.
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the project uses [Semantic Versioning](https://semver.org/).
 
+## [1.19.1] — 2026-11-17
+
+### Fixed
+- **Google Translate works again.** Google now answers the page EchoSub used with a "sorry" captcha page, so every request looked like rate limiting and captions were translated offline (or not at all). EchoSub now asks Google's JSON endpoints directly — the first, then a second one if the first fails — and no longer needs the deep-translator library. Without internet it now says so ("not answering (no internet?)") and translates offline at once, instead of retrying every caption.
+- **Settings → Language & Engine fits its window again.** Long window titles in *Only this program or window* widened the whole tab, pushing every field and the *Pick a window…* button past the right edge; the list now keeps a normal width and shows whole titles when opened.
+- *Settings → Advanced*: the *Download to* folder field was squeezed to a few letters, and the update texts still said the installer is about 1 GB — it is about 100 MB.
+
 ## [1.19.0] — 2026-10-12
 
 ### Changed

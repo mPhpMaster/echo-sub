@@ -20,7 +20,6 @@ EchoSub is built on the open-source software and AI models listed below. Each co
 | SentencePiece | Apache-2.0 | https://github.com/google/sentencepiece |
 | Hugging Face Hub client | Apache-2.0 | https://github.com/huggingface/huggingface_hub |
 | tokenizers | Apache-2.0 | https://github.com/huggingface/tokenizers |
-| deep-translator | MIT | https://github.com/nidhaloff/deep_translator |
 | NumPy | BSD-3-Clause | https://numpy.org |
 | PyAV (FFmpeg bindings; FFmpeg is LGPL) | BSD-3-Clause | https://github.com/PyAV-Org/PyAV |
 | pycaw | MIT | https://github.com/AndreMiras/pycaw |

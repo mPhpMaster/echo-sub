@@ -89,9 +89,10 @@ class NLLBTranslator:
 class RateLimited(Exception):
     """Google Translate refuses requests for a while; `retry_in` is how long EchoSub waits before asking again."""
 
-    def __init__(self, retry_in):
-        super().__init__(f"Google Translate is limiting requests; retrying in {round(retry_in)} s")
+    def __init__(self, retry_in, why="is limiting requests"):
+        super().__init__(f"Google Translate {why}; retrying in {round(retry_in)} s")
         self.retry_in = retry_in
+        self.why = why
 
 
 class GoogleTranslator:
@@ -102,12 +103,9 @@ class GoogleTranslator:
 
     def __init__(self, fallback=None):
         """`fallback`: (name, factory) of an offline translator used while Google refuses requests."""
-        from deep_translator import GoogleTranslator as _GT
-        from deep_translator.exceptions import TooManyRequests
+        import requests
 
-        self._cls = _GT
-        self._too_many = TooManyRequests
-        self._cache = {}
+        self._session = requests.Session()  # one connection, kept open between captions
         self._lock = threading.Lock()
         self._last_request = 0.0
         self._paused_until = 0.0
@@ -122,14 +120,13 @@ class GoogleTranslator:
             return text
         try:
             result = self._google(text, tgt)
-        except RateLimited:
+        except RateLimited as e:
             offline = self._offline_translator()
             if offline is None:
                 raise
             if not self._offline:
                 self._offline = True
-                self.notify(f"Google Translate is limiting requests — translating offline with "
-                            f"{self._fallback_spec[0]} for now")
+                self.notify(f"Google Translate {e.why} — translating offline with {self._fallback_spec[0]} for now")
             return offline.translate(text, src, tgt)
         if self._offline:
             self._offline = False
@@ -146,27 +143,32 @@ class GoogleTranslator:
         return self._fallback
 
     def _google(self, text, tgt):
+        from . import google_web
+
         key = languages.google_code(tgt)
-        if key not in self._cache:
-            self._cache[key] = self._cls(source="auto", target=key)
         with self._lock:
             now = time.monotonic()
             if now < self._paused_until:
                 raise RateLimited(self._paused_until - now)
             # While already translating offline, one try is enough to see whether Google is back
+            why = "is limiting requests"
             for delay in (0.0,) + (() if self._offline else self.RETRY_DELAYS):
                 time.sleep(max(delay, self._last_request + self.MIN_INTERVAL - time.monotonic(), 0.0))
                 self._last_request = time.monotonic()
                 try:
-                    result = self._cache[key].translate(text) or text
-                except self._too_many:
+                    result = google_web.translate(text, key, self._session) or text
+                except google_web.TooManyRequests:
                     continue
+                except google_web.RequestFailed as e:
+                    log.warning("%s", e)  # no internet, most likely: waiting again would not help
+                    why = "is not answering (no internet?)"
+                    break
                 self._cooldown = self.COOLDOWN[0]
                 return result
             # Still refused: stop asking for a while, longer each time it happens again
             self._paused_until = time.monotonic() + self._cooldown
             retry_in, self._cooldown = self._cooldown, min(self._cooldown * 2, self.COOLDOWN[1])
-            raise RateLimited(retry_in)
+            raise RateLimited(retry_in, why)
 
 
 def offline_fallback(device, downloader=None, fast_cpu=True):

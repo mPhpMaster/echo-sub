@@ -53,7 +53,7 @@ hiddenimports = (
     collect_submodules("pycaw")
     + collect_submodules("sherpa_onnx")
     + collect_submodules("winrt")  # EchoSub Lens: Windows OCR
-    + ["pyaudiowpatch", "sentencepiece", "soxr", "deep_translator", "comtypes.stream",
+    + ["pyaudiowpatch", "sentencepiece", "soxr", "comtypes.stream",
        "PySide6.QtPdf"]  # EchoSub Lens reads PDF files
 )
 
